@@ -29,11 +29,11 @@ say "${B}Cài đặt website bán hàng — ${REPO}@${BRANCH}${N}"
 step "Kiểm tra PHP"
 PHP_BIN="${PHP_BIN:-}"
 if [ -z "$PHP_BIN" ]; then
-  for c in php /opt/alt/php83/usr/bin/php /opt/alt/php82/usr/bin/php /opt/alt/php81/usr/bin/php php8.3 php8.2 php8.1; do
-    if command -v "$c" >/dev/null 2>&1 && "$c" -r 'exit(PHP_VERSION_ID >= 80100 ? 0 : 1);' 2>/dev/null; then PHP_BIN="$(command -v "$c")"; break; fi
+  for c in php /opt/alt/php83/usr/bin/php /opt/alt/php82/usr/bin/php /opt/alt/php81/usr/bin/php /opt/alt/php80/usr/bin/php php8.3 php8.2 php8.1 php8.0; do
+    if command -v "$c" >/dev/null 2>&1 && "$c" -r 'exit(PHP_VERSION_ID >= 80000 ? 0 : 1);' 2>/dev/null; then PHP_BIN="$(command -v "$c")"; break; fi
   done
 fi
-[ -n "$PHP_BIN" ] || die "Không tìm thấy PHP 8.1+. Vào hPanel → Advanced → PHP Configuration chọn PHP 8.2/8.3 rồi chạy lại."
+[ -n "$PHP_BIN" ] || die "Không tìm thấy PHP 8.0+. Vào hPanel → Advanced → PHP Configuration chọn PHP 8.2/8.3 rồi chạy lại."
 say "  • $("$PHP_BIN" -r 'echo "PHP ", PHP_VERSION;') ($PHP_BIN)"
 
 # ------------------------------------------------------------ thư mục tên miền

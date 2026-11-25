@@ -18,6 +18,12 @@ final class SystemController extends Base
             'store_name' => 'Tên cửa hàng', 'store_tagline' => 'Khẩu hiệu', 'hotline' => 'Hotline', 'zalo' => 'Số Zalo',
             'support_email' => 'Email hỗ trợ', 'address' => 'Địa chỉ xưởng', 'order_code_prefix' => 'Tiền tố mã đơn (chữ cái)',
         ],
+        'Thông tin pháp lý (chân trang, Chính sách bảo mật, Điều khoản sử dụng)' => [
+            'business_name' => 'Tên hộ kinh doanh / doanh nghiệp', 'business_reg_no' => 'Số GCN đăng ký kinh doanh / mã số thuế',
+            'business_reg_info' => 'Ngày cấp, nơi cấp (VD: cấp ngày 01/02/2026 tại UBND phường …)', 'representative' => 'Người đại diện / chủ hộ',
+            'privacy_email' => 'Email liên hệ về dữ liệu cá nhân (để trống = dùng email hỗ trợ)', 'hosting_provider' => 'Nhà cung cấp máy chủ',
+            'server_location' => 'Nơi đặt máy chủ (xem trong hPanel, VD: Singapore)', 'complaint_reply_days' => 'Số ngày làm việc phản hồi khiếu nại',
+        ],
         'VietQR (tài khoản nhận tiền)' => [
             'vietqr_bank_name' => 'Tên ngân hàng', 'vietqr_bank_bin' => 'Mã BIN ngân hàng (VD Vietcombank 970436)',
             'vietqr_account_no' => 'Số tài khoản', 'vietqr_account_name' => 'Tên chủ tài khoản (không dấu)',
@@ -42,7 +48,7 @@ final class SystemController extends Base
         ]);
     }
 
-    public function saveUser(): never
+    public function saveUser(): void
     {
         $this->need('users.manage');
         $id = $this->int('id');
@@ -81,7 +87,7 @@ final class SystemController extends Base
         return $this->view('roles', ['title' => 'Phân quyền', 'roles' => Db::all('SELECT r.*, (SELECT COUNT(*) FROM users u WHERE u.role_code = r.code AND u.is_active = 1) AS n FROM roles r ORDER BY r.code = "admin" DESC, r.name')]);
     }
 
-    public function saveRole(): never
+    public function saveRole(): void
     {
         $this->need('users.manage');
         $code = $this->str('code');
@@ -106,7 +112,7 @@ final class SystemController extends Base
         return $this->view('settings', ['title' => 'Cấu hình', 'groups' => self::SETTING_FIELDS, 'values' => Settings::all()]);
     }
 
-    public function saveSettings(): never
+    public function saveSettings(): void
     {
         $this->need('settings.manage');
         $before = Settings::all();
@@ -116,8 +122,9 @@ final class SystemController extends Base
             foreach ($fields as $k => $_) {
                 if (!array_key_exists($k, $_POST)) continue;
                 $v = trim((string)$_POST[$k]);
-                if (in_array($k, ['quote_ttl_minutes', 'hold_hours_vietqr', 'hold_hours_cod', 'chat_log_days', 'sync_event_retention_days'], true) && (!ctype_digit($v) || (int)$v < 1)) $err[$k] = 'Nhập số nguyên dương';
+                if (in_array($k, ['quote_ttl_minutes', 'hold_hours_vietqr', 'hold_hours_cod', 'chat_log_days', 'sync_event_retention_days', 'complaint_reply_days'], true) && (!ctype_digit($v) || (int)$v < 1)) $err[$k] = 'Nhập số nguyên dương';
                 if ($k === 'chat_faq_threshold' && (!is_numeric($v) || $v < 0 || $v > 1)) $err[$k] = 'Từ 0 đến 1';
+                if ($k === 'privacy_email' && $v !== '' && !filter_var($v, FILTER_VALIDATE_EMAIL)) $err[$k] = 'Email không hợp lệ';
                 if ($k === 'vietqr_bank_bin' && !preg_match('/^\d{6}$/', $v)) $err[$k] = 'Mã BIN gồm 6 chữ số';
                 if ($k === 'vietqr_account_no' && !preg_match('/^[0-9A-Za-z]{4,19}$/', $v)) $err[$k] = 'Số tài khoản 4–19 ký tự';
                 if (($before[$k] ?? null) !== $v) $changed[$k] = $v;
@@ -138,7 +145,7 @@ final class SystemController extends Base
         return $this->view('api_keys', ['title' => 'Khóa API cho dịch vụ Python', 'keys' => Db::all('SELECT * FROM api_keys ORDER BY is_active DESC, id DESC'), 'newKey' => $new]);
     }
 
-    public function createKey(): never
+    public function createKey(): void
     {
         $this->need('settings.manage');
         $scopes = array_values(array_intersect(['events:read', 'catalog:read', 'drafts:write'], (array)($_POST['scopes'] ?? [])));
@@ -151,7 +158,7 @@ final class SystemController extends Base
         $this->back('Đã tạo khóa — sao chép ngay, khóa chỉ hiển thị một lần.', '/admin/api-keys');
     }
 
-    public function revokeKey(string $id): never
+    public function revokeKey(string $id): void
     {
         $this->need('settings.manage');
         Db::exec('UPDATE api_keys SET is_active = 0 WHERE id = :id', ['id' => (int)$id]);
@@ -187,7 +194,7 @@ final class SystemController extends Base
         return $this->view('account', ['title' => 'Tài khoản của tôi']);
     }
 
-    public function changePassword(): never
+    public function changePassword(): void
     {
         $u = Db::one('SELECT password_hash FROM users WHERE id = :id', ['id' => Auth::id()]);
         if (!password_verify((string)($_POST['current'] ?? ''), $u['password_hash'])) throw ApiError::validation(['current' => 'Mật khẩu hiện tại không đúng']);

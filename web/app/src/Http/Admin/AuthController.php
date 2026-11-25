@@ -17,7 +17,7 @@ final class AuthController extends Base
         return View::render('admin/login', ['flash' => Session::takeFlash(), 'email' => $_SESSION['_old']['email'] ?? '']);
     }
 
-    public function login(): never
+    public function login(): void
     {
         RateLimiter::hit('admin_login', 10, 600);
         $email = $this->str('email');
@@ -31,7 +31,7 @@ final class AuthController extends Base
         Http::redirect('/admin/login');
     }
 
-    public function logout(): never
+    public function logout(): void
     {
         Auth::logout();
         Http::redirect('/admin/login');

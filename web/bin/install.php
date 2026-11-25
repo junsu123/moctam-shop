@@ -13,9 +13,9 @@ $root = dirname(__DIR__);
 $cfgFile = $root . '/app/config.php';
 $env = fn(string $k, string $d = '') => ($v = getenv($k)) === false || $v === '' ? $d : $v;
 $say = fn(string $m) => print("  • $m\n");
-$fail = function (string $m): never { fwrite(STDERR, "\n  ✘ $m\n"); exit(1); };
+$fail = function (string $m): void { fwrite(STDERR, "\n  ✘ $m\n"); exit(1); };
 
-if (PHP_VERSION_ID < 80100) $fail('Cần PHP 8.1 trở lên (đang dùng ' . PHP_VERSION . ').');
+if (PHP_VERSION_ID < 80000) $fail('Cần PHP 8.0 trở lên (đang dùng ' . PHP_VERSION . ').');
 foreach (['pdo_mysql', 'mbstring', 'dom', 'json', 'openssl'] as $ext) {
     if (!extension_loaded($ext)) $fail("Thiếu extension PHP: $ext — bật trong hPanel → PHP Configuration.");
 }

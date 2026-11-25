@@ -125,6 +125,9 @@ function seed_content(string $kind, string $title, string $body, ?int $catId = n
 {
     $now = Clock::nowDb();
     $slug ??= Text::slug($title);
+    if (Db::val('SELECT 1 FROM contents WHERE kind = :k AND slug = :s', ['k' => $kind, 's' => $slug])) {
+        return; // đã có (VD: trang pháp lý do migration 004 tạo)
+    }
     $body = Html::sanitize($body);
     $cid = Db::insert('contents', ['kind' => $kind, 'slug' => $slug, 'status' => 'published', 'source' => 'staff', 'category_id' => $catId, 'product_id' => $pid, 'created_at' => $now, 'updated_at' => $now]);
     $vid = Db::insert('content_versions', ['content_id' => $cid, 'version_no' => 1, 'title' => $title, 'meta_description' => Text::excerpt($body, 155), 'body' => $body, 'created_source' => 'staff', 'created_at' => $now]);

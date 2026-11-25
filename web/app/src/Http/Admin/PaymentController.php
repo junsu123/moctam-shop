@@ -21,7 +21,7 @@ final class PaymentController extends Base
         ]);
     }
 
-    public function recordVietQr(): never
+    public function recordVietQr(): void
     {
         $r = PaymentService::recordVietQr($_POST);
         $msg = 'Đã ghi nhận khoản thu' . ($r['order_code'] ? ' cho đơn ' . $r['order_code'] : ' (chưa khớp đơn)') . '.';
@@ -45,7 +45,7 @@ final class PaymentController extends Base
         ]);
     }
 
-    public function resolve(string $id): never
+    public function resolve(string $id): void
     {
         PaymentService::resolveDiscrepancy((int)$id, $_POST);
         $this->back('Đã xử lý sai lệch.');
@@ -60,13 +60,13 @@ final class PaymentController extends Base
         ]);
     }
 
-    public function complete(string $id): never
+    public function complete(string $id): void
     {
         PaymentService::completeRefund((int)$id, $_POST);
         $this->back('Đã ghi nhận hoàn tiền.');
     }
 
-    public function cancel(string $id): never
+    public function cancel(string $id): void
     {
         PaymentService::cancelRefund((int)$id, $this->str('reason', 'Hủy yêu cầu hoàn'));
         $this->back('Đã hủy yêu cầu hoàn.');

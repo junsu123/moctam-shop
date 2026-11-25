@@ -404,6 +404,15 @@
     });
   }
 
+  // ------------------------------------------------------------------ xóa dữ liệu lưu trên trình duyệt (trang bảo mật)
+  $$('[data-clear-local]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      store.del(Cart.KEY); store.del('xuong_checkout_prefs'); ss.del('xuong_idem');
+      Cart.badge(); b.disabled = true; b.textContent = 'Đã xóa thông tin trên trình duyệt này';
+      toast('Đã xóa giỏ hàng và thông tin đã lưu');
+    });
+  });
+
   // ------------------------------------------------------------------ khác
   $$('[data-autosubmit]').forEach(function (s) { s.addEventListener('change', function () { s.form.submit(); }); });
 

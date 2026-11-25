@@ -38,7 +38,7 @@ abstract class Base
         return View::render('admin/' . $tpl, $data, 'admin/layout');
     }
 
-    protected function back(string $msg = 'Đã lưu.', string $to = ''): never
+    protected function back(string $msg = 'Đã lưu.', string $to = ''): void
     {
         Session::flash('ok', $msg);
         Http::redirect($to ?: self::referer());
@@ -57,7 +57,7 @@ abstract class Base
         return str_starts_with($path, '/admin') ? $path . ($q ? '?' . $q : '') : '/admin';
     }
 
-    public static function handleError(ApiError $e, string $method): never
+    public static function handleError(ApiError $e, string $method): void
     {
         if ($e->status === 401) {
             Http::redirect('/admin/login');

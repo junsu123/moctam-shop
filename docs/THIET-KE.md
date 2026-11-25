@@ -165,7 +165,7 @@ VietQR: máy chủ sinh chuỗi EMVCo của NAPAS (BIN, số TK, số tiền, n�
 | NFR-03 | Chỉ mục cho tìm kiếm/đơn/kho; đo sơ bộ p95 87 ms (đọc) và 125 ms (tạo đơn) với 20 luồng — cần đo lại trên Hostinger |
 | NFR-04 | `bin/backup.php` (mysqldump hoặc PHP thuần + nén ảnh, giữ 14 bản); quy trình khôi phục đã thử (AT-11) |
 | NFR-05 | Trang Giám sát: lỗi tạo đơn 24 giờ, giao dịch chờ đối soát, tác vụ hết hạn (lần chạy cuối, số lần lỗi), tuổi bản sao lưu, độ trễ đồng bộ Python; `/api/health` cho dịch vụ giám sát ngoài |
-| NFR-06 | Trang chính sách giao hàng, thanh toán, đổi trả, bảo mật, liên hệ có sẵn dạng bản mẫu — xưởng phải rà soát pháp lý trước khi mở bán |
+| NFR-06 | *Chính sách bảo mật thông tin* và *Điều khoản sử dụng* soạn đầy đủ (`app/content/legal/`, cài bằng migration `004_legal_pages.php`, không ghi đè trang xưởng đã sửa); biến `{{…}}` lấy từ Cấu hình và được mã hóa HTML khi hiển thị (`LegalPages::render`); chân trang hiện thông tin chủ quản. Giao hàng, thanh toán, đổi trả, liên hệ còn là bản mẫu — xưởng phải rà soát trước khi mở bán |
 
 ## 10. Làm mới dữ liệu trước khi chạy thật
 

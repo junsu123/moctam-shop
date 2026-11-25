@@ -17,7 +17,7 @@ final class BackupService
     {
         $dir = (string)config('paths.backups', BASE_ROOT . '/storage/backups');
         if (!is_dir($dir)) mkdir($dir, 0750, true);
-        $stamp = Clock::now()->format('Ymd-His');
+        $stamp = Clock::now()->format('Ymd-His') . '-' . bin2hex(random_bytes(2)); // tránh trùng tên khi 2 lần sao lưu trong cùng 1 giây
         $start = Clock::nowDb();
         $c = config('db');
         $sqlFile = "$dir/$label-$stamp.sql.gz";

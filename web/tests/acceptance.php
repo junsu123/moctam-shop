@@ -413,6 +413,39 @@ check('EX-05', 'BM25 PHP khớp với Python (cùng điểm chuẩn hóa)', func
     return 'điểm=' . round($r[1], 4) . ' (đối chiếu với ai/tests)';
 });
 
+check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử dụng: có sẵn, chèn cấu hình an toàn, không ghi đè trang đã sửa', function () {
+    ok((int)Db::val("SELECT COUNT(*) FROM schema_migrations WHERE version = '004_legal_pages'") === 1, 'migration PHP 004 đã chạy');
+    foreach (['bao-mat' => 'Chính sách bảo mật thông tin', 'dieu-khoan-su-dung' => 'Điều khoản sử dụng'] as $slug => $title) {
+        $c = Db::one("SELECT * FROM contents WHERE kind = 'page' AND slug = :s", ['s' => $slug]);
+        ok($c && $c['status'] === 'published' && $c['pub_title'] === $title, "$slug đã xuất bản với tiêu đề \"$title\" (seed không ghi đè)");
+    }
+    $render = fn(string $slug) => (new \App\Http\StoreController())->page($slug);
+    \App\Core\Settings::set('representative', '');
+    $html = $render('dieu-khoan-su-dung');
+    ok(str_contains($html, '<h1 class="text-3xl">Điều khoản sử dụng</h1>') && str_contains($html, 'Có hiệu lực từ') && str_contains($html, 'aria-label="Mục lục"'), 'có tiêu đề, ngày hiệu lực, mục lục');
+    ok(str_contains($html, 'trong 24 giờ') && str_contains($html, '[chưa cập nhật: người đại diện]') && !str_contains($html, '{{'), 'biến cấu hình được chèn; mục trống hiện nhãn [chưa cập nhật]');
+    \App\Core\Settings::set('representative', '<script>alert(1)</script>Nguyễn Văn A');
+    $html = $render('dieu-khoan-su-dung');
+    ok(str_contains($html, '&lt;script&gt;alert(1)&lt;/script&gt;Nguyễn Văn A') && !str_contains($html, '<script>alert(1)'), 'giá trị cấu hình được mã hóa HTML (chống XSS)');
+    ok(str_contains($html, 'href="/chinh-sach/dieu-khoan-su-dung"') && str_contains($html, 'href="/chinh-sach/bao-mat"'), 'chân trang có liên kết hai trang');
+    ok(str_contains($render('bao-mat'), 'data-clear-local'), 'trang bảo mật có nút xóa thông tin lưu trên trình duyệt');
+    ok(str_contains(\App\Core\View::partial('store/checkout', ['provinces' => []]), '/chinh-sach/dieu-khoan-su-dung'), 'trang thanh toán dẫn tới Điều khoản sử dụng');
+    ok(\App\Domain\LegalPages::install() === ['bao-mat' => 'unchanged', 'dieu-khoan-su-dung' => 'unchanged'], 'chạy lại migration không tạo phiên bản thừa');
+    // Xưởng tự sửa điều khoản → bản cập nhật kèm mã nguồn chỉ vào chờ duyệt
+    t_user('content');
+    $id = (int)Db::val("SELECT id FROM contents WHERE slug = 'dieu-khoan-su-dung'");
+    ContentService::saveVersion($id, ['title' => 'Điều khoản sử dụng', 'body' => '<p>Bản xưởng tự sửa</p>']);
+    ContentService::publish($id);
+    $r = \App\Domain\LegalPages::install();
+    ok($r['dieu-khoan-su-dung'] === 'new_version_pending' && Db::val('SELECT pub_body FROM contents WHERE id = :id', ['id' => $id]) === '<p>Bản xưởng tự sửa</p>', 'không ghi đè bản xưởng đã sửa, thêm phiên bản chờ duyệt');
+    // Trang bảo mật còn là bản mẫu cũ → được thay bằng nội dung đầy đủ
+    $bid = (int)Db::val("SELECT id FROM contents WHERE slug = 'bao-mat'");
+    Db::exec('UPDATE content_versions SET body = :b WHERE content_id = :c', ['b' => '<p>cũ</p><p><em>Bản mẫu — xưởng cần rà soát và xác nhận.</em></p>', 'c' => $bid]);
+    Db::exec("UPDATE contents SET pub_body = '<p>cũ</p>' WHERE id = :id", ['id' => $bid]);
+    ok(\App\Domain\LegalPages::install()['bao-mat'] === 'replaced_template' && str_contains((string)Db::val('SELECT pub_body FROM contents WHERE id = :id', ['id' => $bid]), 'Luật Bảo vệ dữ liệu cá nhân'), 'bản mẫu cũ được thay bằng chính sách đầy đủ');
+    return 'hai trang xuất bản; biến cấu hình mã hóa an toàn; trang đã sửa được giữ nguyên';
+});
+
 check('EX-06', 'Làm mới dữ liệu trước khi chạy thật: sao lưu, xóa dữ liệu thử, giữ cấu hình; Python phải tải lại', function () {
     $adminId = t_user('admin');
     \App\Core\Settings::set('store_name', 'Xưởng Kiểm Thử');

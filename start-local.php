@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * CHẠY THỬ TRÊN MÁY TÍNH — một lệnh, dùng được trên Windows (XAMPP/Laragon), macOS, Linux:
+ * CHẠY THỬ TRÊN MÁY TÍNH (PHP 8.0+) — một lệnh, dùng được trên Windows (XAMPP/Laragon), macOS, Linux:
  *
  *     php start-local.php
  *
@@ -28,7 +28,7 @@ foreach (array_slice($argv, 1) as $a) {
 }
 function say(string $m): void { echo "  • $m\n"; }
 function step(string $m): void { echo "\n▸ $m\n"; }
-function fail(string $m): never { fwrite(STDERR, "\n  ✘ $m\n\n"); exit(1); }
+function fail(string $m): void { fwrite(STDERR, "\n  ✘ $m\n\n"); exit(1); }
 function ask(string $q, string $def = ''): string
 {
     echo "  $q" . ($def !== '' ? " [$def]" : '') . ': ';
@@ -47,7 +47,8 @@ echo "Chạy thử website bán hàng trên máy tính\n";
 
 // ---------------------------------------------------------------- PHP
 step('Kiểm tra PHP');
-if (PHP_VERSION_ID < 80100) fail('Cần PHP 8.1 trở lên, máy đang có ' . PHP_VERSION . '. Cài XAMPP/Laragon bản mới hoặc PHP 8.2+.');
+if (PHP_VERSION_ID < 80000) fail('Cần PHP 8.0 trở lên, máy đang có ' . PHP_VERSION . '. Nên dùng XAMPP/Laragon bản PHP 8.2+.');
+if (PHP_VERSION_ID < 80100) say('PHP 8.0 đã hết hỗ trợ bảo mật — dùng được để chạy thử, nhưng nên nâng lên 8.2+.');
 $missing = array_filter(['pdo_mysql', 'mbstring', 'dom', 'openssl'], fn($e) => !extension_loaded($e));
 if ($missing) {
     fail('PHP thiếu extension: ' . implode(', ', $missing) . "\n    Mở tệp php.ini (" . (php_ini_loaded_file() ?: 'chưa có php.ini') . ")\n    bỏ dấu ; trước các dòng extension=" . implode(', extension=', $missing) . ' rồi chạy lại.');

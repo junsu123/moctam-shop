@@ -35,19 +35,19 @@ final class SyncController
         return $key;
     }
 
-    public function events(): never
+    public function events(): void
     {
         self::authenticate('events:read');
         Http::json(SyncService::events(max(0, (int)($_GET['after'] ?? 0)), (int)($_GET['limit'] ?? 500)));
     }
 
-    public function snapshot(): never
+    public function snapshot(): void
     {
         self::authenticate('events:read');
         Http::json(SyncService::snapshot(max(0, (int)($_GET['after_id'] ?? 0)), (int)($_GET['limit'] ?? 500)));
     }
 
-    public function catalog(): never
+    public function catalog(): void
     {
         self::authenticate('catalog:read');
         $data = SyncService::catalog();
@@ -55,7 +55,7 @@ final class SyncController
         Http::json($data);
     }
 
-    public function drafts(): never
+    public function drafts(): void
     {
         $key = self::authenticate('drafts:write');
         $body = Http::body();

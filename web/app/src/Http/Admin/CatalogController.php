@@ -54,26 +54,26 @@ final class CatalogController extends Base
         ]);
     }
 
-    public function save(): never
+    public function save(): void
     {
         $id = $this->int('id') ?: null;
         $newId = CatalogService::saveProduct($id, $_POST);
         $this->back($id ? 'Đã lưu sản phẩm.' : 'Đã tạo sản phẩm. Thêm quy cách (SKU) và ảnh bên dưới.', '/admin/products/' . $newId);
     }
 
-    public function sku(string $id): never
+    public function sku(string $id): void
     {
         CatalogService::saveSku((int)$id, $this->int('sku_id') ?: null, $_POST);
         $this->back('Đã lưu quy cách.');
     }
 
-    public function image(string $id): never
+    public function image(string $id): void
     {
         CatalogService::addImage((int)$id, $_FILES['image'] ?? [], $this->str('alt'));
         $this->back('Đã thêm ảnh.');
     }
 
-    public function imageDelete(string $id): never
+    public function imageDelete(string $id): void
     {
         $this->need('catalog.manage');
         $img = Db::one('SELECT * FROM product_images WHERE id = :i AND product_id = :p', ['i' => $this->int('image_id'), 'p' => (int)$id]);
@@ -85,7 +85,7 @@ final class CatalogController extends Base
         $this->back('Đã xóa ảnh.');
     }
 
-    public function relation(string $id): never
+    public function relation(string $id): void
     {
         if ($this->str('remove')) {
             $this->need('catalog.manage');
@@ -97,7 +97,7 @@ final class CatalogController extends Base
         $this->back('Đã thêm sản phẩm mua kèm.');
     }
 
-    public function delete(string $id): never
+    public function delete(string $id): void
     {
         $r = CatalogService::deleteOrDiscontinue((int)$id);
         $this->back($r === 'deleted' ? 'Đã xóa sản phẩm.' : 'Sản phẩm đã có trong đơn nên được chuyển sang Ngừng bán (giữ lịch sử).', '/admin/products');
@@ -109,7 +109,7 @@ final class CatalogController extends Base
         return $this->view('categories', ['title' => 'Danh mục', 'rows' => Db::all('SELECT c.*, (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS n FROM categories c ORDER BY sort_order, id')]);
     }
 
-    public function saveCategory(): never
+    public function saveCategory(): void
     {
         $this->need('catalog.manage');
         $id = $this->int('id');
@@ -140,7 +140,7 @@ final class CatalogController extends Base
         return $this->view('crosssell', ['title' => 'Gợi ý mua kèm', 'rows' => $rows]);
     }
 
-    public function reviewCrosssell(string $id): never
+    public function reviewCrosssell(string $id): void
     {
         CatalogService::reviewRelation((int)$id, $this->str('decision') === 'approve');
         $this->back('Đã cập nhật gợi ý.');

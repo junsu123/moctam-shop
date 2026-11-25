@@ -1,6 +1,6 @@
 web/app/config.php
 web/storage/
-web/frontend/node_modules/
+web/frontend/node_modules
 web/public_html/uploads/products/
 ai/config.toml
 ai/data/

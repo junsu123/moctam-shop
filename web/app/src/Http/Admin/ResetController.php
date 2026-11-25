@@ -26,7 +26,7 @@ final class ResetController extends Base
         ]);
     }
 
-    public function run(): never
+    public function run(): void
     {
         $this->need('data.reset');
         $err = [];

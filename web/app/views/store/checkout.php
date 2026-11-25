@@ -74,7 +74,7 @@
       <?= \App\Core\View::partial('store/_totals') ?>
       <div class="mt-4 hidden rounded-lg border border-alert/30 bg-alert-light p-3 text-sm text-alert" role="alert" data-form-error></div>
       <button class="btn-primary mt-5 w-full py-3 text-lg" data-place-order>Đặt hàng</button>
-      <p class="mt-3 text-xs text-ink-mute">Bấm "Đặt hàng" là bạn đồng ý với <a href="/chinh-sach/doi-tra">chính sách đổi trả</a> và <a href="/chinh-sach/bao-mat">chính sách bảo mật</a>.</p>
+      <p class="mt-3 text-xs text-ink-mute">Bấm "Đặt hàng" là bạn đồng ý với <a href="/chinh-sach/dieu-khoan-su-dung">Điều khoản sử dụng</a>, <a href="/chinh-sach/doi-tra">Chính sách đổi trả</a> và <a href="/chinh-sach/bao-mat">Chính sách bảo mật thông tin</a>.</p>
     </aside>
   </form>
 

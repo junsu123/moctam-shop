@@ -80,7 +80,8 @@ $canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_U
         <li><a class="text-jade-100" href="/chinh-sach/giao-hang">Giao hàng</a></li>
         <li><a class="text-jade-100" href="/chinh-sach/thanh-toan">Thanh toán</a></li>
         <li><a class="text-jade-100" href="/chinh-sach/doi-tra">Đổi trả</a></li>
-        <li><a class="text-jade-100" href="/chinh-sach/bao-mat">Bảo mật</a></li>
+        <li><a class="text-jade-100" href="/chinh-sach/bao-mat">Bảo mật thông tin</a></li>
+        <li><a class="text-jade-100" href="/chinh-sach/dieu-khoan-su-dung">Điều khoản sử dụng</a></li>
         <li><a class="text-jade-100" href="/chinh-sach/lien-he">Liên hệ</a></li>
       </ul>
     </div>
@@ -89,7 +90,12 @@ $canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_U
       <p class="mt-2 text-sm">Thanh toán khi nhận hàng (COD) hoặc chuyển khoản VietQR. Đặt hàng không cần tạo tài khoản.</p>
     </div>
   </div>
-  <p class="wrap border-t border-white/10 py-4 text-xs text-jade-300">© <?= date('Y') ?> <?= e($store) ?></p>
+  <div class="wrap space-y-1 border-t border-white/10 py-4 text-xs text-jade-300">
+    <?php if (setting('business_name') !== '' || setting('business_reg_no') !== ''): ?>
+      <p><?= e(setting('business_name') ?: $store) ?><?= setting('business_reg_no') !== '' ? ' — GCN ĐKKD/MST: ' . e(setting('business_reg_no')) : '' ?><?= setting('business_reg_info') !== '' ? ', ' . e(setting('business_reg_info')) : '' ?><?= setting('representative') !== '' ? '. Người đại diện: ' . e(setting('representative')) : '' ?></p>
+    <?php endif; ?>
+    <p>© <?= date('Y') ?> <?= e($store) ?></p>
+  </div>
 </footer>
 
 <!-- Chat tư vấn -->

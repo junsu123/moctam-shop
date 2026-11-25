@@ -13,7 +13,8 @@ require __DIR__ . '/../app/bootstrap.php';
 use App\Core\Db;
 
 $dir = BASE_ROOT . '/migrations';
-$files = glob($dir . '/*.sql') ?: [];
+// .sql: câu lệnh DDL/DML; .php: migration dữ liệu cần logic (VD: tạo trang nội dung), chạy với kết nối Db sẵn có
+$files = array_merge(glob($dir . '/*.sql') ?: [], glob($dir . '/*.php') ?: []);
 sort($files);
 
 Db::pdo()->exec("CREATE TABLE IF NOT EXISTS schema_migrations (version VARCHAR(64) NOT NULL PRIMARY KEY, applied_at DATETIME NOT NULL, checksum CHAR(64) NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -26,7 +27,7 @@ $status = in_array('--status', $argv, true);
 $dry = in_array('--dry-run', $argv, true);
 $pending = 0;
 foreach ($files as $f) {
-    $ver = basename($f, '.sql');
+    $ver = preg_replace('/\.(sql|php)$/', '', basename($f));
     $sum = hash_file('sha256', $f);
     if (isset($applied[$ver])) {
         if ($applied[$ver] !== $sum) {
@@ -41,11 +42,15 @@ foreach ($files as $f) {
         continue;
     }
     echo "→ Áp dụng $ver ... ";
-    $sql = file_get_contents($f);
-    $sql = preg_replace('/^\s*--.*$/m', '', $sql);
-    foreach (array_filter(array_map('trim', preg_split('/;\s*$/m', $sql))) as $stmt) {
-        if (stripos($stmt, 'CREATE TABLE IF NOT EXISTS schema_migrations') !== false) continue;
-        Db::pdo()->exec($stmt);
+    if (str_ends_with($f, '.php')) {
+        (static function (string $file): void { require $file; })($f);
+    } else {
+        $sql = file_get_contents($f);
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql);
+        foreach (array_filter(array_map('trim', preg_split('/;\s*$/m', $sql))) as $stmt) {
+            if (stripos($stmt, 'CREATE TABLE IF NOT EXISTS schema_migrations') !== false) continue;
+            Db::pdo()->exec($stmt);
+        }
     }
     Db::run('INSERT INTO schema_migrations (version, applied_at, checksum) VALUES (:v, UTC_TIMESTAMP(), :c)', ['v' => $ver, 'c' => $sum]);
     echo "xong\n";

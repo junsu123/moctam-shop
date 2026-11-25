@@ -52,7 +52,7 @@ final class ContentController extends Base
         ]);
     }
 
-    public function save(): never
+    public function save(): void
     {
         $id = $this->int('id');
         $submit = $this->str('action') === 'submit';
@@ -67,19 +67,19 @@ final class ContentController extends Base
         $this->back($this->str('action') === 'publish' ? 'Đã lưu và xuất bản.' : ($submit ? 'Đã lưu và gửi duyệt.' : 'Đã lưu phiên bản mới.'), '/admin/content/' . $id);
     }
 
-    public function publish(string $id): never
+    public function publish(string $id): void
     {
         ContentService::publish((int)$id, $this->int('version_id') ?: null, $this->str('note') ?: null);
         $this->back('Đã xuất bản.');
     }
 
-    public function unpublish(string $id): never
+    public function unpublish(string $id): void
     {
         ContentService::unpublish((int)$id, $this->str('reason', 'Gỡ bài'));
         $this->back('Đã gỡ khỏi website.');
     }
 
-    public function reject(string $id): never
+    public function reject(string $id): void
     {
         ContentService::reject((int)$id, $this->str('note', 'Chưa đạt'));
         $this->back('Đã trả bản nháp về.');

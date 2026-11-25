@@ -29,7 +29,7 @@ final class CareController extends Base
         return $this->view('care', ['title' => 'Chăm sóc lại', 'rows' => $rows, 'st' => $st, 'consentOnly' => $consentOnly, 'hidden' => $hidden]);
     }
 
-    public function status(string $id): never
+    public function status(string $id): void
     {
         $this->need('care.view');
         $to = $this->str('to');
@@ -45,7 +45,7 @@ final class CareController extends Base
     }
 
     /** Xuất CSV — chỉ khách đã đồng ý. */
-    public function export(): never
+    public function export(): void
     {
         $this->need('care.view');
         $rows = Db::all("SELECT c.full_name, c.phone, cat.name AS cat_name, cs.last_order_at, cs.due_date, cs.reason FROM care_suggestions cs JOIN customers c ON c.id = cs.customer_id LEFT JOIN categories cat ON cat.id = cs.category_id

@@ -128,7 +128,7 @@ final class StoreController
         return $this->render('static', ['title' => $c['pub_title'], 'description' => $c['pub_meta_description'], 'c' => $c]);
     }
 
-    public function sitemap(): never
+    public function sitemap(): void
     {
         $base = rtrim((string)config('base_url'), '/');
         $urls = ['/', '/blog', '/hoi-dap'];

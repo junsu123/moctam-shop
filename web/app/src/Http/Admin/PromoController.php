@@ -23,7 +23,7 @@ final class PromoController extends Base
         return $this->view('shipping', ['title' => 'Vùng giao & biểu phí', 'zones' => $zones]);
     }
 
-    public function saveZone(): never
+    public function saveZone(): void
     {
         $this->need('shipping.manage');
         $id = $this->int('id');
@@ -48,7 +48,7 @@ final class PromoController extends Base
     }
 
     /** Biểu phí mới có hiệu lực từ thời điểm chọn; đơn cũ giữ phí đã chụp. */
-    public function addRate(): never
+    public function addRate(): void
     {
         $this->need('shipping.manage');
         $zone = $this->int('zone_id');
@@ -84,7 +84,7 @@ final class PromoController extends Base
         ]);
     }
 
-    public function saveVoucher(): never
+    public function saveVoucher(): void
     {
         $id = $this->int('id') ?: null;
         $_POST['scope_ids'] = $_POST['scope_type'] === 'category' ? ($_POST['scope_cat'] ?? []) : ($_POST['scope_type'] === 'product' ? ($_POST['scope_prod'] ?? []) : []);
@@ -111,7 +111,7 @@ final class PromoController extends Base
         ]);
     }
 
-    public function saveFlash(): never
+    public function saveFlash(): void
     {
         $items = [];
         foreach ((array)($_POST['item_sku'] ?? []) as $i => $sku) {

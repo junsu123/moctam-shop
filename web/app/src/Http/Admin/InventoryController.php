@@ -24,7 +24,7 @@ final class InventoryController extends Base
         return $this->view('inventory', ['title' => 'Tồn kho', 'rows' => $rows, 'f' => $_GET]);
     }
 
-    public function adjust(string $sku): never
+    public function adjust(string $sku): void
     {
         $type = $this->str('type') === 'receive' ? 'receive' : 'adjust';
         $delta = $this->int('delta');

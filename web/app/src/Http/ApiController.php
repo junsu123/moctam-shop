@@ -18,7 +18,7 @@ use App\Domain\PricingService;
 /** API công khai: báo giá, tạo đơn, chat, tìm kiếm (§5.3). */
 final class ApiController
 {
-    public function quote(): never
+    public function quote(): void
     {
         RateLimiter::hit('quote', 120, 60);
         $b = Http::body();
@@ -26,7 +26,7 @@ final class ApiController
         Http::json(['quote' => $q]);
     }
 
-    public function createOrder(): never
+    public function createOrder(): void
     {
         Csrf::verify($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
         RateLimiter::hit('order', 15, 600);
@@ -36,7 +36,7 @@ final class ApiController
         Http::json($res, $res['replayed'] ? 200 : 201);
     }
 
-    public function chat(): never
+    public function chat(): void
     {
         RateLimiter::hit('chat', 30, 60);
         $b = Http::body();
@@ -47,7 +47,7 @@ final class ApiController
         Http::json(ChatService::answer($msg));
     }
 
-    public function products(): never
+    public function products(): void
     {
         RateLimiter::hit('search', 120, 60);
         $res = CatalogService::search((string)($_GET['q'] ?? ''), isset($_GET['category']) ? (int)$_GET['category'] : null, (int)($_GET['page'] ?? 1), min(24, max(1, (int)($_GET['per_page'] ?? 8))));
@@ -59,7 +59,7 @@ final class ApiController
     }
 
     /** Kiểm tra sống cho giám sát ngoài (không lộ chi tiết). */
-    public function health(): never
+    public function health(): void
     {
         $ok = (bool)Db::val('SELECT 1');
         Http::json(['ok' => $ok, 'time' => Clock::nowDb()]);

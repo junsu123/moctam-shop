@@ -5,7 +5,7 @@ namespace App\Core;
 
 final class Http
 {
-    public static function json(array $data, int $status = 200): never
+    public static function json(array $data, int $status = 200): void
     {
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
@@ -14,7 +14,7 @@ final class Http
         exit;
     }
 
-    public static function html(string $html, int $status = 200): never
+    public static function html(string $html, int $status = 200): void
     {
         http_response_code($status);
         header('Content-Type: text/html; charset=utf-8');
@@ -22,7 +22,7 @@ final class Http
         exit;
     }
 
-    public static function redirect(string $to, int $status = 303): never
+    public static function redirect(string $to, int $status = 303): void
     {
         header('Location: ' . $to, true, $status);
         exit;

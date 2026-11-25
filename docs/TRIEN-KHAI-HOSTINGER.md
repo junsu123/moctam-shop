@@ -1,6 +1,6 @@
 # Hướng dẫn triển khai trên Hostinger
 
-Áp dụng cho các gói Hostinger có PHP 8.1+ và MySQL/MariaDB, như Business Web Hosting hoặc Cloud. Trước khi cài, vào hPanel kiểm tra phiên bản PHP và MySQL của gói sẽ dùng.
+Áp dụng cho các gói Hostinger có PHP 8.0+ (khuyên dùng 8.2 hoặc 8.3) và MySQL/MariaDB, như Business Web Hosting hoặc Cloud. Trước khi cài, vào hPanel kiểm tra phiên bản PHP và MySQL của gói sẽ dùng.
 
 ## Cách nhanh: một dòng lệnh
 
@@ -85,7 +85,7 @@ Trang **Quản trị → Giám sát** báo đỏ nếu tác vụ hết hạn kh�
 1. **Cấu hình**: tên cửa hàng, hotline, Zalo, email, địa chỉ, **tài khoản VietQR** (mã BIN 6 số, số tài khoản, tên chủ tài khoản không dấu) và các thời hạn giữ hàng.
 2. **Vùng giao & phí**: kiểm tra danh sách tỉnh/thành và biểu phí.
 3. **Sản phẩm**: thay toàn bộ thành phần, cách dùng, bảo quản và dị ứng **theo nhãn thật**. Dữ liệu mẫu chỉ để minh họa. Tải ảnh thật lên.
-4. **Trang chính sách**: rà soát nội dung giao hàng, thanh toán, đổi trả, bảo mật và liên hệ, rồi xuất bản lại. Các yêu cầu pháp lý về TMĐT, thực phẩm, hóa đơn và dữ liệu cá nhân cần được xác nhận trước khi mở bán (NFR-06).
+4. **Thông tin pháp lý và trang chính sách**: điền nhóm *Thông tin pháp lý* trong Cấu hình. Hai trang *Chính sách bảo mật thông tin* và *Điều khoản sử dụng* đã có nội dung đầy đủ và tự lấy thông tin từ Cấu hình qua biến dạng `{{hotline}}`, `{{business_name}}`… Khi sửa trong Quản trị → Trang chính sách, hãy giữ nguyên các biến này. Rà soát và chỉnh các trang giao hàng, thanh toán, đổi trả, liên hệ (còn là bản mẫu) rồi xuất bản lại. Nếu máy chủ đặt ngoài Việt Nam, đó là chuyển dữ liệu cá nhân ra nước ngoài; hộ kinh doanh và doanh nghiệp siêu nhỏ được miễn nộp hồ sơ đánh giá tác động theo Nghị định 356/2025/NĐ-CP, nhưng nên xác nhận với luật sư. Các yêu cầu pháp lý về TMĐT, thực phẩm, hóa đơn và dữ liệu cá nhân cần được xác nhận trước khi mở bán (NFR-06).
 5. **Tài khoản & Phân quyền**: tạo tài khoản cho nhân viên vận hành, kho, đối soát và nội dung.
 6. **Khóa API Python**: tạo 2 khóa riêng, một khóa đọc và một khóa ghi bản nháp.
 7. Đặt thử một đơn COD và một đơn VietQR với số tiền nhỏ, quét mã bằng ứng dụng ngân hàng, rồi ghi nhận và đối soát trọn quy trình.

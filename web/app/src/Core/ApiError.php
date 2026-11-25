@@ -13,10 +13,10 @@ use RuntimeException;
 final class ApiError extends RuntimeException
 {
     public function __construct(
-        public readonly string $errorCode,
+        public string $errorCode,
         string $message,
-        public readonly int $status = 400,
-        public readonly array $data = [],
+        public int $status = 400,
+        public array $data = [],
     ) {
         parent::__construct($message);
     }

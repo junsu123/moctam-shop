@@ -73,7 +73,7 @@ final class OrderController extends Base
         ]);
     }
 
-    public function transition(string $id): never
+    public function transition(string $id): void
     {
         $to = $this->str('to');
         $extra = [
@@ -85,19 +85,19 @@ final class OrderController extends Base
         $this->back('Đã chuyển đơn sang "' . (OrderService::STATUS_LABELS[$to] ?? $to) . '".');
     }
 
-    public function tracking(string $id): never
+    public function tracking(string $id): void
     {
         OrderService::updateShipping((int)$id, $_POST);
         $this->back('Đã lưu thông tin vận đơn.');
     }
 
-    public function cod(string $id): never
+    public function cod(string $id): void
     {
         $r = PaymentService::recordCod((int)$id, $_POST);
         $this->back($r['discrepancies'] ? 'Đã ghi nhận khoản COD — số tiền lệch, đã đưa vào danh sách sai lệch.' : 'Đã ghi nhận đã thu COD.');
     }
 
-    public function refund(string $id): never
+    public function refund(string $id): void
     {
         PaymentService::createRefund((int)$id, $this->int('refund_amount'), $this->str('reason'));
         $this->back('Đã tạo yêu cầu hoàn tiền, chờ ghi nhận giao dịch hoàn.');

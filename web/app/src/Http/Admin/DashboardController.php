@@ -67,6 +67,8 @@ final class DashboardController extends Base
         $bk = Db::one("SELECT finished_at FROM job_runs WHERE job = 'backup' AND status = 'ok' ORDER BY id DESC LIMIT 1");
         $bm = $age($bk['finished_at'] ?? null);
         $h[] = ['name' => 'Tuổi bản sao lưu', 'value' => $bk ? round($bm / 60, 1) . ' giờ' : 'Chưa có bản sao lưu', 'level' => !$bk || $bm > 26 * 60 ? 'bad' : 'ok'];
+        $miss = \App\Domain\LegalPages::missingSettings();
+        $h[] = ['name' => 'Thông tin pháp lý trên website', 'value' => $miss ? 'Còn thiếu: ' . implode(', ', $miss) : 'Đã đủ', 'level' => $miss ? 'warn' : 'ok', 'note' => 'Điền trong Cấu hình → Thông tin pháp lý.'];
         $sync = Db::one("SELECT MAX(last_used_at) AS t FROM api_keys WHERE is_active = 1 AND scopes LIKE '%events:read%'");
         $sm = $age($sync['t'] ?? null);
         $h[] = ['name' => 'Độ trễ đồng bộ Python', 'value' => $sync['t'] ? $sm . ' phút từ lần đọc cuối' : 'Chưa kết nối', 'level' => !$sync['t'] ? 'warn' : ($sm > 24 * 60 ? 'warn' : 'ok'), 'note' => 'Máy cá nhân tắt không ảnh hưởng bán hàng.'];
