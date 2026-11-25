@@ -72,6 +72,12 @@ Trang **Quản trị → Giám sát** báo đỏ nếu tác vụ hết hạn kh�
 5. **Tài khoản & Phân quyền**: tạo tài khoản cho nhân viên vận hành, kho, đối soát và nội dung.
 6. **Khóa API Python**: tạo 2 khóa riêng, một khóa đọc và một khóa ghi bản nháp.
 7. Đặt thử một đơn COD và một đơn VietQR với số tiền nhỏ, quét mã bằng ứng dụng ngân hàng, rồi ghi nhận và đối soát trọn quy trình.
+8. **Làm mới dữ liệu trước khi chạy thật**: vào Quản trị → *Làm mới dữ liệu* (chỉ Quản trị viên). Chọn phạm vi, xem trước số bản ghi sẽ xóa, rồi gõ `XOA DU LIEU THU` và nhập mật khẩu. Hệ thống tự sao lưu trước khi xóa; nếu sao lưu lỗi thì dừng, không xóa gì.
+   - Muốn giữ sản phẩm mẫu làm sản phẩm thật: chỉ chọn *Đặt tồn thực tế về 0*, rồi nhập tồn đầu kỳ thật ở trang Tồn kho.
+   - Muốn tự nhập sản phẩm từ đầu: chọn *Xóa sản phẩm*, *Xóa voucher và Flash Sale*, *Xóa blog và FAQ*.
+   - Nên chọn thêm *Xóa tài khoản mẫu* (cần tạo tài khoản quản trị thật trước) và *Xóa nhật ký giai đoạn thử*.
+   - Dùng dòng lệnh: chạy `php bin/reset_data.php --dry-run` để xem trước, rồi `php bin/reset_data.php --stock-zero --demo-users --logs`. Nếu không có SSH, chạy lệnh qua Cron Job một lần, thêm `--yes`, rồi xóa Cron Job đó.
+   - Dịch vụ Python tự phát hiện dữ liệu đã làm mới và tải lại ở lần đồng bộ kế tiếp, không cần thao tác gì thêm.
 
 ## 7. Cập nhật phiên bản sau này
 

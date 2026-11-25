@@ -12,7 +12,7 @@ Mã nguồn hiện thực *Đặc tả phần mềm website bán hàng v1.0*: b�
 
 1. `docs/THIET-KE.md`: kiến trúc, sơ đồ dữ liệu, luồng đặt hàng, trạng thái đơn, đối soát, đồng bộ, AI, bảng truy vết FR/NFR → mã nguồn.
 2. `docs/TRIEN-KHAI-HOSTINGER.md`: cài đặt từng bước, cron, cấu hình trước khi mở bán.
-3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (19/19 ca website + 15/15 kiểm thử Python đạt), đo tải.
+3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (20/20 ca website + 15/15 kiểm thử Python đạt), đo tải.
 4. `docs/API.md`, `docs/SAO-LUU-KHOI-PHUC.md`, `ai/README.md`.
 
 ## Chạy thử trên máy (5 phút)
@@ -51,6 +51,10 @@ cd ../ai && python -m pytest -v
 - **Quản lý lô và hạn dùng**: chọn website hay sổ nghiệp vụ. Nếu chọn website, xem `docs/THIET-KE.md` §3 để bổ sung migration.
 - **Nhân sự đối soát**: phân quyền nhân sự theo từng vai trò.
 - **Ngưỡng chat**: mặc định 0,10, đã hiệu chỉnh trên FAQ mẫu. Chạy lại `python -m xuong_ai calibrate` sau khi nhập FAQ thật.
+
+## Làm mới dữ liệu khi chạy thật
+
+Trước ngày mở bán, vào Quản trị → **Làm mới dữ liệu** (hoặc chạy `php bin/reset_data.php`) để xóa toàn bộ đơn, khách, giao dịch thử và tùy chọn cả sản phẩm mẫu, voucher, blog/FAQ mẫu, tài khoản mẫu, nhật ký thử. Cấu hình, danh mục, vùng giao, trang chính sách và tài khoản quản trị được giữ nguyên. Hệ thống luôn sao lưu trước khi xóa. Chi tiết ở `docs/TRIEN-KHAI-HOSTINGER.md` §6 bước 8.
 
 ## Ngoài phạm vi v1
 

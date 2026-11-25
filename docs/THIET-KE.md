@@ -167,7 +167,20 @@ VietQR: máy chủ sinh chuỗi EMVCo của NAPAS (BIN, số TK, số tiền, n�
 | NFR-05 | Trang Giám sát: lỗi tạo đơn 24 giờ, giao dịch chờ đối soát, tác vụ hết hạn (lần chạy cuối, số lần lỗi), tuổi bản sao lưu, độ trễ đồng bộ Python; `/api/health` cho dịch vụ giám sát ngoài |
 | NFR-06 | Trang chính sách giao hàng, thanh toán, đổi trả, bảo mật, liên hệ có sẵn dạng bản mẫu — xưởng phải rà soát pháp lý trước khi mở bán |
 
-## 10. Truy vết yêu cầu → mã nguồn
+## 10. Làm mới dữ liệu trước khi chạy thật
+
+`DataResetService` (dùng chung cho Quản trị → Làm mới dữ liệu và `bin/reset_data.php`). Thứ tự xử lý:
+
+1. Xem trước số bản ghi bị ảnh hưởng.
+2. **Sao lưu** (`BackupService`, tiền tố `truoc-lam-moi-`). Sao lưu lỗi thì dừng.
+3. Xóa trong **một giao dịch**, theo thứ tự khóa ngoại: đơn, khách, khoản thu, sai lệch, hoàn tiền, lượt voucher, khóa gửi lại, danh sách chăm sóc, gợi ý/nội dung AI chưa xuất bản, biến động kho. Đặt tồn giữ và lượt voucher về 0. Ghi mốc tồn đầu kỳ.
+4. Các tùy chọn: xóa sản phẩm, xóa ưu đãi, xóa blog/FAQ, xóa tài khoản mẫu (trừ người đang thao tác), đặt tồn về 0, xóa nhật ký thử, thu hồi khóa API.
+5. Ghi sự kiện `system.data_reset` và đặt `sync_pruned_through` = seq của sự kiện đó. Mọi con trỏ Python cũ nhận `410 CURSOR_EXPIRED` và tự tải lại bản chụp.
+6. Ghi nhật ký `data.reset`.
+
+Quyền `data.reset` chỉ có ở vai trò Quản trị viên (không cấp được qua màn hình phân quyền). Khi chạy qua giao diện, phải gõ câu xác nhận và nhập lại mật khẩu. Kiểm thử ở ca EX-06.
+
+## 11. Truy vết yêu cầu → mã nguồn
 
 | Yêu cầu | Nơi hiện thực |
 |---|---|

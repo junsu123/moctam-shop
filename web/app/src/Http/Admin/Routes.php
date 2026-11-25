@@ -88,6 +88,8 @@ final class Routes
         $r->post('/admin/api-keys/create', [SystemController::class, 'createKey']);
         $r->post('/admin/api-keys/{id}/revoke', [SystemController::class, 'revokeKey']);
         $r->get('/admin/audit', [SystemController::class, 'audit']);
+        $r->get('/admin/system/reset', [ResetController::class, 'form']);
+        $r->post('/admin/system/reset', [ResetController::class, 'run']);
         $r->get('/admin/account', [SystemController::class, 'account']);
         $r->post('/admin/account/password', [SystemController::class, 'changePassword']);
     }

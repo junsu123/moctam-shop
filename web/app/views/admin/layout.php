@@ -33,6 +33,7 @@ $nav = [
         ['/admin/api-keys', 'Khóa API Python', 'settings.manage', null],
         ['/admin/monitor', 'Giám sát', 'audit.view', 'monitor'],
         ['/admin/audit', 'Nhật ký thao tác', 'audit.view', null],
+        ['/admin/system/reset', 'Làm mới dữ liệu', 'data.reset', null],
     ],
 ];
 ?><!doctype html>

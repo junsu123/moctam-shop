@@ -413,6 +413,41 @@ check('EX-05', 'BM25 PHP khớp với Python (cùng điểm chuẩn hóa)', func
     return 'điểm=' . round($r[1], 4) . ' (đối chiếu với ai/tests)';
 });
 
+check('EX-06', 'Làm mới dữ liệu trước khi chạy thật: sao lưu, xóa dữ liệu thử, giữ cấu hình; Python phải tải lại', function () {
+    $adminId = t_user('admin');
+    \App\Core\Settings::set('store_name', 'Xưởng Kiểm Thử');
+    $oldCursor = (int)Db::val('SELECT last_seq FROM sync_counter WHERE id = 1') - 3;
+    $cats = (int)Db::val('SELECT COUNT(*) FROM categories');
+    $zones = (int)Db::val('SELECT COUNT(*) FROM shipping_zones');
+    $pages = (int)Db::val("SELECT COUNT(*) FROM contents WHERE kind = 'page'");
+    $sku = (int)Db::val("SELECT id FROM skus WHERE sku_code = 'NC-25H-500'");
+    $onHand = inv($sku)['on_hand'];
+    ok((int)Db::val('SELECT COUNT(*) FROM orders') > 0, 'có đơn thử');
+    $r = \App\Domain\DataResetService::run(['demo_users' => true, 'logs' => true], $adminId);
+    ok(is_file($r['backup']['file']), 'đã sao lưu trước khi xóa');
+    foreach (['orders', 'customers', 'payment_receipts', 'refunds', 'payment_discrepancies', 'voucher_usages', 'idempotency_keys', 'care_suggestions'] as $t) {
+        ok((int)Db::val("SELECT COUNT(*) FROM $t") === 0, "$t trống");
+    }
+    ok((int)Db::val('SELECT SUM(reserved) FROM inventory') === 0 && (int)Db::val('SELECT SUM(used_count + reserved_count) FROM vouchers') === 0, 'tồn giữ và lượt voucher về 0');
+    ok(inv($sku)['on_hand'] === $onHand, 'giữ tồn thực tế khi không chọn đặt về 0');
+    \App\Core\Settings::flush();
+    ok(setting('store_name') === 'Xưởng Kiểm Thử' && (int)Db::val('SELECT COUNT(*) FROM categories') === $cats && (int)Db::val('SELECT COUNT(*) FROM shipping_zones') === $zones && (int)Db::val("SELECT COUNT(*) FROM contents WHERE kind = 'page'") === $pages, 'giữ cấu hình, danh mục, vùng giao, trang chính sách');
+    ok((int)Db::val('SELECT COUNT(*) FROM users WHERE id = :id', ['id' => $adminId]) === 1 && (int)Db::val("SELECT COUNT(*) FROM users WHERE email LIKE '%@xuong.local' AND id <> :id", ['id' => $adminId]) === 0, 'xóa tài khoản mẫu, giữ người thao tác');
+    expect_error('CURSOR_EXPIRED', fn() => SyncService::events($oldCursor, 10));
+    $snap = SyncService::snapshot(0, 10);
+    ok($snap['orders'] === [] && SyncService::events($snap['as_of_seq'], 10)['events'] === [], 'Python tải lại bản chụp rỗng rồi đồng bộ tiếp bình thường');
+    ok((int)Db::val("SELECT COUNT(*) FROM audit_logs WHERE action = 'data.reset'") === 1, 'ghi nhật ký thao tác làm mới');
+    Auth::actAs(null);
+    $q = PricingService::quote([['sku_id' => $sku, 'qty' => 1]], null, t_zone());
+    $o = OrderService::create(t_input([['sku_id' => $sku, 'qty' => 1]], null, 'cod', $q['quote_token']), 'sess-after-reset', t_key());
+    ok($o['order']['code'] !== '' && (int)Db::val('SELECT COUNT(*) FROM orders') === 1, 'bán hàng bình thường sau khi làm mới');
+    t_user('operations');
+    expect_error('FORBIDDEN', fn() => Auth::require('data.reset'));
+    $r2 = \App\Domain\DataResetService::run(['products' => true, 'promotions' => true, 'content' => true], null);
+    ok((int)Db::val('SELECT COUNT(*) FROM products') === 0 && (int)Db::val('SELECT COUNT(*) FROM vouchers') === 0 && (int)Db::val("SELECT COUNT(*) FROM contents WHERE kind IN ('blog','faq')") === 0 && (int)Db::val('SELECT COUNT(*) FROM categories') === $cats, 'xóa sạch dữ liệu mẫu, vẫn giữ danh mục');
+    return 'sao lưu ' . basename($r['backup']['file']) . '; xóa ' . array_sum($r['deleted']) . ' bản ghi thử; cấu hình giữ nguyên; nhân viên vận hành không có quyền';
+});
+
 // ---------------------------------------------------------------- báo cáo
 $pass = count(array_filter($GLOBALS['T_RESULTS'], fn($r) => $r[2] === 'ĐẠT'));
 $total = count($GLOBALS['T_RESULTS']);
