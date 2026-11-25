@@ -30,21 +30,22 @@ Trình cài đặt tự tìm PHP, kiểm tra kết nối CSDL, đặt mã nguồ
 3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (20/20 ca website + 15/15 kiểm thử Python đạt), đo tải.
 4. `docs/API.md`, `docs/SAO-LUU-KHOI-PHUC.md`, `ai/README.md`.
 
-## Chạy thử trên máy (5 phút)
+## Chạy thử trên máy tính — một lệnh
 
-Cần PHP 8.1+ (có pdo_mysql, mbstring, intl, dom) và MySQL hoặc MariaDB.
+Cần **PHP 8.1+** và **MySQL/MariaDB** đang chạy. Trên Windows, cách dễ nhất là cài [XAMPP](https://www.apachefriends.org) hoặc [Laragon](https://laragon.org), rồi bật MySQL. Mở cửa sổ lệnh tại thư mục mã nguồn và gõ:
 
 ```bash
-cd web
-cp app/config.sample.php app/config.php        # điền db; đặt 'secure' => false khi chạy http://localhost
-mysql -e "CREATE DATABASE xuong_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-php bin/migrate.php
-php bin/seed.php --demo-users                  # dữ liệu mẫu + tài khoản thử (mật khẩu Demo@12345)
-php bin/seed_orders.php                        # (tùy chọn) đơn lịch sử để thử AI
-php -S localhost:8080 -t public_html tests/devrouter.php
+php start-local.php
 ```
 
-Sau đó mở `http://localhost:8080` để xem cửa hàng, và `http://localhost:8080/admin` để vào quản trị. Tài khoản quản trị viên là `admin@xuong.local`. Các vai trò thử khác: `vanhanh@`, `kho@`, `doisoat@`, `noidung@` (đều đuôi `xuong.local`).
+> Windows + XAMPP, nếu máy báo không nhận lệnh `php`: dùng `C:\xampp\php\php.exe start-local.php`
+
+Lệnh này tự kiểm tra PHP, tìm MySQL (thử `root` không mật khẩu; nếu không vào được sẽ hỏi), tạo CSDL `moctam_local`, tạo bảng, nạp 16 sản phẩm mẫu và khoảng 40 đơn mẫu, tạo sẵn cấu hình cho dịch vụ AI, rồi mở trình duyệt tại `http://localhost:8000`.
+
+- Quản trị: `http://localhost:8000/admin`, đăng nhập `admin@xuong.local`, mật khẩu `Demo@12345`. Có thêm 4 tài khoản để thử phân quyền: `vanhanh@`, `kho@`, `doisoat@`, `noidung@` (đều đuôi `xuong.local`, cùng mật khẩu).
+- Thử dịch vụ AI: mở cửa sổ lệnh thứ hai, `cd ai`, chạy `python -m xuong_ai once sync`, rồi `python -m xuong_ai once crosssell`. Cần Python 3.11+.
+- Dừng bằng Ctrl+C. Gõ lại lệnh là chạy tiếp, dữ liệu được giữ. Thêm `--reset` để làm lại từ đầu, hoặc `--port=8001` để đổi cổng.
+- Chế độ chạy thử dùng `http` và bật hiển thị lỗi, **không dùng cấu hình này cho Hostinger**.
 
 Chạy nghiệm thu (script sẽ **xóa và tạo lại** CSDL, nên tên CSDL phải chứa chữ `test`):
 
