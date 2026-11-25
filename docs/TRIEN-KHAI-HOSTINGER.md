@@ -2,6 +2,23 @@
 
 Áp dụng cho các gói Hostinger có PHP 8.1+ và MySQL/MariaDB, như Business Web Hosting hoặc Cloud. Trước khi cài, vào hPanel kiểm tra phiên bản PHP và MySQL của gói sẽ dùng.
 
+## Cách nhanh: một dòng lệnh
+
+Sau khi làm 3 việc ở mục 1 (chọn PHP 8.2/8.3, tạo CSDL, bật SSH), mở SSH rồi chạy:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/junsu123/moctam-shop/main/install.sh | bash
+```
+
+Trình cài đặt sẽ làm tự động các mục 2–5 bên dưới. Chạy lại cùng lệnh để **cập nhật**: trình cài tự sao lưu trước, rồi giữ nguyên cấu hình và dữ liệu. Muốn chạy không cần trả lời câu hỏi, đặt sẵn các biến trước lệnh:
+
+```bash
+DOMAIN=ten-mien.vn DB_NAME=u123_shop DB_USER=u123_shop DB_PASS='...' ADMIN_EMAIL=chu@ten-mien.vn ADMIN_PASS='...' SAMPLE=0 \
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/junsu123/moctam-shop/main/install.sh)"
+```
+
+Sau khi cài, làm tiếp mục 6 (cấu hình nghiệp vụ). Phần còn lại của tài liệu là cách cài **thủ công**, dùng khi không có SSH hoặc khi repo để Private.
+
 ## 1. Chuẩn bị trên hPanel
 
 1. **Websites → Quản lý → Advanced → PHP Configuration**: chọn PHP 8.2 hoặc 8.3, bật các extension `pdo_mysql`, `mbstring`, `intl`, `dom`, `fileinfo`, `gd`, `zip`.

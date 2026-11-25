@@ -8,6 +8,21 @@ Mã nguồn hiện thực *Đặc tả phần mềm website bán hàng v1.0*: b�
 | `ai/` | **Giai đoạn 2**: dịch vụ AI. Python 3.11, SQLite, BM25, Claude/OpenAI tùy chọn | Máy cá nhân |
 | `docs/` | Thiết kế kỹ thuật, API, triển khai Hostinger, sao lưu/khôi phục, kết quả nghiệm thu, ảnh màn hình | — |
 
+## Cài đặt trên Hostinger — một dòng lệnh
+
+1. Trong hPanel: chọn **PHP 8.2 hoặc 8.3**, tạo **một CSDL MySQL**, rồi bật **SSH Access**.
+2. Mở SSH (hPanel → SSH Access → Terminal, hoặc dùng `ssh` từ máy), dán dòng sau rồi trả lời vài câu hỏi:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/junsu123/moctam-shop/main/install.sh | bash
+```
+
+Trình cài đặt tự tìm PHP, kiểm tra kết nối CSDL, đặt mã nguồn đúng chỗ (phần mã ứng dụng nằm ngoài `public_html`), tạo cấu hình với khóa bí mật ngẫu nhiên, tạo bảng, tạo tài khoản quản trị và đặt các tác vụ định kỳ. Nếu gói hosting không cho đặt cron qua SSH, trình cài in ra sẵn 2 dòng để bạn dán vào hPanel → Cron Jobs.
+
+**Cập nhật phiên bản mới:** chạy lại đúng dòng lệnh trên. Trình cài tự sao lưu trước, giữ nguyên cấu hình, ảnh và dữ liệu, chỉ thay mã nguồn và nâng cấp CSDL.
+
+> Dòng lệnh tải mã từ GitHub, nên repo cần để **Public**. Nếu chuyển repo sang Private, hãy tải tệp zip rồi làm theo phần cài thủ công trong `docs/TRIEN-KHAI-HOSTINGER.md`.
+
 ## Đọc theo thứ tự
 
 1. `docs/THIET-KE.md`: kiến trúc, sơ đồ dữ liệu, luồng đặt hàng, trạng thái đơn, đối soát, đồng bộ, AI, bảng truy vết FR/NFR → mã nguồn.
