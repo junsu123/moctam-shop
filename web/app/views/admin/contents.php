@@ -14,7 +14,7 @@
     <thead><tr><th><?= $kind === 'faq' ? 'Câu hỏi' : 'Tiêu đề' ?></th><th>Nguồn</th><th>Phiên bản</th><th>Trạng thái</th><th>Cập nhật</th></tr></thead>
     <tbody>
     <?php foreach ($rows as $c): ?>
-      <tr>
+      <tr data-href="/admin/content/<?= (int)$c['id'] ?>">
         <td><a class="font-semibold" href="/admin/content/<?= $c['id'] ?>"><?= e($c['cur_title']) ?></a>
           <?php if ($c['status'] === 'published' && (int)$c['published_version_id'] !== (int)$c['current_version_id']): ?><br><span class="text-xs text-coffee">Có bản sửa chưa xuất bản</span><?php endif; ?>
           <?php if ($kind !== 'faq'): ?><br><span class="text-xs text-ink-mute">/<?= $kind === 'blog' ? 'blog' : 'chinh-sach' ?>/<?= e($c['slug']) ?></span><?php endif; ?></td>

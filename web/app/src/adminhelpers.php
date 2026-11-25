@@ -63,10 +63,12 @@ function a_pager(int $page, int $pages, array $query): string
 {
     if ($pages <= 1) return '';
     $path = strtok($_SERVER['REQUEST_URI'] ?? '', '?');
-    $h = '<nav class="mt-4 flex flex-wrap gap-1 text-sm" aria-label="Phân trang">';
-    for ($i = max(1, $page - 4); $i <= min($pages, $page + 4); $i++) {
-        $h .= $i === $page ? '<span class="rounded bg-tea px-3 py-1 font-bold text-white">' . $i . '</span>'
-            : '<a class="rounded bg-white px-3 py-1 no-underline hover:bg-jade-200" href="' . e(url($path, $query + ['page' => $i])) . '">' . $i . '</a>';
+    $link = fn(int $n, string $label, string $aria = '') => '<a class="rounded-md border border-ink/10 bg-white px-3 py-1.5 no-underline hover:bg-jade-200"' . ($aria ? ' aria-label="' . $aria . '"' : '') . ' href="' . e(url($path, ['page' => $n] + $query)) . '">' . $label . '</a>';
+    $h = '<nav class="mt-4 flex flex-wrap items-center gap-1 text-sm" aria-label="Phân trang">';
+    if ($page > 1) $h .= $link($page - 1, '‹ Trước', 'Trang trước');
+    for ($i = max(1, $page - 3); $i <= min($pages, $page + 3); $i++) {
+        $h .= $i === $page ? '<span class="rounded-md bg-tea px-3 py-1.5 font-bold text-white" aria-current="page">' . $i . '</span>' : $link($i, (string)$i);
     }
-    return $h . '</nav>';
+    if ($page < $pages) $h .= $link($page + 1, 'Sau ›', 'Trang sau');
+    return $h . '<span class="ml-2 text-ink-mute">Trang ' . $page . '/' . $pages . '</span></nav>';
 }

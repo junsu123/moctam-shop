@@ -47,6 +47,10 @@ final class OrderController extends Base
         $rows = Db::all("SELECT o.id, o.code, o.ship_name, o.ship_phone, o.ship_province, o.total, o.status, o.payment_method, o.payment_status, o.needs_review, o.expires_at, o.created_at, o.tracking_code,
                          (SELECT COUNT(*) FROM payment_discrepancies d WHERE d.order_id = o.id AND d.status = 'open') AS open_disc
                          FROM orders o WHERE $w ORDER BY o.id DESC LIMIT :l OFFSET :o", $p + ['l' => $per, 'o' => ($page - 1) * $per]);
+        // Tìm nhanh ở đầu trang: khớp đúng một đơn → mở thẳng đơn đó
+        if ($this->str('go') !== '' && $total === 1 && $rows) {
+            \App\Core\Http::redirect('/admin/orders/' . (int)$rows[0]['id'], 302);
+        }
         $statusCounts = [];
         foreach (Db::all('SELECT status, COUNT(*) n FROM orders GROUP BY status') as $r) $statusCounts[$r['status']] = (int)$r['n'];
         $statusCounts['review'] = (int)Db::val('SELECT COUNT(*) FROM orders WHERE needs_review = 1');

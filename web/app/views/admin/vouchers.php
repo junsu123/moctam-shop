@@ -5,7 +5,7 @@
     <tbody>
     <?php $now = \App\Core\Clock::nowDb(); foreach ($rows as $v):
       $state = !$v['is_active'] ? ['discontinued', 'Tắt'] : ($now < $v['starts_at'] ? ['pending_review', 'Sắp diễn ra'] : ($now >= $v['ends_at'] ? ['cancelled', 'Hết hạn'] : ['active', 'Đang chạy'])); ?>
-      <tr>
+      <tr data-href="/admin/vouchers/<?= (int)$v['id'] ?>">
         <td><a href="/admin/vouchers/<?= $v['id'] ?>" class="font-mono font-bold"><?= e($v['code']) ?></a><br><span class="text-xs text-ink-mute"><?= e($v['description']) ?></span></td>
         <td class="text-right tabular-nums"><?= money($v['amount']) ?></td>
         <td class="text-right tabular-nums"><?= money($v['min_subtotal']) ?></td>

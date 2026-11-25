@@ -5,7 +5,7 @@
     <tbody>
     <?php $now = \App\Core\Clock::nowDb(); foreach ($rows as $f):
       $state = !$f['is_active'] ? ['discontinued', 'Tắt'] : ($now < $f['starts_at'] ? ['pending_review', 'Sắp diễn ra'] : ($now >= $f['ends_at'] ? ['cancelled', 'Đã kết thúc'] : ['active', 'Đang chạy'])); ?>
-      <tr>
+      <tr data-href="/admin/flash-sales/<?= (int)$f['id'] ?>">
         <td><a href="/admin/flash-sales/<?= $f['id'] ?>" class="font-semibold"><?= e($f['name']) ?></a></td>
         <td class="whitespace-nowrap"><?= vn_time($f['starts_at']) ?></td>
         <td class="whitespace-nowrap"><?= vn_time($f['ends_at']) ?></td>

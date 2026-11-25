@@ -20,7 +20,7 @@ $mvLabel = ['reserve' => 'Giữ tồn', 'release' => 'Giải phóng', 'ship' => 
 <?php endif; ?>
 
 <div class="mt-4 grid gap-6 xl:grid-cols-[1fr_400px]">
-  <div class="space-y-6">
+  <div class="min-w-0 space-y-6">
     <section class="a-card overflow-x-auto">
       <h2 class="text-lg">Dòng hàng (bản chụp lúc đặt)</h2>
       <table class="a-table mt-3">
@@ -88,7 +88,7 @@ $mvLabel = ['reserve' => 'Giữ tồn', 'release' => 'Giải phóng', 'ship' => 
     </section>
   </div>
 
-  <div class="space-y-6">
+  <div class="order-first min-w-0 space-y-6 xl:order-none">
     <section class="a-card">
       <h2 class="text-lg">Giao đến</h2>
       <p class="mt-2 font-semibold"><?= e($o['ship_name']) ?> — <a href="tel:<?= e($o['ship_phone']) ?>"><?= e($o['ship_phone']) ?></a></p>
@@ -98,36 +98,54 @@ $mvLabel = ['reserve' => 'Giữ tồn', 'release' => 'Giải phóng', 'ship' => 
       <p class="mt-2 text-xs text-ink-mute">Đồng ý nhận tiếp thị: <?= $o['marketing_consent'] ? 'Có' : 'Không' ?>. Nội dung CK: <strong><?= e($o['transfer_content']) ?></strong>. Khách xem trang xác nhận: <?= $o['qr_viewed_at'] ? vn_time($o['qr_viewed_at']) : 'chưa' ?>.</p>
     </section>
 
-    <?php if ($next): ?>
-    <section class="a-card">
-      <h2 class="text-lg">Xử lý đơn</h2>
-      <form method="post" action="/admin/orders/<?= $o['id'] ?>/transition" class="mt-3 space-y-3">
+    <?php if ($next):
+      // Nhãn nút theo đúng việc sẽ làm; hủy / hoàn hàng là thao tác "nguy hiểm" (tô đỏ, bắt buộc lý do)
+      $actionLabel = ['confirmed' => 'Xác nhận đơn', 'shipping' => 'Bàn giao vận chuyển', 'delivered' => 'Ghi nhận đã giao', 'cancelled' => 'Hủy đơn', 'returning' => 'Ghi nhận khách trả / giao thất bại', 'returned' => 'Hoàn tất kiểm hàng hoàn'];
+      $choiceHint = ['confirmed' => 'Đã gọi khách hoặc đã đối soát đủ tiền', 'shipping' => 'Trừ tồn kho, nhập mã vận đơn', 'delivered' => 'Khách đã nhận hàng', 'cancelled' => 'Giải phóng tồn và voucher', 'returning' => 'Hàng đang quay về kho', 'returned' => 'Cộng lại số hàng đạt'];
+      $danger = ['cancelled' => 1, 'returning' => 1];
+      $order = array_keys($next);
+      usort($order, fn($a, $b) => isset($danger[$a]) <=> isset($danger[$b]));
+      $default = isset($danger[$order[0]]) ? null : $order[0]; // chỉ chọn sẵn thao tác tiến tới, không bao giờ chọn sẵn hủy/hoàn ?>
+    <section class="a-card" aria-labelledby="act-h">
+      <h2 id="act-h" class="text-lg">Xử lý đơn</h2>
+      <form method="post" action="/admin/orders/<?= $o['id'] ?>/transition" class="mt-3 space-y-3" data-transition>
         <?= csrf_field() ?>
-        <div><label class="label" for="to">Chuyển sang</label>
-          <select id="to" name="to" class="field" data-reveal><?php foreach ($next as $k => $v): ?><option value="<?= $k ?>"><?= e($v) ?></option><?php endforeach; ?></select></div>
-        <div class="hidden space-y-3" data-reveal-for="to" data-reveal-when="shipping">
+        <fieldset class="space-y-2"><legend class="sr-only">Chọn thao tác</legend>
+          <?php foreach ($order as $k): $isD = isset($danger[$k]); ?>
+            <label class="a-choice <?= $isD ? 'is-danger' : '' ?>">
+              <input type="radio" name="to" value="<?= $k ?>" data-action="<?= e($actionLabel[$k] ?? $next[$k]) ?>" data-danger="<?= $isD ? 1 : 0 ?>" <?= $k === $default ? 'checked' : '' ?>>
+              <span><?= e($actionLabel[$k] ?? $next[$k]) ?><span class="block text-xs font-normal text-ink-mute"><?= e($choiceHint[$k] ?? '') ?></span></span>
+            </label>
+          <?php endforeach; ?>
+        </fieldset>
+        <div class="<?= $default === 'shipping' ? '' : 'hidden' ?> space-y-3" data-show-for="shipping">
           <?= a_field('carrier_name', 'Đơn vị vận chuyển', $o['carrier_name'] ?? '', $errors) ?>
           <?= a_field('tracking_code', 'Mã vận đơn', $o['tracking_code'] ?? '', $errors) ?>
           <p class="text-xs text-ink-mute">Bàn giao sẽ trừ tồn thực tế và tồn đang giữ; voucher chuyển sang đã dùng.</p>
         </div>
         <?php if ($o['status'] === 'returning'): ?>
-        <div class="space-y-2" data-reveal-for="to" data-reveal-when="returned">
+        <div class="<?= $default === 'returned' ? '' : 'hidden' ?> space-y-2" data-show-for="returned">
           <p class="label">Kiểm hàng khi kho nhận lại</p>
+          <div class="grid grid-cols-[1fr_70px_70px] gap-2 text-xs font-semibold text-ink-soft"><span>Quy cách</span><span>Đạt</span><span>Hỏng</span></div>
           <?php foreach ($items as $it): ?>
             <div class="grid grid-cols-[1fr_70px_70px] items-center gap-2 text-sm">
               <span><?= e($it['sku_code']) ?> <span class="text-ink-mute">(giao <?= (int)$it['quantity'] ?>)</span></span>
-              <label class="sr-only" for="ok<?= $it['id'] ?>">Đạt</label><input id="ok<?= $it['id'] ?>" type="number" min="0" max="<?= (int)$it['quantity'] ?>" name="inspection[<?= $it['id'] ?>][ok]" value="<?= (int)$it['quantity'] ?>" class="field py-1.5" title="Số lượng đạt, cộng lại tồn bán được">
-              <label class="sr-only" for="rj<?= $it['id'] ?>">Hỏng</label><input id="rj<?= $it['id'] ?>" type="number" min="0" max="<?= (int)$it['quantity'] ?>" name="inspection[<?= $it['id'] ?>][reject]" value="0" class="field py-1.5" title="Số lượng không đạt">
+              <label class="sr-only" for="ok<?= $it['id'] ?>">Số đạt của <?= e($it['sku_code']) ?></label><input id="ok<?= $it['id'] ?>" type="number" min="0" max="<?= (int)$it['quantity'] ?>" name="inspection[<?= $it['id'] ?>][ok]" value="<?= (int)$it['quantity'] ?>" class="field py-1.5">
+              <label class="sr-only" for="rj<?= $it['id'] ?>">Số hỏng của <?= e($it['sku_code']) ?></label><input id="rj<?= $it['id'] ?>" type="number" min="0" max="<?= (int)$it['quantity'] ?>" name="inspection[<?= $it['id'] ?>][reject]" value="0" class="field py-1.5">
             </div>
           <?php endforeach; ?>
-          <p class="text-xs text-ink-mute">Cột 1: số đạt (cộng lại tồn bán được). Cột 2: số hỏng.</p>
+          <p class="text-xs text-ink-mute">Số đạt được cộng lại vào tồn bán được.</p>
         </div>
         <?php endif; ?>
-        <?= a_field('reason', 'Lý do / ghi chú', '', $errors, ['type' => 'textarea', 'rows' => 2, 'hint' => 'Bắt buộc khi hủy hoặc hoàn hàng.']) ?>
+        <div data-reason-box>
+          <label class="label" for="f_reason" data-reason-label>Lý do / ghi chú</label>
+          <textarea id="f_reason" name="reason" rows="2" class="field<?= !empty($errors['reason']) ? ' field-error' : '' ?>"></textarea>
+          <?php if (!empty($errors['reason'])): ?><p class="err-msg"><?= e($errors['reason']) ?></p><?php endif; ?>
+        </div>
         <?php if ($o['payment_method'] === 'vietqr' && $o['status'] === 'pending' && (int)$o['amount_received'] < (int)$o['total']): ?>
-          <p class="rounded bg-turmeric-light px-3 py-2 text-xs">Đơn VietQR chỉ xác nhận được sau khi đối soát đủ <?= money($o['total']) ?> và xử lý hết sai lệch.</p>
+          <p class="rounded-md bg-turmeric-light px-3 py-2 text-xs">Đơn VietQR chỉ xác nhận được sau khi đối soát đủ <?= money($o['total']) ?> và xử lý hết sai lệch.</p>
         <?php endif; ?>
-        <button class="btn-primary w-full">Cập nhật trạng thái</button>
+        <button class="btn-primary w-full" data-transition-submit><?= e($default ? $actionLabel[$default] : 'Chọn thao tác') ?></button>
       </form>
     </section>
     <?php endif; ?>

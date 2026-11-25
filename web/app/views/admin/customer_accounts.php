@@ -25,7 +25,7 @@ $tabs = ['' => ['Tất cả', $stats['total'] ?? 0], 'active' => ['Đang hoạt 
     <thead><tr><th>Tài khoản</th><th>Email</th><th>Đăng nhập bằng</th><th>SĐT giao hàng</th><th class="text-right">Đơn</th><th>Đăng nhập gần nhất</th><th>Tạo lúc</th><th>Trạng thái</th></tr></thead>
     <tbody>
     <?php foreach ($rows as $r): ?>
-      <tr>
+      <tr data-href="/admin/customer-accounts/<?= (int)$r['id'] ?>">
         <td><a href="/admin/customer-accounts/<?= (int)$r['id'] ?>" class="font-semibold"><?= e($r['display_name']) ?></a><br><span class="text-xs text-ink-mute">#<?= (int)$r['id'] ?></span></td>
         <td><?= $r['email'] ? e($r['email']) : '<span class="text-ink-mute">không có</span>' ?></td>
         <td><?php foreach (array_filter(explode(',', (string)$r['providers'])) as $pv): ?><span class="badge bg-jade-200 text-tea-dark"><?= e(Accounts::PROVIDER_LABELS[$pv] ?? $pv) ?></span> <?php endforeach; ?></td>
