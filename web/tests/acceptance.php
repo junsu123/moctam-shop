@@ -309,7 +309,8 @@ check('AT-10', 'Máy cá nhân tắt / API LLM lỗi: website vẫn bán, chat d
     // Website không có bất kỳ lời gọi nào tới Python/LLM: đặt đơn & chat chỉ dùng MySQL.
     $src = '';
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator(APP_ROOT . '/src')) as $f) {
-        if ($f->isFile()) $src .= file_get_contents($f->getPathname());
+        // Đăng nhập Google/Facebook là tùy chọn và chỉ gọi khi khách chủ động đăng nhập — không thuộc luồng bán hàng
+        if ($f->isFile() && !str_contains($f->getPathname(), '/Auth/OAuth.php')) $src .= file_get_contents($f->getPathname());
     }
     ok(!preg_match('/curl_init|file_get_contents\(\s*[\'"]https?:|api\.anthropic|api\.openai/i', $src), 'mã website không phụ thuộc dịch vụ ngoài');
     $faq = ChatService::answer('Phí ship được tính như thế nào?');
@@ -413,6 +414,105 @@ check('EX-05', 'BM25 PHP khớp với Python (cùng điểm chuẩn hóa)', func
     return 'điểm=' . round($r[1], 4) . ' (đối chiếu với ai/tests)';
 });
 
+check('EX-08', 'Đăng nhập tùy chọn Google/Facebook: xác thực state/nonce/PKCE/appsecret_proof, liên kết theo email đã xác minh, đơn gắn tài khoản, xóa dữ liệu', function () {
+    $GLOBALS['APP_CONFIG']['oauth'] = [];
+    ok(\App\Auth\OAuth::enabledProviders() === [], 'chưa cấu hình → không bật, không hiện nút');
+    expect_error('NOT_FOUND', fn() => \App\Auth\OAuth::start('google', '/'));
+
+    $port = 8099;
+    $srv = proc_open([PHP_BINARY, '-S', "127.0.0.1:$port", __DIR__ . '/fake_oauth.php'], [1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
+    for ($i = 0; $i < 50 && !@fsockopen('127.0.0.1', $port); $i++) usleep(100000);
+    $base = "http://127.0.0.1:$port";
+    $GLOBALS['APP_CONFIG']['oauth'] = [
+        'google' => ['client_id' => 'g-client.apps.googleusercontent.com', 'client_secret' => 'g-secret', 'auth_url' => "$base/authorize", 'token_url' => "$base/google/token"],
+        'facebook' => ['client_id' => '1234567890', 'client_secret' => 'fb-test-secret', 'auth_url' => "$base/authorize", 'token_url' => "$base/fb/token", 'me_url' => "$base/fb/me"],
+    ];
+    try {
+        $b64 = fn(string $s) => rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
+        // Mô phỏng một lượt đăng nhập: bắt đầu → nhà cung cấp trả code → callback
+        $login = function (string $prov, array $profile, array $tamper = []) use ($b64) {
+            parse_str((string)parse_url(\App\Auth\OAuth::start($prov, '/thanh-toan'), PHP_URL_QUERY), $q);
+            $profile += ['nonce' => $q['nonce'] ?? null, 'challenge' => $q['code_challenge'] ?? null];
+            $profile = array_merge($profile, $tamper);
+            return \App\Auth\OAuth::finish($prov, ['state' => $tamper['state'] ?? $q['state'], 'code' => $b64(json_encode($profile))]);
+        };
+        unset($_SESSION['acct_id']);
+        $p = $login('google', ['sub' => 'g-100', 'email' => 'Lan.Nguyen@Gmail.com', 'email_verified' => true, 'name' => 'Nguyễn Thị Lan']);
+        ok($p['uid'] === 'g-100' && $p['email'] === 'lan.nguyen@gmail.com' && $p['email_verified'] && $p['next'] === '/thanh-toan', 'Google: id_token hợp lệ, email chuẩn hóa, quay lại trang trước');
+        $acc = \App\Domain\CustomerAccountService::loginWithProfile($p);
+        ok($acc === \App\Domain\CustomerAccountService::loginWithProfile($login('google', ['sub' => 'g-100', 'email' => 'lan.nguyen@gmail.com', 'email_verified' => true, 'name' => 'Lan'])), 'đăng nhập lại cùng tài khoản Google → cùng tài khoản');
+
+        // Tấn công / lỗi: state lạ, nonce sai, PKCE sai, id_token hết hạn, sai người phát hành, appsecret_proof sai
+        expect_error('OAUTH_STATE', fn() => $login('google', ['sub' => 'x'], ['state' => 'state-gia-mao']));
+        parse_str((string)parse_url(\App\Auth\OAuth::start('google', '/'), PHP_URL_QUERY), $q1);
+        $code = $b64(json_encode(['sub' => 'x', 'nonce' => $q1['nonce'], 'challenge' => $q1['code_challenge']]));
+        \App\Auth\OAuth::finish('google', ['state' => $q1['state'], 'code' => $code]);
+        expect_error('OAUTH_STATE', fn() => \App\Auth\OAuth::finish('google', ['state' => $q1['state'], 'code' => $code]));
+        expect_error('OAUTH_TOKEN', fn() => $login('google', ['sub' => 'x'], ['nonce' => 'nonce-cua-phien-khac']));
+        expect_error('OAUTH_TOKEN', fn() => $login('google', ['sub' => 'x'], ['challenge' => $b64(hash('sha256', 'verifier-ke-gian', true))]));
+        expect_error('OAUTH_TOKEN', fn() => $login('google', ['sub' => 'x'], ['ttl' => -3600]));
+        expect_error('OAUTH_TOKEN', fn() => $login('google', ['sub' => 'x'], ['iss' => 'https://evil.example']));
+        expect_error('OAUTH_STATE', fn() => $login('facebook', ['sub' => 'x'], ['state' => 'abc']));
+        $e = expect_error('OAUTH_DENIED', function () {
+            parse_str((string)parse_url(\App\Auth\OAuth::start('facebook', '/gio-hang'), PHP_URL_QUERY), $q);
+            \App\Auth\OAuth::finish('facebook', ['state' => $q['state'], 'error' => 'access_denied']);
+        });
+        ok(($e->data['next'] ?? '') === '/gio-hang', 'khách bấm Hủy → báo hủy, giữ trang quay lại');
+        $GLOBALS['APP_CONFIG']['oauth']['facebook']['client_secret'] = 'sai';
+        expect_error('OAUTH_TOKEN', fn() => $login('facebook', ['sub' => 'fb-1']));
+        $GLOBALS['APP_CONFIG']['oauth']['facebook']['client_secret'] = 'fb-test-secret';
+        ok(\App\Auth\OAuth::safeNext('//evil.example/x') === '/tai-khoan' && \App\Auth\OAuth::safeNext('https://evil.example') === '/tai-khoan' && \App\Auth\OAuth::safeNext('/\\evil.example') === '/tai-khoan', 'chặn chuyển hướng mở ra ngoài');
+
+        // Facebook cùng email đã xác minh → gộp vào tài khoản Google; email chưa xác minh → tài khoản riêng
+        $fb = $login('facebook', ['sub' => 'fb-200', 'email' => 'lan.nguyen@gmail.com', 'name' => 'Lan Nguyen']);
+        ok($fb['uid'] === 'fb-200' && \App\Domain\CustomerAccountService::loginWithProfile($fb) === $acc, 'Facebook (appsecret_proof) cùng email đã xác minh → cùng tài khoản');
+        $other = \App\Domain\CustomerAccountService::loginWithProfile($login('google', ['sub' => 'g-999', 'email' => 'lan.nguyen@gmail.com', 'email_verified' => false, 'name' => 'Kẻ mạo danh']));
+        ok($other !== $acc, 'email CHƯA xác minh không được gộp vào tài khoản có sẵn');
+        $noMail = \App\Domain\CustomerAccountService::loginWithProfile($login('facebook', ['sub' => 'fb-300', 'name' => 'Không Email']));
+        ok($noMail !== $acc && Db::val('SELECT email FROM customer_accounts WHERE id = :id', ['id' => $noMail]) === null, 'Facebook không cấp email vẫn đăng nhập được');
+
+        // Đơn đặt khi đăng nhập gắn tài khoản; đơn khách lẻ cùng SĐT KHÔNG hiện trong tài khoản
+        $sku = t_sku('ACC-1', 50000, 20);
+        $q = PricingService::quote([['sku_id' => $sku, 'qty' => 1]], null, t_zone());
+        $guest = OrderService::create(t_input([['sku_id' => $sku, 'qty' => 1]], null, 'cod', $q['quote_token'], '0987000111'), 'sess-acc-guest', t_key());
+        $q2 = PricingService::quote([['sku_id' => $sku, 'qty' => 2]], null, t_zone());
+        $in = t_input([['sku_id' => $sku, 'qty' => 2]], null, 'cod', $q2['quote_token'], '0987000111');
+        $in['marketing_consent'] = false;
+        $mine = OrderService::create($in, 'sess-acc', t_key(), $acc);
+        $list = \App\Domain\CustomerAccountService::orders($acc);
+        ok(count($list) === 1 && $list[0]['code'] === $mine['order']['code'] && $list[0]['code'] !== $guest['order']['code'], 'tài khoản chỉ thấy đơn đặt khi đăng nhập');
+        $a = Db::one('SELECT * FROM customer_accounts WHERE id = :id', ['id' => $acc]);
+        ok($a['ship_phone'] === '0987000111' && $a['ship_province'] === t_zone(), 'ghi nhớ địa chỉ giao hàng gần nhất để điền sẵn');
+        ok(\App\Domain\CustomerAccountService::marketingConsent($acc) === false, 'trạng thái nhận tin theo đơn');
+        \App\Domain\CustomerAccountService::setMarketingConsent($acc, true);
+        ok(\App\Domain\CustomerAccountService::marketingConsent($acc) === true, 'khách tự bật nhận tin trên trang tài khoản');
+        \App\Domain\CustomerAccountService::setMarketingConsent($acc, false);
+        ok((int)Db::val("SELECT COUNT(*) FROM audit_logs WHERE action = 'consent.withdrawn' AND entity_id = :a", ['a' => (string)$acc]) === 1, 'rút đồng ý có nhật ký');
+
+        // Callback xóa dữ liệu của Facebook: chữ ký sai bị từ chối; tài khoản còn Google → chỉ gỡ Facebook
+        $signed = function (array $payload, string $secret = 'fb-test-secret') use ($b64) {
+            $p = $b64(json_encode($payload));
+            return $b64(hash_hmac('sha256', $p, $secret, true)) . '.' . $p;
+        };
+        ok(\App\Auth\OAuth::parseSignedRequest($signed(['algorithm' => 'HMAC-SHA256', 'user_id' => 'fb-200'], 'khoa-gia')) === null, 'signed_request sai chữ ký bị từ chối');
+        $req = \App\Auth\OAuth::parseSignedRequest($signed(['algorithm' => 'HMAC-SHA256', 'user_id' => 'fb-200', 'issued_at' => time()]));
+        $code1 = \App\Domain\CustomerAccountService::deleteByFacebook((string)$req['user_id']);
+        ok(strlen($code1) === 16 && (int)Db::val('SELECT COUNT(*) FROM account_identities WHERE account_id = :a', ['a' => $acc]) === 1 && Db::val('SELECT 1 FROM customer_accounts WHERE id = :a', ['a' => $acc]), 'còn đăng nhập Google → chỉ xóa liên kết Facebook');
+        $code2 = \App\Domain\CustomerAccountService::deleteByFacebook('fb-300');
+        ok(!Db::val('SELECT 1 FROM customer_accounts WHERE id = :a', ['a' => $noMail]) && Db::val('SELECT status FROM account_deletions WHERE confirmation_code = :c', ['c' => $code2]) === 'completed', 'tài khoản chỉ có Facebook → xóa hẳn, có mã tra cứu');
+        ok(Db::val('SELECT status FROM account_deletions WHERE confirmation_code = :c', ['c' => \App\Domain\CustomerAccountService::deleteByFacebook('fb-khong-co')]) === 'not_found', 'người chưa từng đăng nhập → ghi nhận không có dữ liệu');
+
+        // Khách tự xóa tài khoản: đơn giữ lại (kế toán) nhưng bỏ liên kết
+        $code3 = \App\Domain\CustomerAccountService::delete($acc);
+        ok(!Db::val('SELECT 1 FROM customer_accounts WHERE id = :a', ['a' => $acc]) && (int)Db::val('SELECT COUNT(*) FROM account_identities WHERE account_id = :a', ['a' => $acc]) === 0, 'xóa tài khoản và danh tính đăng nhập');
+        ok(Db::val('SELECT account_id FROM orders WHERE code = :c', ['c' => $mine['order']['code']]) === null && Db::val('SELECT status FROM account_deletions WHERE confirmation_code = :c', ['c' => $code3]) === 'completed', 'đơn vẫn còn nhưng không gắn tài khoản');
+    } finally {
+        proc_terminate($srv);
+        proc_close($srv);
+    }
+    return 'state dùng một lần, nonce/PKCE/hạn/issuer, appsecret_proof; email chưa xác minh không gộp; đơn khách lẻ không lộ; xóa theo yêu cầu Facebook có mã tra cứu';
+});
+
 check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử dụng: có sẵn, chèn cấu hình an toàn, không ghi đè trang đã sửa', function () {
     ok((int)Db::val("SELECT COUNT(*) FROM schema_migrations WHERE version = '004_legal_pages'") === 1, 'migration PHP 004 đã chạy');
     foreach (['bao-mat' => 'Chính sách bảo mật thông tin', 'dieu-khoan-su-dung' => 'Điều khoản sử dụng'] as $slug => $title) {
@@ -442,7 +542,7 @@ check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử
     $bid = (int)Db::val("SELECT id FROM contents WHERE slug = 'bao-mat'");
     Db::exec('UPDATE content_versions SET body = :b WHERE content_id = :c', ['b' => '<p>cũ</p><p><em>Bản mẫu — xưởng cần rà soát và xác nhận.</em></p>', 'c' => $bid]);
     Db::exec("UPDATE contents SET pub_body = '<p>cũ</p>' WHERE id = :id", ['id' => $bid]);
-    ok(\App\Domain\LegalPages::install()['bao-mat'] === 'replaced_template' && str_contains((string)Db::val('SELECT pub_body FROM contents WHERE id = :id', ['id' => $bid]), 'Luật Bảo vệ dữ liệu cá nhân'), 'bản mẫu cũ được thay bằng chính sách đầy đủ');
+    ok(\App\Domain\LegalPages::install()['bao-mat'] === 'updated' && str_contains((string)Db::val('SELECT pub_body FROM contents WHERE id = :id', ['id' => $bid]), 'Luật Bảo vệ dữ liệu cá nhân'), 'bản mẫu cũ được thay bằng chính sách đầy đủ');
     return 'hai trang xuất bản; biến cấu hình mã hóa an toàn; trang đã sửa được giữ nguyên';
 });
 
@@ -456,9 +556,10 @@ check('EX-06', 'Làm mới dữ liệu trước khi chạy thật: sao lưu, xó
     $sku = (int)Db::val("SELECT id FROM skus WHERE sku_code = 'NC-25H-500'");
     $onHand = inv($sku)['on_hand'];
     ok((int)Db::val('SELECT COUNT(*) FROM orders') > 0, 'có đơn thử');
+    \App\Domain\CustomerAccountService::loginWithProfile(['provider' => 'google', 'uid' => 'g-reset', 'email' => 'thu@gmail.com', 'email_verified' => true, 'name' => 'Khách thử']);
     $r = \App\Domain\DataResetService::run(['demo_users' => true, 'logs' => true], $adminId);
     ok(is_file($r['backup']['file']), 'đã sao lưu trước khi xóa');
-    foreach (['orders', 'customers', 'payment_receipts', 'refunds', 'payment_discrepancies', 'voucher_usages', 'idempotency_keys', 'care_suggestions'] as $t) {
+    foreach (['orders', 'customers', 'customer_accounts', 'account_identities', 'payment_receipts', 'refunds', 'payment_discrepancies', 'voucher_usages', 'idempotency_keys', 'care_suggestions'] as $t) {
         ok((int)Db::val("SELECT COUNT(*) FROM $t") === 0, "$t trống");
     }
     ok((int)Db::val('SELECT SUM(reserved) FROM inventory') === 0 && (int)Db::val('SELECT SUM(used_count + reserved_count) FROM vouchers') === 0, 'tồn giữ và lượt voucher về 0');

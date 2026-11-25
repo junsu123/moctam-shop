@@ -180,7 +180,20 @@ VietQR: máy chủ sinh chuỗi EMVCo của NAPAS (BIN, số TK, số tiền, n�
 
 Quyền `data.reset` chỉ có ở vai trò Quản trị viên (không cấp được qua màn hình phân quyền). Khi chạy qua giao diện, phải gõ câu xác nhận và nhập lại mật khẩu. Kiểm thử ở ca EX-06.
 
-## 11. Truy vết yêu cầu → mã nguồn
+## 11. Đăng nhập tùy chọn bằng Google / Facebook
+
+Bổ sung ngoài đặc tả v1.0 (đặc tả cho phép mua không cần tài khoản — giữ nguyên). Không dùng thư viện ngoài.
+
+| Thành phần | Vai trò |
+|---|---|
+| `Auth/OAuth` | Google: OpenID Connect mã ủy quyền + PKCE (S256) + nonce; kiểm tra `iss`, `aud`, `exp`, `nonce` của id_token nhận trực tiếp từ máy chủ token qua TLS. Facebook: mã ủy quyền, gọi `/me` kèm `appsecret_proof`. `state` lưu trong phiên, dùng một lần, hết hạn 10 phút; `next` chỉ nhận đường dẫn nội bộ. |
+| `Domain/CustomerAccountService` | Tìm theo (nhà cung cấp, mã định danh) → liên kết theo email **đã xác minh** → tạo mới. Đổi mã phiên khi đăng nhập/đăng xuất. Ghi nhớ địa chỉ của đơn gần nhất. Xóa tài khoản: xóa danh tính + hồ sơ, `orders.account_id` = NULL, ghi `account_deletions`. |
+| `Http/AccountController` | `/tai-khoan/dang-nhap`, `/auth/{google,facebook}`, `/auth/{…}/callback`, `/tai-khoan` (đơn, thông tin giao hàng, nhận tin, liên kết thêm, xóa), `/auth/facebook/xoa-du-lieu` (signed_request HMAC-SHA256), `/tai-khoan/trang-thai-xoa`. |
+| Bảng | `customer_accounts`, `account_identities` (UNIQUE provider+uid, CASCADE), `account_deletions`; `orders.account_id` (SET NULL). |
+
+Quyết định: không gộp đơn khách lẻ vào tài khoản theo SĐT (SĐT không xác minh). Đồng ý nhận tin vẫn nằm ở `customers` (theo SĐT); trang tài khoản bật/tắt cho các SĐT đã dùng trong đơn của tài khoản. Nhà cung cấp lỗi → chỉ báo lỗi trên trang đăng nhập, luồng bán hàng không phụ thuộc. Kiểm thử bằng nhà cung cấp giả lập `tests/fake_oauth.php` (ca EX-08).
+
+## 12. Truy vết yêu cầu → mã nguồn
 
 | Yêu cầu | Nơi hiện thực |
 |---|---|
@@ -196,4 +209,5 @@ Quyền `data.reset` chỉ có ở vai trò Quản trị viên (không cấp đ�
 | FR-10 | `ChatService`, `Bm25`, `/api/chat` |
 | FR-11 | `ai/xuong_ai/agents/care.py`, `DraftInbox::careList`, `Admin/CareController` (lọc theo đồng ý) |
 | FR-12 | `Audit`, `Admin/SystemController::audit` (lọc theo đối tượng, người, thời gian) |
+| Đăng nhập Google/Facebook | `Auth/OAuth`, `CustomerAccountService`, `AccountController`, `views/store/{login,account,deletion_status}.php` — ca EX-08 |
 | AT-01…AT-11 | `web/tests/acceptance.php`, `ai/tests/test_sync.py` — kết quả ở `docs/KET-QUA-NGHIEM-THU.md` |

@@ -41,6 +41,8 @@ if ($fresh) {
         'paths' => ['logs' => $root . '/storage/logs', 'backups' => $root . '/storage/backups', 'uploads' => $env('UPLOADS_DIR', $root . '/public_html/uploads')],
         'trusted_proxy' => false,
         'rate_limit' => true,
+        // Đăng nhập Google/Facebook cho khách (tùy chọn) — điền theo docs/TRIEN-KHAI-HOSTINGER.md §10
+        'oauth' => ['google' => ['client_id' => '', 'client_secret' => ''], 'facebook' => ['client_id' => '', 'client_secret' => '', 'graph_version' => 'v26.0']],
     ];
     $php = "<?php\n// Tạo bởi bin/install.php lúc " . gmdate('Y-m-d H:i') . " UTC. KHÔNG đổi app_key sau khi đã có đơn.\nreturn " . var_export($config, true) . ";\n";
     file_put_contents($cfgFile, $php);

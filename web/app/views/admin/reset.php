@@ -8,7 +8,7 @@
 
   <form method="get" class="a-card">
     <h2 class="text-lg">1. Chọn phạm vi</h2>
-    <p class="mt-1 text-sm text-ink-soft">Luôn xóa: đơn, khách, khoản thu, sai lệch, hoàn tiền, lượt voucher đã dùng, danh sách chăm sóc, gợi ý/nội dung AI chưa xuất bản, biến động kho, sự kiện đồng bộ. Luôn giữ: cấu hình, vai trò, tài khoản quản trị, danh mục, vùng giao & phí, trang chính sách.</p>
+    <p class="mt-1 text-sm text-ink-soft">Luôn xóa: đơn, khách, tài khoản khách đăng nhập bằng Google/Facebook, khoản thu, sai lệch, hoàn tiền, lượt voucher đã dùng, danh sách chăm sóc, gợi ý/nội dung AI chưa xuất bản, biến động kho, sự kiện đồng bộ. Luôn giữ: cấu hình, vai trò, tài khoản quản trị, danh mục, vùng giao & phí, trang chính sách.</p>
     <div class="mt-4 space-y-2">
       <?php foreach (DataResetService::OPTIONS as $k => $label): ?>
         <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="<?= $k ?>" value="1" class="mt-0.5 h-4 w-4 accent-tea" <?= $opts[$k] ? 'checked' : '' ?> data-autosubmit> <span><?= e($label) ?><?php if ($k === 'demo_users' && $meIsDemo): ?> <span class="text-coffee">(trừ tài khoản bạn đang dùng — hãy tạo tài khoản quản trị thật trước)</span><?php endif; ?></span></label>

@@ -94,6 +94,7 @@ $mvLabel = ['reserve' => 'Giữ tồn', 'release' => 'Giải phóng', 'ship' => 
       <p class="mt-2 font-semibold"><?= e($o['ship_name']) ?> — <a href="tel:<?= e($o['ship_phone']) ?>"><?= e($o['ship_phone']) ?></a></p>
       <p class="text-sm text-ink-soft"><?= e($o['ship_address']) ?>, <?= e($o['ship_province']) ?></p>
       <?php if ($o['ship_note']): ?><p class="mt-2 rounded bg-turmeric-light px-2 py-1 text-sm">Ghi chú: <?= e($o['ship_note']) ?></p><?php endif; ?>
+      <p class="mt-2 text-sm"><?= $o['account_id'] ? 'Tài khoản: <strong>' . e($o['account_name']) . '</strong>' . ($o['account_email'] ? ' (' . e($o['account_email']) . ')' : '') . ' — ' . e(str_replace(['google', 'facebook', ','], ['Google', 'Facebook', ', '], (string)$o['account_providers'])) : '<span class="text-ink-mute">Khách đặt không đăng nhập</span>' ?></p>
       <p class="mt-2 text-xs text-ink-mute">Đồng ý nhận tiếp thị: <?= $o['marketing_consent'] ? 'Có' : 'Không' ?>. Nội dung CK: <strong><?= e($o['transfer_content']) ?></strong>. Khách xem trang xác nhận: <?= $o['qr_viewed_at'] ? vn_time($o['qr_viewed_at']) : 'chưa' ?>.</p>
     </section>
 

@@ -32,6 +32,12 @@ return [
     // Số proxy tin cậy (Hostinger thường đặt sau CDN) — để 0 nếu không chắc
     'trusted_proxy' => false,
 
+    // Đăng nhập TÙY CHỌN cho khách — để trống để tắt. Hướng dẫn tạo: docs/TRIEN-KHAI-HOSTINGER.md §10
+    'oauth' => [
+        'google'   => ['client_id' => '', 'client_secret' => ''],
+        'facebook' => ['client_id' => '', 'client_secret' => '', 'graph_version' => 'v26.0'], // client_id = App ID, client_secret = App Secret
+    ],
+
     // Giới hạn tần suất đặt đơn/chat/đăng nhập theo IP. Chỉ đặt false khi đo tải trên môi trường thử.
     'rate_limit' => true,
 ];

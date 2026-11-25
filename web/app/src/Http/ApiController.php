@@ -31,7 +31,8 @@ final class ApiController
         Csrf::verify($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null);
         RateLimiter::hit('order', 15, 600);
         $idem = (string)($_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? '');
-        $res = OrderService::create(Http::body(), Session::id(), $idem);
+        $acct = \App\Domain\CustomerAccountService::current();
+        $res = OrderService::create(Http::body(), Session::id(), $idem, $acct ? (int)$acct['id'] : null);
         $_SESSION['my_orders'][$res['order']['code']] = true; // xem xác nhận trong phiên đặt hàng
         Http::json($res, $res['replayed'] ? 200 : 201);
     }

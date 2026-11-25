@@ -69,6 +69,10 @@ cd ../ai && python -m pytest -v
 - **Nhân sự đối soát**: phân quyền nhân sự theo từng vai trò.
 - **Ngưỡng chat**: mặc định 0,10, đã hiệu chỉnh trên FAQ mẫu. Chạy lại `python -m xuong_ai calibrate` sau khi nhập FAQ thật.
 
+## Đăng nhập bằng Google / Facebook (tùy chọn)
+
+Khách vẫn mua không cần tài khoản. Muốn bật nút đăng nhập: tạo ứng dụng Google/Facebook và điền khóa vào `app/config.php` theo [docs/TRIEN-KHAI-HOSTINGER.md §10](docs/TRIEN-KHAI-HOSTINGER.md#10-đăng-nhập-bằng-google--facebook-tùy-chọn). Chưa điền thì website không hiện nút.
+
 ## Làm mới dữ liệu khi chạy thật
 
 Trước ngày mở bán, vào Quản trị → **Làm mới dữ liệu** (hoặc chạy `php bin/reset_data.php`) để xóa toàn bộ đơn, khách, giao dịch thử và tùy chọn cả sản phẩm mẫu, voucher, blog/FAQ mẫu, tài khoản mẫu, nhật ký thử. Cấu hình, danh mục, vùng giao, trang chính sách và tài khoản quản trị được giữ nguyên. Hệ thống luôn sao lưu trước khi xóa. Chi tiết ở `docs/TRIEN-KHAI-HOSTINGER.md` §6 bước 8.

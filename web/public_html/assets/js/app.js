@@ -192,6 +192,9 @@
     var form = $('[data-checkout-form]');
     if (!Cart.items().length) { $('[data-cart-empty]').classList.remove('hidden'); form.classList.add('hidden'); return; }
     var p = prefs.get();
+    // Đã đăng nhập: ưu tiên thông tin giao hàng lưu trong tài khoản
+    var acct = form.getAttribute('data-account') ? JSON.parse(form.getAttribute('data-account')) : null;
+    if (acct) { ['name', 'phone', 'address', 'province'].forEach(function (k) { if (acct[k]) p[k] = acct[k]; }); }
     ['name', 'phone', 'address'].forEach(function (k) { if (p[k]) form.elements[k].value = p[k]; });
     if (p.province) form.elements.province.value = p.province;
     var vin = $('[data-voucher]', page); if (p.voucher) vin.value = p.voucher;

@@ -50,7 +50,7 @@ final class OrderService
      * @param array $input {items, voucher_code, customer{name,phone,province,address,note}, payment_method, marketing_consent, quote_token}
      * @return array {order, replayed}
      */
-    public static function create(array $input, string $sessionId, string $idemKey): array
+    public static function create(array $input, string $sessionId, string $idemKey, ?int $accountId = null): array
     {
         if (!preg_match('/^[A-Za-z0-9_\-]{16,80}$/', $idemKey)) {
             throw new ApiError('IDEMPOTENCY_KEY_REQUIRED', 'Thiếu hoặc sai định dạng Idempotency-Key.', 400);
@@ -67,7 +67,7 @@ final class OrderService
         }
 
         try {
-            $orderId = Db::tx(function () use ($clean, $input, $idemKey, $sessionHash, $requestHash) {
+            $orderId = Db::tx(function () use ($clean, $input, $idemKey, $sessionHash, $requestHash, $accountId) {
                 $now = Clock::nowDb();
                 // Chiếm khóa trước: yêu cầu trùng đồng thời sẽ chờ ở đây rồi nhận lỗi trùng khóa.
                 Db::insert('idempotency_keys', [
@@ -90,6 +90,7 @@ final class OrderService
                     'code'             => $code,
                     'access_token'     => bin2hex(random_bytes(16)),
                     'customer_id'      => $customerId,
+                    'account_id'       => $accountId,
                     'status'           => 'pending',
                     'payment_method'   => $clean['payment_method'],
                     'payment_status'   => 'unpaid',
@@ -152,6 +153,9 @@ final class OrderService
                     'actor_type' => 'customer', 'reason' => 'Khách đặt hàng (' . strtoupper($clean['payment_method']) . ')', 'created_at' => $now,
                 ]);
                 Db::exec('UPDATE idempotency_keys SET order_id = :o WHERE id_key = :k', ['o' => $orderId, 'k' => $idemKey]);
+                if ($accountId) {
+                    CustomerAccountService::rememberShipping($accountId, $c);
+                }
                 SyncService::emitOrder($orderId, 'order.created');
                 return $orderId;
             });

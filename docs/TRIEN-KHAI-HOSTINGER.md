@@ -114,3 +114,58 @@ npx tailwindcss -i src/app.css -o ../public_html/assets/css/app.css --minify
 ```
 
 Font Be Vietnam Pro và thư viện vẽ QR được lưu ngay trong `public_html/assets`, không phụ thuộc CDN ngoài.
+
+## 10. Đăng nhập bằng Google / Facebook (tùy chọn)
+
+Khách **không bắt buộc** đăng nhập — vẫn đặt hàng như cũ. Khi bật, khách đăng nhập để xem lại đơn đã đặt, được điền sẵn địa chỉ, tự bật/tắt nhận tin và tự xóa tài khoản. Chưa cấu hình thì website **không hiện nút đăng nhập**. Có thể bật một trong hai hoặc cả hai.
+
+Thay `https://tenmien.vn` bên dưới bằng `base_url` trong `app/config.php` (phải là HTTPS khi chạy thật).
+
+### Google
+
+1. Vào Google Cloud Console → **Google Auth Platform** (tạo dự án mới nếu được hỏi, ví dụ "Website xưởng").
+2. **Branding**: tên ứng dụng (tên xưởng), email hỗ trợ; *Trang chủ* `https://tenmien.vn`, *Chính sách quyền riêng tư* `https://tenmien.vn/chinh-sach/bao-mat`, *Điều khoản* `https://tenmien.vn/chinh-sach/dieu-khoan-su-dung`; *Miền được ủy quyền* `tenmien.vn`. Không cần tải logo (tải logo sẽ phải chờ Google xác minh thương hiệu).
+3. **Audience**: chọn *External*, rồi bấm **Publish app** để chuyển sang *In production* (ở chế độ *Testing* chỉ những email được thêm làm người thử mới đăng nhập được).
+4. **Data Access**: chỉ cần `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile` (không thuộc nhóm nhạy cảm → không phải xét duyệt).
+5. **Clients → Create client** → loại *Web application* → *Authorized redirect URIs*: `https://tenmien.vn/auth/google/callback` → **Create**. Chép ngay **Client ID** và **Client secret** (secret chỉ hiện một lần).
+
+### Facebook
+
+1. Vào developers.facebook.com → **My Apps → Create app** → chọn trường hợp sử dụng **"Authenticate and request data from users with Facebook Login"**.
+2. **Use cases → Customize**: bấm **Add** ở quyền `email` (`public_profile` có sẵn). Không thêm quyền nào khác — các quyền khác phải qua App Review.
+3. Trong **Facebook Login → Settings**:
+   - *Valid OAuth Redirect URIs*: `https://tenmien.vn/auth/facebook/callback`
+   - Bật *Enforce HTTPS* và *Use Strict Mode for redirect URIs*.
+4. **App settings → Basic**:
+   - *Privacy Policy URL*: `https://tenmien.vn/chinh-sach/bao-mat`
+   - *Terms of Service URL*: `https://tenmien.vn/chinh-sach/dieu-khoan-su-dung`
+   - *User data deletion* → chọn **Data deletion callback URL**: `https://tenmien.vn/auth/facebook/xoa-du-lieu`
+   - *App icon* 1024×1024 và *Category* (Shopping).
+   - Chép **App ID** và **App secret**.
+5. Chuyển ứng dụng sang **Live/Published**. Nếu Meta yêu cầu xác minh doanh nghiệp (Business verification) cho tài khoản của bạn, làm theo hướng dẫn trên màn hình; trong lúc chờ, vẫn bật Google được.
+
+### Điền vào cấu hình
+
+Mở `app/config.php` (hPanel → File Manager), sửa mục `oauth`:
+
+```php
+'oauth' => [
+    'google'   => ['client_id' => '…apps.googleusercontent.com', 'client_secret' => 'GOCSPX-…'],
+    'facebook' => ['client_id' => 'App ID', 'client_secret' => 'App secret', 'graph_version' => 'v26.0'],
+],
+```
+
+Nếu tệp cấu hình cài từ phiên bản cũ chưa có mục này, thêm nguyên khối trên vào trước dòng `];` cuối tệp. Lưu lại → nút **Đăng nhập** xuất hiện ở đầu trang. Không đưa `client_secret` lên GitHub hay gửi qua chat.
+
+### Kiểm tra sau khi bật
+
+- Đăng nhập thử bằng cả hai cách, đặt một đơn → đơn hiện ở **Tài khoản của tôi** và trong trang quản trị (dòng *Tài khoản: …*).
+- Facebook: vào *Cài đặt Facebook → Ứng dụng và trang web* → gỡ website → chọn xóa hoạt động. Website ghi nhận và cấp mã tra cứu tại `/tai-khoan/trang-thai-xoa?ma=…`.
+
+### Nguyên tắc đã cài sẵn
+
+- Liên kết Google và Facebook vào **cùng một tài khoản chỉ khi email đã được nhà cung cấp xác minh**; khách cũng tự liên kết thêm được ở trang tài khoản.
+- **Không** tự gộp đơn đặt khi chưa đăng nhập vào tài khoản theo số điện thoại (số điện thoại không được xác minh, gộp sẽ làm lộ đơn của người khác).
+- Xóa tài khoản: xóa danh tính đăng nhập và thông tin giao hàng đã lưu; đơn hàng giữ lại theo nghĩa vụ kế toán nhưng bỏ liên kết.
+- Website không lưu mã truy cập của Google/Facebook; lỗi nhà cung cấp chỉ ảnh hưởng nút đăng nhập, không ảnh hưởng bán hàng.
+- Chạy thử trên máy: Google chấp nhận `http://localhost:8080/auth/google/callback`; Facebook cho phép `localhost` ở chế độ phát triển.

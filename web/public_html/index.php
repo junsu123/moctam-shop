@@ -14,6 +14,7 @@ use App\Core\Http;
 use App\Core\Router;
 use App\Core\Session;
 use App\Core\View;
+use App\Http\AccountController;
 use App\Http\Admin;
 use App\Http\ApiController;
 use App\Http\StoreController;
@@ -45,6 +46,18 @@ $r->get('/blog/{slug}', [StoreController::class, 'blogShow']);
 $r->get('/hoi-dap', [StoreController::class, 'faq']);
 $r->get('/chinh-sach/{slug}', [StoreController::class, 'page']);
 $r->get('/sitemap.xml', [StoreController::class, 'sitemap']);
+
+// ---------------- Tài khoản khách (đăng nhập tùy chọn bằng Google / Facebook)
+$r->get('/tai-khoan/dang-nhap', [AccountController::class, 'loginForm']);
+$r->get('/auth/{provider}', [AccountController::class, 'start']);
+$r->get('/auth/{provider}/callback', [AccountController::class, 'callback']);
+$r->post('/auth/facebook/xoa-du-lieu', [AccountController::class, 'facebookDeletion']);
+$r->get('/tai-khoan/trang-thai-xoa', [AccountController::class, 'deletionStatus']);
+$r->get('/tai-khoan', [AccountController::class, 'show']);
+$r->post('/tai-khoan/thong-tin', [AccountController::class, 'saveProfile']);
+$r->post('/tai-khoan/nhan-tin', [AccountController::class, 'consent']);
+$r->post('/tai-khoan/xoa', [AccountController::class, 'delete']);
+$r->post('/tai-khoan/dang-xuat', [AccountController::class, 'logout']);
 
 // ---------------- API công khai
 $r->post('/api/quote', [ApiController::class, 'quote']);

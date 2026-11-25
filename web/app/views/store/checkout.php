@@ -7,7 +7,14 @@
     <a href="/" class="btn-primary mt-4">Xem sản phẩm</a>
   </div>
 
-  <form class="mt-8 grid gap-8 lg:grid-cols-[1fr_400px]" novalidate data-checkout-form data-cart-body>
+  <?php $acct = \App\Domain\CustomerAccountService::current(); $logins = \App\Auth\OAuth::enabledProviders(); ?>
+  <?php if ($acct): ?>
+    <p class="mt-4 text-sm text-ink-soft">Đang đăng nhập: <strong><?= e($acct['display_name']) ?></strong>. Đơn sẽ được lưu trong <a href="/tai-khoan">tài khoản của bạn</a>.</p>
+  <?php elseif ($logins): ?>
+    <p class="mt-4 text-sm text-ink-soft"><a href="/tai-khoan/dang-nhap?next=/thanh-toan">Đăng nhập</a> để lưu đơn vào tài khoản và điền sẵn địa chỉ (không bắt buộc).</p>
+  <?php endif; ?>
+
+  <form class="mt-8 grid gap-8 lg:grid-cols-[1fr_400px]" novalidate data-checkout-form data-cart-body<?= $acct ? " data-account='" . e(json_enc(['name' => $acct['ship_name'] ?: $acct['display_name'], 'phone' => $acct['ship_phone'], 'province' => $acct['ship_province'], 'address' => $acct['ship_address']])) . "'" : '' ?>>
     <div class="space-y-8">
       <fieldset class="rounded-xl bg-white p-5 sm:p-6">
         <legend class="float-left mb-4 text-xl font-extrabold">1. Người nhận</legend>

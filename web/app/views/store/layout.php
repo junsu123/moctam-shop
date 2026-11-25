@@ -40,6 +40,13 @@ $canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_U
     </form>
     <nav class="ml-auto flex items-center gap-1" aria-label="Tài khoản và giỏ hàng">
       <a href="/tim-kiem" class="rounded-lg p-2 text-ink md:hidden" aria-label="Tìm kiếm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
+      <?php $acct = \App\Domain\CustomerAccountService::current(); $canLogin = $acct || \App\Auth\OAuth::enabledProviders(); ?>
+      <?php if ($canLogin): ?>
+        <a href="<?= $acct ? '/tai-khoan' : '/tai-khoan/dang-nhap' ?>" class="flex items-center gap-2 rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-white/70" aria-label="<?= $acct ? 'Tài khoản của tôi' : 'Đăng nhập' ?>">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+          <span class="hidden max-w-[9rem] truncate sm:inline"><?= $acct ? e($acct['display_name']) : 'Đăng nhập' ?></span>
+        </a>
+      <?php endif; ?>
       <a href="/gio-hang" class="relative flex items-center gap-2 rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-white/70">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 7h14l-1.5 10.5a2 2 0 0 1-2 1.5h-7a2 2 0 0 1-2-1.5L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
         <span class="hidden sm:inline">Giỏ hàng</span>

@@ -14,7 +14,7 @@ use App\Core\Ulid;
  * Làm mới dữ liệu trước khi chạy thật: xóa dữ liệu thử, GIỮ cấu hình, vai trò, danh mục,
  * vùng giao, trang chính sách và tài khoản quản trị.
  *
- * Luôn xóa (dữ liệu giao dịch thử): đơn, khách, khoản thu, sai lệch, hoàn tiền, lượt voucher,
+ * Luôn xóa (dữ liệu giao dịch thử): đơn, khách, tài khoản khách (Google/Facebook), khoản thu, sai lệch, hoàn tiền, lượt voucher,
  *   khóa gửi lại, danh sách chăm sóc, gợi ý mua kèm do AI, nội dung AI chưa xuất bản, sự kiện đồng bộ,
  *   biến động kho; tồn đang giữ về 0; lượt dùng voucher về 0.
  * Tùy chọn:
@@ -61,6 +61,7 @@ final class DataResetService
         $p = [
             'Đơn hàng' => $c('SELECT COUNT(*) FROM orders'),
             'Khách hàng' => $c('SELECT COUNT(*) FROM customers'),
+            'Tài khoản khách (Google/Facebook)' => $c('SELECT COUNT(*) FROM customer_accounts'),
             'Khoản thu' => $c('SELECT COUNT(*) FROM payment_receipts'),
             'Sai lệch thanh toán' => $c('SELECT COUNT(*) FROM payment_discrepancies'),
             'Yêu cầu hoàn tiền' => $c('SELECT COUNT(*) FROM refunds'),
@@ -124,6 +125,8 @@ final class DataResetService
             $x('DELETE FROM care_suggestions');
             $x('DELETE FROM orders');
             $x('DELETE FROM customers');
+            $x('DELETE FROM customer_accounts'); // danh tính đăng nhập xóa theo ON DELETE CASCADE
+            $x('DELETE FROM account_deletions');
             $x('DELETE FROM inventory_movements');
             $x('UPDATE inventory SET reserved = 0, updated_at = :t', ['t' => Clock::nowDb()]);
             $x('UPDATE vouchers SET reserved_count = 0, used_count = 0');

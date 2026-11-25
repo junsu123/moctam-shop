@@ -124,6 +124,8 @@ $config = [
     'paths' => ['logs' => "$WEB/storage/logs", 'backups' => "$WEB/storage/backups", 'uploads' => "$WEB/public_html/uploads"],
     'trusted_proxy' => false,
     'rate_limit' => true,
+    // Đăng nhập Google/Facebook: điền để thử (Google cho phép http://localhost làm địa chỉ chuyển hướng)
+    'oauth' => $existing['oauth'] ?? ['google' => ['client_id' => '', 'client_secret' => ''], 'facebook' => ['client_id' => '', 'client_secret' => '', 'graph_version' => 'v26.0']],
 ];
 file_put_contents($cfgFile, "<?php\n// Cấu hình CHẠY THỬ trên máy (tạo bởi start-local.php). Không dùng cho Hostinger.\nreturn " . var_export($config, true) . ";\n");
 foreach (["$WEB/storage/logs", "$WEB/storage/backups", "$WEB/public_html/uploads/products"] as $d) if (!is_dir($d)) mkdir($d, 0775, true);

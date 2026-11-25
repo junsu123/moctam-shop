@@ -14,7 +14,7 @@ use App\Core\Text;
  *
  * Cài đặt / cập nhật (gọi từ migration):
  *   - Chưa có trang            → tạo và xuất bản.
- *   - Trang còn là bản mẫu cũ  → thêm phiên bản mới và xuất bản.
+ *   - Trang chỉ có bản mẫu / bản kèm mã nguồn (chưa nhân viên nào sửa) → thêm phiên bản mới và xuất bản.
  *   - Xưởng đã tự sửa trang     → KHÔNG ghi đè: thêm phiên bản mới ở trạng thái chờ duyệt.
  */
 final class LegalPages
@@ -25,9 +25,6 @@ final class LegalPages
         'dieu-khoan-su-dung' => ['title' => 'Điều khoản sử dụng', 'file' => 'dieu-khoan-su-dung.html',
             'meta' => 'Điều khoản sử dụng website và mua hàng: đặt hàng, giá, ưu đãi, thanh toán, giao nhận, đổi trả, khiếu nại.'],
     ];
-
-    /** Dấu hiệu nhận biết bản mẫu do seed.php tạo (chưa được xưởng chỉnh sửa). */
-    private const TEMPLATE_MARK = 'Bản mẫu — xưởng cần rà soát';
 
     /** Biến dùng được trong trang nội dung: khóa => [nhãn khi trống, nguồn] */
     public const PLACEHOLDERS = [
@@ -57,13 +54,14 @@ final class LegalPages
                 continue;
             }
             $published = Db::one('SELECT body FROM content_versions WHERE id = :v', ['v' => (int)$c['published_version_id']]);
-            $editedVersions = (int)Db::val("SELECT COUNT(*) FROM content_versions WHERE content_id = :c AND body NOT LIKE :m", ['c' => $c['id'], 'm' => '%' . self::TEMPLATE_MARK . '%']);
+            // Phiên bản do nhân viên tạo trong Quản trị có created_by; bản mẫu/bản kèm mã nguồn thì không
+            $editedVersions = (int)Db::val('SELECT COUNT(*) FROM content_versions WHERE content_id = :c AND created_by IS NOT NULL', ['c' => $c['id']]);
             if ($published && trim($published['body']) === trim($body)) {
                 $result[$slug] = 'unchanged';
             } elseif ($editedVersions === 0) {
                 $vid = self::version((int)$c['id'], $p, $body, 'Thay bản mẫu bằng nội dung đầy đủ');
                 self::publish((int)$c['id'], $vid, $p, $body);
-                $result[$slug] = 'replaced_template';
+                $result[$slug] = 'updated';
             } else {
                 // Xưởng đã tự sửa: giữ bản đang công khai, đưa bản mới vào chờ duyệt để so sánh
                 $vid = self::version((int)$c['id'], $p, $body, 'Bản cập nhật kèm mã nguồn — so sánh với bản đang công khai trước khi xuất bản');

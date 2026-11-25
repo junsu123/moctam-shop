@@ -56,7 +56,9 @@ final class OrderController extends Base
     public function show(string $id): string
     {
         $this->need('orders.view');
-        $o = Db::one('SELECT o.*, c.marketing_consent, c.customer_key FROM orders o JOIN customers c ON c.id = o.customer_id WHERE o.id = :id', ['id' => (int)$id]);
+        $o = Db::one('SELECT o.*, c.marketing_consent, c.customer_key, a.email AS account_email, a.display_name AS account_name,
+                       (SELECT GROUP_CONCAT(provider) FROM account_identities ai WHERE ai.account_id = o.account_id) AS account_providers
+                       FROM orders o JOIN customers c ON c.id = o.customer_id LEFT JOIN customer_accounts a ON a.id = o.account_id WHERE o.id = :id', ['id' => (int)$id]);
         if (!$o) throw ApiError::notFound('Không tìm thấy đơn.');
         $canPay = Auth::can('payments.view');
         return $this->view('order_show', [
