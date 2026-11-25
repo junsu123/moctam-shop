@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Bột yến mạch nguyên cám">
+<rect width="400" height="400" fill="#f5ead8"/>
+<circle cx="330" cy="70" r="90" fill="#e8d4b3" opacity=".6"/>
+<circle cx="60" cy="360" r="70" fill="#e8d4b3" opacity=".5"/>
+<g transform="translate(200 220)">
+  <path d="M-100 -10 h200 a100 90 0 0 1 -200 0z" fill="#fff" stroke="#a0743c" stroke-width="6"/>
+  <ellipse cx="0" cy="-10" rx="100" ry="18" fill="#e8d4b3" stroke="#a0743c" stroke-width="6"/>
+  <g fill="#a0743c" opacity=".8"><ellipse cx="-40" cy="-14" rx="9" ry="5"/><ellipse cx="-10" cy="-8" rx="9" ry="5" transform="rotate(30 -10 -8)"/><ellipse cx="25" cy="-15" rx="9" ry="5"/><ellipse cx="55" cy="-9" rx="9" ry="5" transform="rotate(-25 55 -9)"/><circle cx="5" cy="-20" r="4"/><circle cx="-60" cy="-8" r="4"/></g>
+  <path d="M60 -50 q30 -60 70 -70" stroke="#a0743c" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <g fill="#a0743c"><ellipse cx="110" cy="-108" rx="10" ry="5" transform="rotate(-30 110 -108)"/><ellipse cx="96" cy="-92" rx="10" ry="5" transform="rotate(-50 96 -92)"/><ellipse cx="124" cy="-96" rx="10" ry="5" transform="rotate(10 124 -96)"/></g>
+</g>
+<text x="200" y="372" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#a0743c">Bột yến mạch nguyên cám</text>
+</svg>

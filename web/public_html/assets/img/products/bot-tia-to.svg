@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Bột tía tô">
+<rect width="400" height="400" fill="#eaf2df"/>
+<circle cx="330" cy="70" r="90" fill="#d3e4bb" opacity=".6"/>
+<circle cx="60" cy="360" r="70" fill="#d3e4bb" opacity=".5"/>
+<g transform="translate(200 215)">
+  <rect x="-65" y="-80" width="130" height="160" rx="22" fill="#fff" stroke="#6e8f2f" stroke-width="6"/>
+  <rect x="-75" y="-105" width="150" height="34" rx="10" fill="#6e8f2f"/>
+  <rect x="-45" y="-30" width="90" height="60" rx="8" fill="#d3e4bb"/>
+  <path d="M-20 10 q20 -50 45 -40 q-5 45 -45 40z" fill="#6e8f2f" opacity=".85"/>
+  <path d="M-20 10 q15 -20 30 -30" stroke="#fff" stroke-width="2" fill="none"/>
+  <path d="M-110 80 q40 -30 80 0 q-40 18 -80 0z" fill="#d3e4bb" stroke="#6e8f2f" stroke-width="4"/>
+</g>
+<text x="200" y="372" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#6e8f2f">Bột tía tô</text>
+</svg>

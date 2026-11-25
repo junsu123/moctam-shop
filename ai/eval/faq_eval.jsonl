@@ -1,0 +1,42 @@
+// Tập kiểm tra ngưỡng FAQ: câu gần nghĩa, không dấu, viết tắt, câu dễ nhầm và câu ngoài phạm vi (expect=null).
+// Khi xưởng thêm/sửa FAQ, cập nhật tệp này để ngưỡng phản ánh đúng thực tế.
+{"q": "Phí ship bao nhiêu vậy shop?", "expect": "Phí giao hàng được tính thế nào?"}
+{"q": "phi giao hang tinh sao", "expect": "Phí giao hàng được tính thế nào?"}
+{"q": "Giao về Đà Nẵng mất phí bao nhiêu?", "expect": "Phí giao hàng được tính thế nào?"}
+{"q": "Đơn bao nhiêu thì được miễn phí giao hàng?", "expect": "Phí giao hàng được tính thế nào?"}
+{"q": "Bao lâu thì nhận được hàng?", "expect": "Bao lâu thì tôi nhận được hàng?"}
+{"q": "đặt hôm nay mấy ngày thì tới", "expect": "Bao lâu thì tôi nhận được hàng?"}
+{"q": "giao mat bao lau", "expect": "Bao lâu thì tôi nhận được hàng?"}
+{"q": "Thanh toán bằng QR như thế nào?", "expect": "Thanh toán chuyển khoản VietQR như thế nào?"}
+{"q": "chuyen khoan vietqr lam sao", "expect": "Thanh toán chuyển khoản VietQR như thế nào?"}
+{"q": "Quét mã QR chuyển khoản xong có cần gửi ảnh không?", "expect": "Thanh toán chuyển khoản VietQR như thế nào?"}
+{"q": "Mình lỡ chuyển khoản thiếu tiền thì làm sao?", "expect": "Tôi chuyển khoản thiếu hoặc sai nội dung thì sao?"}
+{"q": "chuyển sai nội dung chuyển khoản", "expect": "Tôi chuyển khoản thiếu hoặc sai nội dung thì sao?"}
+{"q": "ck nham noi dung roi", "expect": "Tôi chuyển khoản thiếu hoặc sai nội dung thì sao?"}
+{"q": "Có thanh toán khi nhận hàng không?", "expect": "Có được thanh toán khi nhận hàng (COD) không?"}
+{"q": "ship cod duoc ko", "expect": "Có được thanh toán khi nhận hàng (COD) không?"}
+{"q": "Nhận hàng rồi mới trả tiền được không?", "expect": "Có được thanh toán khi nhận hàng (COD) không?"}
+{"q": "Hàng bị lỗi có được đổi trả không?", "expect": "Chính sách đổi trả ra sao?"}
+{"q": "chinh sach doi tra", "expect": "Chính sách đổi trả ra sao?"}
+{"q": "Hộp bị móp khi nhận thì đổi được không?", "expect": "Chính sách đổi trả ra sao?"}
+{"q": "Bột ngũ cốc mở ra rồi bảo quản sao?", "expect": "Bảo quản bột ngũ cốc sau khi mở thế nào?"}
+{"q": "bao quan bot ngu coc", "expect": "Bảo quản bột ngũ cốc sau khi mở thế nào?"}
+{"q": "Ngũ cốc mở túi rồi để được bao lâu?", "expect": "Bảo quản bột ngũ cốc sau khi mở thế nào?"}
+{"q": "Bé 2 tuổi uống bột ngũ cốc được không?", "expect": "Trẻ em có dùng được bột ngũ cốc không?"}
+{"q": "tre em dung ngu coc duoc khong", "expect": "Trẻ em có dùng được bột ngũ cốc không?"}
+{"q": "Cà phê có pha hương liệu không?", "expect": "Cà phê có tẩm ướp hương liệu không?"}
+{"q": "cafe co tam bo khong", "expect": "Cà phê có tẩm ướp hương liệu không?"}
+{"q": "Cà phê rang mộc nguyên chất không?", "expect": "Cà phê có tẩm ướp hương liệu không?"}
+{"q": "Trà túi lọc ngâm mấy phút?", "expect": "Pha trà túi lọc bao lâu là ngon?"}
+{"q": "pha tra tui loc bao lau", "expect": "Pha trà túi lọc bao lâu là ngon?"}
+{"q": "Trà hoa cúc pha nước bao nhiêu độ?", "expect": "Pha trà túi lọc bao lâu là ngon?"}
+{"q": "Voucher có dùng chung với flash sale không?", "expect": "Mã giảm giá có dùng chung với Flash Sale không?"}
+{"q": "ma giam gia ap dung cho hang dang sale khong", "expect": "Mã giảm giá có dùng chung với Flash Sale không?"}
+{"q": "Xưởng có xuất hóa đơn đỏ không?", "expect": null}
+{"q": "Có nhận gia công nhãn riêng không?", "expect": null}
+{"q": "Shop có bán sỉ cho quán cà phê không?", "expect": null}
+{"q": "Uống trà gừng có chữa được ho không?", "expect": null}
+{"q": "Xưởng ở đâu, đến mua trực tiếp được không?", "expect": null}
+{"q": "Có giao quốc tế sang Nhật không?", "expect": null}
+{"q": "Đơn hàng của tôi đang ở đâu?", "expect": null}
+{"q": "Có tuyển cộng tác viên bán hàng không?", "expect": null}

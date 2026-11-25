@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Trà hoa cúc">
+<rect width="400" height="400" fill="#e8f0e3"/>
+<circle cx="330" cy="70" r="90" fill="#c9dcbf" opacity=".6"/>
+<circle cx="60" cy="360" r="70" fill="#c9dcbf" opacity=".5"/>
+<g transform="translate(200 210)">
+  <path d="M-70 -20 h140 a20 20 0 0 1 20 20 v40 a70 70 0 0 1 -70 70 h-40 a70 70 0 0 1 -70 -70 v-40 a20 20 0 0 1 20 -20z" fill="#fff" stroke="#5b7f4a" stroke-width="6"/>
+  <path d="M90 10 a28 28 0 0 1 0 56" fill="none" stroke="#5b7f4a" stroke-width="6"/>
+  <path d="M-30 -60 q10 -20 0 -40 M0 -60 q10 -20 0 -40 M30 -60 q10 -20 0 -40" stroke="#5b7f4a" stroke-width="5" fill="none" stroke-linecap="round" opacity=".5"/>
+  <line x1="40" y1="-20" x2="70" y2="-90" stroke="#5b7f4a" stroke-width="3"/>
+  <rect x="58" y="-118" width="34" height="30" rx="4" fill="#c9dcbf" stroke="#5b7f4a" stroke-width="3"/>
+  <ellipse cx="0" cy="18" rx="62" ry="10" fill="#c9dcbf"/>
+</g>
+<text x="200" y="372" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#5b7f4a">Trà hoa cúc</text>
+</svg>

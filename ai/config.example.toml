@@ -1,0 +1,39 @@
+# Sao chép thành config.toml (KHÔNG đưa vào git). Có thể thay khóa bằng biến môi trường:
+#   XUONG_SITE_URL, XUONG_READ_KEY, XUONG_WRITE_KEY, XUONG_LLM_KEY
+
+db_path = "data/xuong_ai.sqlite3"
+proposals_dir = "proposals"
+
+[site]
+base_url  = "https://ten-mien-cua-ban.vn"
+read_key  = ""   # khóa có quyền events:read, catalog:read  (Quản trị → Khóa API Python)
+write_key = ""   # khóa có quyền drafts:write
+timeout   = 20
+
+[llm]
+provider = "anthropic"          # anthropic | openai | none (tắt LLM, các tác nhân không cần LLM vẫn chạy)
+model    = "claude-haiku-5-5"   # model rẻ là đủ cho bản nháp; kiểm tra tên model hiện hành của nhà cung cấp
+api_key  = ""
+max_calls_per_day    = 50
+max_cost_per_day_usd = 1.0
+price_in_per_mtok    = 1.0      # USD / 1 triệu token — cập nhật theo bảng giá thực tế để ước tính chi phí đúng
+price_out_per_mtok   = 5.0
+
+[agents]
+faq_threshold          = 0.10   # chạy `python -m xuong_ai calibrate` để có giá trị đề xuất
+care_only_consented    = true   # chỉ đề xuất khách đã đồng ý nhận tiếp thị
+care_horizon_days      = 7
+care_overdue_days      = 21
+crosssell_min_support  = 2
+crosssell_max_per_product = 3
+blog_drafts_per_run    = 2
+faq_drafts_per_run     = 5
+
+[schedule]   # phút giữa hai lần chạy
+sync        = 10
+catalog     = 60
+crosssell   = 1440
+care        = 1440
+faq_drafts  = 1440
+blog_drafts = 10080
+maintenance = 10080

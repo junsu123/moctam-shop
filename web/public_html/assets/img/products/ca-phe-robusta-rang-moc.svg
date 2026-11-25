@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Cà phê Robusta rang mộc">
+<rect width="400" height="400" fill="#efe4dc"/>
+<circle cx="330" cy="70" r="90" fill="#d9c3b3" opacity=".6"/>
+<circle cx="60" cy="360" r="70" fill="#d9c3b3" opacity=".5"/>
+<g transform="translate(200 215)">
+  <path d="M-70 -90 h140 l10 170 a10 10 0 0 1 -10 10 h-140 a10 10 0 0 1 -10 -10z" fill="#fff" stroke="#5a3a28" stroke-width="6"/>
+  <path d="M-70 -90 l10 -20 h120 l10 20" fill="#d9c3b3" stroke="#5a3a28" stroke-width="6" stroke-linejoin="round"/>
+  <g transform="translate(0 0)"><ellipse cx="0" cy="10" rx="34" ry="46" fill="#5a3a28"/><path d="M0 -34 q-16 44 0 88" stroke="#d9c3b3" stroke-width="6" fill="none"/></g>
+  <g transform="translate(-105 70) rotate(-30)"><ellipse rx="16" ry="22" fill="#5a3a28"/><path d="M0 -20 q-8 20 0 40" stroke="#d9c3b3" stroke-width="3" fill="none"/></g>
+  <g transform="translate(108 60) rotate(25)"><ellipse rx="16" ry="22" fill="#5a3a28"/><path d="M0 -20 q-8 20 0 40" stroke="#d9c3b3" stroke-width="3" fill="none"/></g>
+</g>
+<text x="200" y="372" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#5a3a28">Cà phê Robusta rang mộc</text>
+</svg>

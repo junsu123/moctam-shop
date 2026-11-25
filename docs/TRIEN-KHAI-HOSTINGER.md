@@ -1,0 +1,93 @@
+# Hướng dẫn triển khai trên Hostinger
+
+Áp dụng cho các gói Hostinger có PHP 8.1+ và MySQL/MariaDB, như Business Web Hosting hoặc Cloud. Trước khi cài, vào hPanel kiểm tra phiên bản PHP và MySQL của gói sẽ dùng.
+
+## 1. Chuẩn bị trên hPanel
+
+1. **Websites → Quản lý → Advanced → PHP Configuration**: chọn PHP 8.2 hoặc 8.3, bật các extension `pdo_mysql`, `mbstring`, `intl`, `dom`, `fileinfo`, `gd`, `zip`.
+2. **Databases → MySQL Databases**: tạo CSDL và người dùng, gán toàn quyền trên CSDL đó. Ghi lại tên CSDL, tên người dùng, mật khẩu và host (thường là `localhost`).
+3. **Security → SSL**: cài SSL miễn phí cho tên miền. File `.htaccess` đã có sẵn quy tắc ép chuyển sang HTTPS.
+4. **Advanced → SSH Access**: bật SSH. Việc này không bắt buộc nhưng giúp chạy migration dễ hơn nhiều.
+
+## 2. Tải mã nguồn lên
+
+Cấu trúc trên máy chủ (thay `ten-mien.vn` bằng tên miền của bạn):
+
+```
+/home/uXXXX/domains/ten-mien.vn/
+  public_html/        ← nội dung của web/public_html
+  app/                ← web/app
+  bin/                ← web/bin
+  migrations/         ← web/migrations
+  storage/            ← tạo mới: storage/logs, storage/backups (chmod 750)
+```
+
+`index.php` tự tìm thư mục `../app`. Không đặt `app/`, `bin/`, `migrations/` hay `storage/` bên trong `public_html`.
+
+Có thể tải lên bằng File Manager (nén zip, tải lên rồi giải nén) hoặc bằng SFTP. Thư mục `frontend/` và `tests/` không cần tải lên production.
+
+## 3. Cấu hình
+
+```bash
+cd ~/domains/ten-mien.vn
+cp app/config.sample.php app/config.php
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"   # dán kết quả vào app_key
+nano app/config.php    # điền db, base_url, app_key; giữ 'secure' => true và 'rate_limit' => true
+chmod 640 app/config.php
+mkdir -p storage/logs storage/backups public_html/uploads/products
+```
+
+> `app_key` dùng để ký mã báo giá và tạo mã ẩn danh cho khách. **Không đổi `app_key` sau khi đã có đơn**, vì mã ẩn danh khách gửi cho Python sẽ thay đổi theo.
+
+## 4. Tạo CSDL và tài khoản quản trị
+
+```bash
+php bin/migrate.php --status
+php bin/migrate.php
+php bin/seed.php                      # dữ liệu mẫu 4 nhóm hàng (bỏ qua nếu tự nhập sản phẩm)
+php bin/create_admin.php chu@xuong.vn "Tên chủ xưởng" admin
+```
+
+Không có SSH: mở phpMyAdmin, nhập lần lượt `migrations/001_schema.sql` rồi `002_roles_settings.sql`. Sau đó dùng tab **Cron Jobs** chạy `create_admin.php` một lần, đặt biến `ADMIN_PASSWORD` ngay trong lệnh, rồi xóa cron đó đi.
+
+**Không** chạy `seed.php --demo-users` hay `seed_orders.php` trên production.
+
+## 5. Cron Jobs (hPanel → Advanced → Cron Jobs)
+
+| Lệnh | Tần suất |
+|---|---|
+| `/usr/bin/php /home/uXXXX/domains/ten-mien.vn/bin/cron.php` | Mỗi 5 phút. Hủy đơn hết hạn và dọn dữ liệu tạm |
+| `/usr/bin/php /home/uXXXX/domains/ten-mien.vn/bin/backup.php` | Mỗi ngày lúc 02:00. Sao lưu CSDL và ảnh |
+
+Trang **Quản trị → Giám sát** báo đỏ nếu tác vụ hết hạn không chạy quá 30 phút, hoặc bản sao lưu cũ hơn 26 giờ.
+
+## 6. Cấu hình nghiệp vụ trước khi mở bán
+
+Đăng nhập `/admin`, rồi:
+
+1. **Cấu hình**: tên cửa hàng, hotline, Zalo, email, địa chỉ, **tài khoản VietQR** (mã BIN 6 số, số tài khoản, tên chủ tài khoản không dấu) và các thời hạn giữ hàng.
+2. **Vùng giao & phí**: kiểm tra danh sách tỉnh/thành và biểu phí.
+3. **Sản phẩm**: thay toàn bộ thành phần, cách dùng, bảo quản và dị ứng **theo nhãn thật**. Dữ liệu mẫu chỉ để minh họa. Tải ảnh thật lên.
+4. **Trang chính sách**: rà soát nội dung giao hàng, thanh toán, đổi trả, bảo mật và liên hệ, rồi xuất bản lại. Các yêu cầu pháp lý về TMĐT, thực phẩm, hóa đơn và dữ liệu cá nhân cần được xác nhận trước khi mở bán (NFR-06).
+5. **Tài khoản & Phân quyền**: tạo tài khoản cho nhân viên vận hành, kho, đối soát và nội dung.
+6. **Khóa API Python**: tạo 2 khóa riêng, một khóa đọc và một khóa ghi bản nháp.
+7. Đặt thử một đơn COD và một đơn VietQR với số tiền nhỏ, quét mã bằng ứng dụng ngân hàng, rồi ghi nhận và đối soát trọn quy trình.
+
+## 7. Cập nhật phiên bản sau này
+
+1. Thử trên môi trường thử nghiệm (subdomain + CSDL riêng): chạy `php bin/migrate.php`, rồi `XUONG_DB=<csdl_thu> php tests/acceptance.php`. Tên CSDL thử phải chứa chữ `test` vì script sẽ xóa và tạo lại nó.
+2. Sao lưu production: `php bin/backup.php`, sau đó tải bản sao lưu về máy.
+3. Tải mã mới lên rồi chạy `php bin/migrate.php`. Migration nào đã chạy thì không sửa lại; mọi thay đổi lược đồ phải đi trong migration mới (`003_…sql`).
+
+## 8. Kiểm tra hiệu năng trên gói thật (NFR-03)
+
+Sau khi nạp dữ liệu đại diện, đo từ máy ngoài bằng `ab`, `k6` hoặc kịch bản `web/tests/load_test.py` (xem `docs/KET-QUA-NGHIEM-THU.md`) với 20 người dùng đồng thời. Mục tiêu: p95 đọc danh mục ≤ 1 giây, p95 tạo đơn ≤ 2 giây. Khi đo tải có thể tạm đặt `'rate_limit' => false`, **nhưng phải bật lại ngay sau khi đo**.
+
+## 9. Sửa giao diện
+
+```bash
+cd frontend && npm install
+npx tailwindcss -i src/app.css -o ../public_html/assets/css/app.css --minify
+```
+
+Font Be Vietnam Pro và thư viện vẽ QR được lưu ngay trong `public_html/assets`, không phụ thuộc CDN ngoài.

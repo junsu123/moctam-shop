@@ -1,0 +1,113 @@
+# Tài liệu API
+
+Mọi phản hồi là JSON UTF-8. Tiền tính bằng số nguyên VND. Mốc thời gian theo UTC, định dạng `YYYY-MM-DD HH:MM:SS`.
+
+## Mã lỗi ổn định
+
+Lỗi trả về theo dạng `{"error": {"code": "...", "message": "...", "details": {...}}}`.
+
+| HTTP | code | Khi nào | details |
+|---|---|---|---|
+| 422 | VALIDATION_ERROR | Dữ liệu không hợp lệ | `fields: {tên_trường: thông báo}`, để hiện lỗi ngay cạnh ô nhập |
+| 409 | QUOTE_CHANGED | Giá, ưu đãi hoặc phí đổi, hoặc báo giá hết hạn; voucher vừa hết lượt | `quote`: báo giá mới để khách xác nhận |
+| 409 | OUT_OF_STOCK | Hết hàng hoặc không đủ số lượng | `issues[]`, `quote` |
+| 422 | ZONE_NOT_SERVED | Tỉnh/thành chưa được phục vụ | `quote` |
+| 409 | IDEMPOTENCY_CONFLICT | Cùng `Idempotency-Key` nhưng khác nội dung hoặc khác phiên | — |
+| 400 | IDEMPOTENCY_KEY_REQUIRED | Thiếu khóa gửi lại, hoặc khóa sai định dạng (16–80 ký tự `[A-Za-z0-9_-]`) | — |
+| 419 | CSRF_INVALID | Thiếu hoặc sai `X-CSRF-Token` | — |
+| 429 | RATE_LIMITED | Gửi quá nhiều yêu cầu | — |
+| 401/403 | UNAUTHENTICATED / FORBIDDEN | Khóa API sai hoặc thiếu quyền | — |
+| 410 | CURSOR_EXPIRED | Con trỏ đồng bộ cũ hơn mốc đã dọn | `pruned_through` |
+| 409 | SOURCE_OUTDATED | Bản nháp AI dựa trên thông tin nhãn cũ (trả trong `results[]`) | — |
+
+Trong voucher của báo giá: `VOUCHER_INVALID`, `VOUCHER_EXPIRED`, `VOUCHER_EXHAUSTED`, `VOUCHER_NOT_APPLICABLE`, `VOUCHER_MIN_NOT_MET`.
+
+## API công khai
+
+### POST /api/quote
+
+```json
+{"items": [{"sku_id": 1, "qty": 2}], "voucher_code": "CHAOBAN20", "province": "Hà Nội"}
+```
+
+Phản hồi `200`:
+
+```json
+{"quote": {
+  "lines": [{"sku_id": 1, "sku_code": "TRA-GUNG-20", "product_name": "Trà gừng mật ong", "variant_label": "Hộp 20 túi x 2g",
+             "list_price": 65000, "unit_price": 52000, "flash_sale_id": 1, "voucher_eligible": false, "qty": 2, "line_total": 104000, "available": 118}],
+  "issues": [],
+  "goods_subtotal": 104000,
+  "voucher": {"code": "CHAOBAN20", "valid": false, "discount": 0, "error_code": "VOUCHER_NOT_APPLICABLE", "message": "..."},
+  "discount": 0,
+  "shipping": {"served": true, "zone_id": 1, "zone_name": "Hà Nội", "rate_id": 1, "fee": 20000, "eta": "1–2 ngày", "free_from": 400000},
+  "total": 124000,
+  "expires_at": "2026-11-25 06:15:00",
+  "fingerprint": "…", "quote_token": "…"
+}}
+```
+
+### POST /api/orders
+
+Header bắt buộc: `Idempotency-Key: <16–80 ký tự>` và `X-CSRF-Token: <thẻ meta csrf-token>`. Cookie phiên phải đi kèm.
+
+```json
+{"items": [{"sku_id": 1, "qty": 2}], "voucher_code": "", "payment_method": "vietqr",
+ "quote_token": "<từ /api/quote>", "marketing_consent": true,
+ "customer": {"name": "Trần Thị Mai", "phone": "0987654321", "province": "Hà Nội", "address": "25 Ngõ Huế", "note": ""}}
+```
+
+- `201` (đơn mới) hoặc `200` (gửi lại, `"replayed": true`) trả `{"order": {code, status, total, expires_at, items, vietqr: {bank_name, account_no, account_name, amount, content, qr_payload}, confirm_url}}`.
+- `409 QUOTE_CHANGED`: hiện `details.quote` cho khách. Khi khách đồng ý, gửi lại với `details.quote.quote_token`; có thể giữ nguyên `Idempotency-Key`.
+
+### POST /api/chat
+
+Gửi `{"message": "Matcha còn hàng không?"}`. Phản hồi có dạng `{"reply": "...", "source": "live|label|faq|fallback", "products": [...], "suggestions": [...], "faq": {...}, "support": {...}}`.
+
+### GET /api/products?q=&category=&page=&per_page=
+
+Tìm sản phẩm công khai, có phân trang. Dùng cho ô gợi ý tìm kiếm.
+
+### GET /api/health
+
+Trả `{"ok": true, "time": "..."}`, dùng cho dịch vụ giám sát ngoài.
+
+## API đồng bộ (cho dịch vụ Python)
+
+Header: `Authorization: Bearer <khóa>`. Tạo khóa ở Quản trị → Khóa API Python, hoặc chạy `php bin/create_api_key.php`.
+
+### GET /api/sync/events?after=&lt;seq&gt;&limit=500  — quyền `events:read`
+
+```json
+{"events": [{"seq": 259, "event_id": "01JD…", "entity_type": "order", "entity_id": 54, "event_type": "order.status_changed",
+             "payload": {"order_id": 54, "code": "TM261125ZRV9", "status": "confirmed", "payment_method": "vietqr", "payment_status": "paid",
+                         "customer_key": "a1b2…", "marketing_consent": true, "zone_id": 3, "goods_subtotal": 341000, "voucher_code": "CHAOBAN20",
+                         "total": 356000, "created_at": "…", "delivered_at": null,
+                         "items": [{"sku_id": 1, "product_id": 1, "category_id": 1, "qty": 1, "unit_price": 52000}], "version": 259}}],
+ "next_cursor": 259, "has_more": false}
+```
+
+Loại sự kiện: `order.created`, `order.status_changed`, `order.payment_changed`, `order.flagged`, `product.updated` (payload `{product_id, category_id, status, info_version}`).
+
+### GET /api/sync/snapshot?after_id=0&limit=500  — quyền `events:read`
+
+Trả `{"as_of_seq": 258, "orders": [...], "products": [...], "next_after_id": 54}`. Đọc `as_of_seq` từ trang đầu tiên; sau khi tải đủ các trang, đặt con trỏ bằng giá trị đó.
+
+### GET /api/sync/catalog  — quyền `catalog:read`
+
+Trả `categories` (kèm `repurchase_days`), `products` (thông tin nhãn đã duyệt, `info_version`, `skus`), `published_faqs` (kèm `search_text`, `version_id`) và `unanswered_questions` (30 ngày gần nhất, đã che SĐT/email).
+
+### POST /api/sync/drafts  — quyền `drafts:write`
+
+```json
+{"items": [
+  {"client_ref": "faq:q:3f2a…", "kind": "faq",  "data": {"title": "...", "body": "...", "body_is_text": true, "keywords": "...", "product_id": 5,
+                                                          "source_refs": [{"product_id": 5, "info_version": 3}], "generated_by": "claude-haiku-5-5"}},
+  {"client_ref": "blog:product:5@v3", "kind": "blog", "data": {"title": "...", "meta_description": "...", "body": "<p>…</p>", "source_refs": [...]}},
+  {"client_ref": "xs:1:3:2026w48", "kind": "cross_sell", "data": {"product_id": 1, "related_product_id": 3, "score": 0.8, "reason": "..."}},
+  {"client_ref": "care-20261125", "kind": "care_list", "data": {"batch_id": "care-20261125",
+     "entries": [{"customer_key": "a1b2…", "category_id": 2, "last_order_at": "2026-10-26 00:00:00", "due_date": "2026-11-25", "score": 0.9, "reason": "..."}]}}
+]}
+```
+
+Phản hồi: `{"results": [{"client_ref": "...", "status": "accepted|rejected", "result": "content:42", "duplicate": true?, "error": "..."}]}`. Gửi lại cùng `client_ref` sẽ không tạo bản ghi trùng. Mọi nội dung nhận được đều vào trạng thái **chờ duyệt**.
