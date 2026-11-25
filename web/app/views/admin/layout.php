@@ -25,9 +25,10 @@ $nav = [
         ['/admin/content?kind=faq', 'FAQ', 'content.edit', 'faq_review'],
         ['/admin/content?kind=page', 'Trang chính sách', 'content.edit', null],
         ['/admin/care', 'Chăm sóc lại', 'care.view', 'care'],
+        ['/admin/customer-accounts', 'Tài khoản khách', 'accounts.manage', null],
     ],
     'Hệ thống' => [
-        ['/admin/users', 'Tài khoản', 'users.manage', null],
+        ['/admin/users', 'Tài khoản nhân viên', 'users.manage', null],
         ['/admin/roles', 'Phân quyền', 'users.manage', null],
         ['/admin/settings', 'Cấu hình', 'settings.manage', null],
         ['/admin/api-keys', 'Khóa API Python', 'settings.manage', null],

@@ -168,4 +168,5 @@ Nếu tệp cấu hình cài từ phiên bản cũ chưa có mục này, thêm n
 - **Không** tự gộp đơn đặt khi chưa đăng nhập vào tài khoản theo số điện thoại (số điện thoại không được xác minh, gộp sẽ làm lộ đơn của người khác).
 - Xóa tài khoản: xóa danh tính đăng nhập và thông tin giao hàng đã lưu; đơn hàng giữ lại theo nghĩa vụ kế toán nhưng bỏ liên kết.
 - Website không lưu mã truy cập của Google/Facebook; lỗi nhà cung cấp chỉ ảnh hưởng nút đăng nhập, không ảnh hưởng bán hàng.
+- Quản lý tài khoản khách ở **Quản trị → Tài khoản khách** (quyền *Quản lý tài khoản đăng nhập của khách*, mặc định chỉ Quản trị viên): xem cách đăng nhập đã liên kết, buộc đăng xuất mọi thiết bị, tạm khóa đăng nhập, gỡ một cách đăng nhập, xóa tài khoản khi khách yêu cầu qua hotline (hệ thống cấp mã xác nhận để gửi khách). Chỉ xóa sau khi xác minh đúng chủ tài khoản, ví dụ khách gửi email từ chính địa chỉ đăng nhập.
 - Chạy thử trên máy: Google chấp nhận `http://localhost:8080/auth/google/callback`; Facebook cho phép `localhost` ở chế độ phát triển.

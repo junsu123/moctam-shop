@@ -81,6 +81,14 @@ final class SystemController extends Base
         $this->back('Đã lưu tài khoản.');
     }
 
+    /** Mở khóa tài khoản nhân viên bị tạm khóa do nhập sai mật khẩu nhiều lần. */
+    public function unlockUser(string $id): void
+    {
+        $this->need('users.manage');
+        Auth::unlock((int)$id);
+        $this->back('Đã mở khóa đăng nhập.');
+    }
+
     public function roles(): string
     {
         $this->need('users.manage');

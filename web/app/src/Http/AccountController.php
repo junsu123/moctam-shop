@@ -48,7 +48,13 @@ final class AccountController
             Session::flash('error', $e->getMessage());
             Http::redirect('/tai-khoan/dang-nhap' . (isset($e->data['next']) ? '?next=' . rawurlencode($e->data['next']) : ''));
         }
-        $id = Accounts::loginWithProfile($p);
+        try {
+            $id = Accounts::loginWithProfile($p);
+        } catch (ApiError $e) {
+            if ($e->errorCode !== 'ACCOUNT_LOCKED') throw $e;
+            Session::flash('error', $e->getMessage());
+            Http::redirect('/tai-khoan/dang-nhap');
+        }
         Accounts::startSession($id);
         Session::flash('ok', 'Đã đăng nhập bằng ' . OAuth::LABELS[$provider] . '.');
         Http::redirect($p['next']);

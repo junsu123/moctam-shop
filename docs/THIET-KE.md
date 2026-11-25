@@ -189,9 +189,26 @@ Bổ sung ngoài đặc tả v1.0 (đặc tả cho phép mua không cần tài k
 | `Auth/OAuth` | Google: OpenID Connect mã ủy quyền + PKCE (S256) + nonce; kiểm tra `iss`, `aud`, `exp`, `nonce` của id_token nhận trực tiếp từ máy chủ token qua TLS. Facebook: mã ủy quyền, gọi `/me` kèm `appsecret_proof`. `state` lưu trong phiên, dùng một lần, hết hạn 10 phút; `next` chỉ nhận đường dẫn nội bộ. |
 | `Domain/CustomerAccountService` | Tìm theo (nhà cung cấp, mã định danh) → liên kết theo email **đã xác minh** → tạo mới. Đổi mã phiên khi đăng nhập/đăng xuất. Ghi nhớ địa chỉ của đơn gần nhất. Xóa tài khoản: xóa danh tính + hồ sơ, `orders.account_id` = NULL, ghi `account_deletions`. |
 | `Http/AccountController` | `/tai-khoan/dang-nhap`, `/auth/{google,facebook}`, `/auth/{…}/callback`, `/tai-khoan` (đơn, thông tin giao hàng, nhận tin, liên kết thêm, xóa), `/auth/facebook/xoa-du-lieu` (signed_request HMAC-SHA256), `/tai-khoan/trang-thai-xoa`. |
-| Bảng | `customer_accounts`, `account_identities` (UNIQUE provider+uid, CASCADE), `account_deletions`; `orders.account_id` (SET NULL). |
+| Bảng | `customer_accounts` (+ `locked_at`, `locked_reason`, `session_version` từ migration 007), `account_identities` (UNIQUE provider+uid, CASCADE), `account_deletions` (nguồn `self` / `facebook` / `admin`); `orders.account_id` (SET NULL). |
 
 Quyết định: không gộp đơn khách lẻ vào tài khoản theo SĐT (SĐT không xác minh). Đồng ý nhận tin vẫn nằm ở `customers` (theo SĐT); trang tài khoản bật/tắt cho các SĐT đã dùng trong đơn của tài khoản. Nhà cung cấp lỗi → chỉ báo lỗi trên trang đăng nhập, luồng bán hàng không phụ thuộc. Kiểm thử bằng nhà cung cấp giả lập `tests/fake_oauth.php` (ca EX-08).
+
+### Quản trị → Tài khoản khách
+
+Quyền riêng `accounts.manage` (mặc định chỉ Quản trị viên; cấp thêm cho vai trò khác ở màn hình Phân quyền). Mọi thao tác ghi nhật ký `account.*` kèm người thực hiện và lý do.
+
+| Chức năng | Cách hiện thực |
+|---|---|
+| Danh sách, tìm kiếm | Theo email (tài khoản hoặc từ nhà cung cấp), tên, SĐT giao hàng, mã tài khoản; lọc trạng thái khóa, nhà cung cấp. Danh sách che SĐT; trang chi tiết hiện đủ cho người có quyền. |
+| Chi tiết | Cách đăng nhập đã liên kết (nhà cung cấp, email, đã xác minh hay chưa, liên kết lúc, đăng nhập gần nhất), đơn đặt khi đăng nhập, trạng thái nhận tin, lịch sử thao tác. |
+| Buộc đăng xuất | `customer_accounts.session_version` + 1. Phiên lưu `acct_ver` lúc đăng nhập; `CustomerAccountService::current()` so khớp trên mỗi yêu cầu → phiên cũ trên mọi thiết bị mất hiệu lực, không cần lưu danh sách phiên. |
+| Khóa / mở khóa | `locked_at`, `locked_reason` (bắt buộc lý do). Khóa đồng thời tăng `session_version`. `loginWithProfile` kiểm tra khóa **trong giao dịch, sau bước liên kết** → đăng nhập bằng nhà cung cấp mới cùng email đã xác minh cũng bị chặn và danh tính vừa tạo bị hoàn tác. Khách vẫn mua hàng không cần đăng nhập. |
+| Gỡ liên kết | Gỡ một danh tính (VD khách mất tài khoản Facebook) và buộc đăng xuất. Không gỡ danh tính cuối cùng (`LAST_IDENTITY`) — dùng Khóa hoặc Xóa. |
+| Xóa thay khách | Dùng chung `CustomerAccountService::delete()` với nguồn `admin`; bắt buộc ghi kênh/thời điểm khách yêu cầu và xác nhận đã xác minh chủ tài khoản; cấp mã tra cứu `/tai-khoan/trang-thai-xoa`. |
+
+Liên kết thêm nhà cung cấp chỉ dựa trên `current()` (không đọc thẳng `$_SESSION['acct_id']`), nên phiên đã bị buộc đăng xuất/khóa không thể gắn danh tính lạ vào tài khoản. Không lưu lịch sử IP/thiết bị đăng nhập của khách — Chính sách bảo mật chỉ công bố lưu thời điểm đăng nhập gần nhất. Điều khoản sử dụng bổ sung việc xưởng có thể đăng xuất/tạm khóa và xóa thay khách (migration 008; trang đã được xưởng sửa thì bản mới vào chờ duyệt). Ca kiểm thử EX-09.
+
+Tài khoản nhân viên: trang Tài khoản nhân viên hiện số lần nhập sai mật khẩu và trạng thái tạm khóa (5 lần sai → khóa 15 phút), có nút **Mở khóa ngay** (`Auth::unlock`, nhật ký `user.unlock`).
 
 ## 12. Truy vết yêu cầu → mã nguồn
 
@@ -210,4 +227,5 @@ Quyết định: không gộp đơn khách lẻ vào tài khoản theo SĐT (SĐ
 | FR-11 | `ai/xuong_ai/agents/care.py`, `DraftInbox::careList`, `Admin/CareController` (lọc theo đồng ý) |
 | FR-12 | `Audit`, `Admin/SystemController::audit` (lọc theo đối tượng, người, thời gian) |
 | Đăng nhập Google/Facebook | `Auth/OAuth`, `CustomerAccountService`, `AccountController`, `views/store/{login,account,deletion_status}.php` — ca EX-08 |
+| Quản trị tài khoản khách | `CustomerAccountService::{adminSearch,lock,unlock,revokeSessions,unlinkIdentity,delete}`, `Admin/CustomerAccountController`, `views/admin/customer_account{s,_show}.php`, migration 007 — ca EX-09 |
 | AT-01…AT-11 | `web/tests/acceptance.php`, `ai/tests/test_sync.py` — kết quả ở `docs/KET-QUA-NGHIEM-THU.md` |

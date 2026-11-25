@@ -27,7 +27,7 @@ Trình cài đặt tự tìm PHP, kiểm tra kết nối CSDL, đặt mã nguồ
 
 1. `docs/THIET-KE.md`: kiến trúc, sơ đồ dữ liệu, luồng đặt hàng, trạng thái đơn, đối soát, đồng bộ, AI, bảng truy vết FR/NFR → mã nguồn.
 2. `docs/TRIEN-KHAI-HOSTINGER.md`: cài đặt từng bước, cron, cấu hình trước khi mở bán.
-3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (21/21 ca website + 15/15 kiểm thử Python đạt), đo tải.
+3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (23/23 ca website + 15/15 kiểm thử Python đạt), đo tải.
 4. `docs/API.md`, `docs/SAO-LUU-KHOI-PHUC.md`, `ai/README.md`.
 
 ## Chạy thử trên máy tính — một lệnh
@@ -72,6 +72,8 @@ cd ../ai && python -m pytest -v
 ## Đăng nhập bằng Google / Facebook (tùy chọn)
 
 Khách vẫn mua không cần tài khoản. Muốn bật nút đăng nhập: tạo ứng dụng Google/Facebook và điền khóa vào `app/config.php` theo [docs/TRIEN-KHAI-HOSTINGER.md §10](docs/TRIEN-KHAI-HOSTINGER.md#10-đăng-nhập-bằng-google--facebook-tùy-chọn). Chưa điền thì website không hiện nút.
+
+Nhân viên quản lý các tài khoản này ở **Quản trị → Tài khoản khách**: tìm theo email/tên/SĐT, xem cách đăng nhập đã liên kết, buộc đăng xuất, tạm khóa, gỡ liên kết, xóa theo yêu cầu của khách. Tài khoản nhân viên bị tạm khóa do nhập sai mật khẩu được mở khóa ở **Quản trị → Tài khoản nhân viên**.
 
 ## Làm mới dữ liệu khi chạy thật
 

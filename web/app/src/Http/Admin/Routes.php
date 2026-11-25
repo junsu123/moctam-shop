@@ -77,9 +77,19 @@ final class Routes
         $r->post('/admin/care/{id}/status', [CareController::class, 'status']);
         $r->get('/admin/care/export', [CareController::class, 'export']);
 
+        // Tài khoản đăng nhập của khách (Google / Facebook)
+        $r->get('/admin/customer-accounts', [CustomerAccountController::class, 'index']);
+        $r->get('/admin/customer-accounts/{id}', [CustomerAccountController::class, 'show']);
+        $r->post('/admin/customer-accounts/{id}/lock', [CustomerAccountController::class, 'lock']);
+        $r->post('/admin/customer-accounts/{id}/unlock', [CustomerAccountController::class, 'unlock']);
+        $r->post('/admin/customer-accounts/{id}/logout', [CustomerAccountController::class, 'logout']);
+        $r->post('/admin/customer-accounts/{id}/unlink', [CustomerAccountController::class, 'unlink']);
+        $r->post('/admin/customer-accounts/{id}/delete', [CustomerAccountController::class, 'delete']);
+
         // Hệ thống
         $r->get('/admin/users', [SystemController::class, 'users']);
         $r->post('/admin/users/save', [SystemController::class, 'saveUser']);
+        $r->post('/admin/users/{id}/unlock', [SystemController::class, 'unlockUser']);
         $r->get('/admin/roles', [SystemController::class, 'roles']);
         $r->post('/admin/roles/save', [SystemController::class, 'saveRole']);
         $r->get('/admin/settings', [SystemController::class, 'settings']);

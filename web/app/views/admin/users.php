@@ -21,9 +21,16 @@ $userForm = function (?array $u) use ($roleOpts, $errors, $old) {
 ?>
 <div class="grid gap-6 xl:grid-cols-[1fr_420px]">
   <div class="space-y-3">
-    <?php foreach ($users as $u): ?>
+    <?php foreach ($users as $u):
+      $tempLocked = $u['locked_until'] && $u['locked_until'] > \App\Core\Clock::nowDb(); ?>
       <details class="a-card">
-        <summary class="flex cursor-pointer flex-wrap items-center gap-3"><span class="font-semibold"><?= e($u['full_name']) ?></span><span class="text-sm text-ink-mute"><?= e($u['email']) ?></span><span class="badge bg-jade-200 text-tea-dark"><?= e($u['role_name']) ?></span><?= $u['is_active'] ? '' : status_badge('discontinued', 'Đã khóa') ?><span class="ml-auto text-xs text-ink-mute">Đăng nhập cuối: <?= $u['last_login_at'] ? vn_time($u['last_login_at']) : 'chưa' ?></span></summary>
+        <summary class="flex cursor-pointer flex-wrap items-center gap-3"><span class="font-semibold"><?= e($u['full_name']) ?></span><span class="text-sm text-ink-mute"><?= e($u['email']) ?></span><span class="badge bg-jade-200 text-tea-dark"><?= e($u['role_name']) ?></span><?= $u['is_active'] ? '' : status_badge('discontinued', 'Đã khóa') ?><?= $tempLocked ? status_badge('failed', 'Tạm khóa do sai mật khẩu') : '' ?><span class="ml-auto text-xs text-ink-mute">Đăng nhập cuối: <?= $u['last_login_at'] ? vn_time($u['last_login_at']) : 'chưa' ?></span></summary>
+        <?php if ($tempLocked || (int)$u['failed_logins'] > 0): ?>
+          <div class="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-alert-light px-4 py-3 text-sm text-alert">
+            <span><?= (int)$u['failed_logins'] ?> lần nhập sai mật khẩu liên tiếp<?= $tempLocked ? ', tự mở khóa lúc ' . vn_time($u['locked_until']) : '' ?>.</span>
+            <form method="post" action="/admin/users/<?= (int)$u['id'] ?>/unlock" class="ml-auto"><?= csrf_field() ?><button class="btn-ghost px-3 py-1 text-xs">Mở khóa ngay</button></form>
+          </div>
+        <?php endif; ?>
         <div class="mt-4"><?= $userForm($u) ?></div>
       </details>
     <?php endforeach; ?>

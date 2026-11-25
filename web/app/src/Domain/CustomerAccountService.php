@@ -18,12 +18,28 @@ use App\Core\Ulid;
  */
 final class CustomerAccountService
 {
+    public const PROVIDER_LABELS = ['google' => 'Google', 'facebook' => 'Facebook'];
+
+    /**
+     * Tài khoản đang đăng nhập. Phiên bị vô hiệu khi tài khoản đã bị xóa, đang khóa,
+     * hoặc nhân viên đã "buộc đăng xuất" (session_version tăng sau khi phiên được tạo).
+     */
     public static function current(): ?array
     {
-        $id = $_SESSION['acct_id'] ?? null;
+        $id = (int)($_SESSION['acct_id'] ?? 0);
         if (!$id) return null;
-        static $cache = [];
-        return $cache[$id] ??= (Db::one('SELECT * FROM customer_accounts WHERE id = :id', ['id' => (int)$id]) ?: null);
+        $a = Db::one('SELECT * FROM customer_accounts WHERE id = :id', ['id' => $id]);
+        if (!$a || $a['locked_at'] !== null || (int)$a['session_version'] !== (int)($_SESSION['acct_ver'] ?? 0)) {
+            unset($_SESSION['acct_id'], $_SESSION['acct_ver']);
+            return null;
+        }
+        return $a;
+    }
+
+    public static function lockedError(): ApiError
+    {
+        return new ApiError('ACCOUNT_LOCKED', 'Tài khoản này đang tạm khóa đăng nhập. Bạn vẫn đặt hàng được mà không cần đăng nhập; vui lòng liên hệ hotline '
+            . \App\Core\Settings::get('hotline') . ' để được hỗ trợ.', 403);
     }
 
     /** @param array{provider:string, uid:string, email:?string, email_verified:bool, name:string} $p */
@@ -37,7 +53,8 @@ final class CustomerAccountService
                 Db::update('account_identities', ['last_login_at' => $now, 'email' => $p['email'], 'email_verified' => $p['email_verified'] ? 1 : 0], 'id = :id', ['id' => $ident['id']]);
             } else {
                 $accountId = 0;
-                $linkTo = (int)($_SESSION['acct_id'] ?? 0); // đang đăng nhập → liên kết thêm nhà cung cấp
+                // đang đăng nhập → liên kết thêm nhà cung cấp. Dùng current() để phiên đã bị khóa/buộc đăng xuất không liên kết được
+                $linkTo = (int)(self::current()['id'] ?? 0);
                 if ($linkTo && Db::val('SELECT 1 FROM customer_accounts WHERE id = :id', ['id' => $linkTo])) {
                     $accountId = $linkTo;
                 } elseif ($p['email'] && $p['email_verified']) {
@@ -55,7 +72,9 @@ final class CustomerAccountService
                     'email_verified' => $p['email_verified'] ? 1 : 0, 'created_at' => $now, 'last_login_at' => $now,
                 ]);
             }
-            $acc = Db::one('SELECT email FROM customer_accounts WHERE id = :id', ['id' => $accountId]);
+            $acc = Db::one('SELECT email, locked_at FROM customer_accounts WHERE id = :id FOR UPDATE', ['id' => $accountId]);
+            // Tài khoản đang khóa: hoàn tác cả danh tính vừa liên kết (không cho "lách" khóa bằng nhà cung cấp khác cùng email)
+            if ($acc['locked_at'] !== null) throw self::lockedError();
             $upd = ['last_login_at' => $now, 'updated_at' => $now];
             if (!$acc['email'] && $p['email'] && $p['email_verified']) $upd['email'] = $p['email'];
             Db::update('customer_accounts', $upd, 'id = :id', ['id' => $accountId]);
@@ -67,11 +86,12 @@ final class CustomerAccountService
     {
         Session::regenerate(); // chống cố định phiên
         $_SESSION['acct_id'] = $accountId;
+        $_SESSION['acct_ver'] = (int)Db::val('SELECT session_version FROM customer_accounts WHERE id = :id', ['id' => $accountId]);
     }
 
     public static function logout(): void
     {
-        unset($_SESSION['acct_id']);
+        unset($_SESSION['acct_id'], $_SESSION['acct_ver']);
         Session::regenerate();
     }
 
@@ -129,7 +149,7 @@ final class CustomerAccountService
      * Xóa tài khoản: xóa danh tính đăng nhập + hồ sơ; đơn hàng giữ lại (nghĩa vụ kế toán) nhưng bỏ liên kết.
      * @return string mã xác nhận
      */
-    public static function delete(int $accountId, string $source = 'self'): string
+    public static function delete(int $accountId, string $source = 'self', ?string $note = null): string
     {
         $code = Ulid::code(16);
         Db::tx(function () use ($accountId, $source, $code) {
@@ -138,7 +158,7 @@ final class CustomerAccountService
             Db::exec('DELETE FROM customer_accounts WHERE id = :id', ['id' => $accountId]); // danh tính xóa theo ON DELETE CASCADE
             Db::insert('account_deletions', ['confirmation_code' => $code, 'source' => $source, 'status' => $exists ? 'completed' : 'not_found', 'requested_at' => Clock::nowDb()]);
         });
-        Audit::log('account.deleted', 'customer_account', (string)$accountId, null, ['source' => $source, 'code' => $code], null, 'system');
+        Audit::log('account.deleted', 'customer_account', (string)$accountId, null, ['source' => $source, 'code' => $code], $note, $source === 'admin' ? 'user' : 'system');
         return $code;
     }
 
@@ -165,6 +185,109 @@ final class CustomerAccountService
 
     public static function identities(int $accountId): array
     {
-        return Db::all('SELECT provider, email, created_at, last_login_at FROM account_identities WHERE account_id = :a ORDER BY id', ['a' => $accountId]);
+        return Db::all('SELECT id, provider, email, email_verified, created_at, last_login_at FROM account_identities WHERE account_id = :a ORDER BY id', ['a' => $accountId]);
+    }
+
+    // ================================================================ Quản trị (quyền accounts.manage)
+
+    /** Danh sách tài khoản cho Quản trị → Tài khoản khách. $f: q, status (locked|active), provider, page */
+    public static function adminSearch(array $f, int $perPage = 50): array
+    {
+        $where = ['1=1'];
+        $p = [];
+        $q = trim((string)($f['q'] ?? ''));
+        if ($q !== '') {
+            $like = '%' . addcslashes(mb_strtolower($q), '%_\\') . '%';
+            $cond = ['LOWER(a.email) LIKE :q1', 'LOWER(a.display_name) LIKE :q2', 'EXISTS (SELECT 1 FROM account_identities s WHERE s.account_id = a.id AND LOWER(s.email) LIKE :q3)'];
+            $p += ['q1' => $like, 'q2' => $like, 'q3' => $like];
+            $phone = Text::normalizePhone($q);
+            if ($phone !== null) { $cond[] = 'a.ship_phone = :ph'; $p['ph'] = $phone; }
+            if (ctype_digit($q)) { $cond[] = 'a.id = :id'; $p['id'] = (int)$q; }
+            $where[] = '(' . implode(' OR ', $cond) . ')';
+        }
+        $st = (string)($f['status'] ?? '');
+        if ($st === 'locked') $where[] = 'a.locked_at IS NOT NULL';
+        if ($st === 'active') $where[] = 'a.locked_at IS NULL';
+        $prov = (string)($f['provider'] ?? '');
+        if (isset(self::PROVIDER_LABELS[$prov])) { $where[] = 'EXISTS (SELECT 1 FROM account_identities s2 WHERE s2.account_id = a.id AND s2.provider = :pv)'; $p['pv'] = $prov; }
+        $w = implode(' AND ', $where);
+        $page = max(1, (int)($f['page'] ?? 1));
+        $total = (int)Db::val("SELECT COUNT(*) FROM customer_accounts a WHERE $w", $p);
+        $rows = Db::all("SELECT a.id, a.email, a.display_name, a.ship_phone, a.last_login_at, a.locked_at, a.created_at,
+                                (SELECT GROUP_CONCAT(DISTINCT i.provider ORDER BY i.provider) FROM account_identities i WHERE i.account_id = a.id) AS providers,
+                                (SELECT COUNT(*) FROM orders o WHERE o.account_id = a.id) AS order_count
+                           FROM customer_accounts a WHERE $w
+                          ORDER BY a.last_login_at IS NULL, a.last_login_at DESC, a.id DESC LIMIT :l OFFSET :o", $p + ['l' => $perPage, 'o' => ($page - 1) * $perPage]);
+        return ['rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => (int)ceil($total / $perPage)];
+    }
+
+    public static function adminStats(): array
+    {
+        $r = Db::one("SELECT COUNT(*) AS total, SUM(locked_at IS NOT NULL) AS locked,
+                             SUM(last_login_at >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS active30 FROM customer_accounts");
+        return array_map('intval', $r ?: []);
+    }
+
+    public static function find(int $accountId): array
+    {
+        $a = Db::one('SELECT * FROM customer_accounts WHERE id = :id', ['id' => $accountId]);
+        if (!$a) throw ApiError::notFound('Không tìm thấy tài khoản khách (có thể đã bị xóa).');
+        return $a;
+    }
+
+    /** Khóa đăng nhập: chặn đăng nhập mới và đăng xuất ngay mọi phiên đang mở. Mua hàng không cần tài khoản vẫn bình thường. */
+    public static function lock(int $accountId, string $reason): void
+    {
+        $reason = mb_substr(trim($reason), 0, 255);
+        if (mb_strlen($reason) < 3) throw ApiError::validation(['reason' => 'Ghi lý do khóa (VD: khách báo mất tài khoản Google)']);
+        Db::tx(function () use ($accountId, $reason) {
+            $a = Db::one('SELECT locked_at FROM customer_accounts WHERE id = :id FOR UPDATE', ['id' => $accountId]);
+            if (!$a) throw ApiError::notFound('Không tìm thấy tài khoản khách.');
+            if ($a['locked_at'] !== null) throw new ApiError('ALREADY_LOCKED', 'Tài khoản đã đang khóa.', 409);
+            Db::exec('UPDATE customer_accounts SET locked_at = :t, locked_reason = :r, session_version = session_version + 1, updated_at = :u WHERE id = :id',
+                ['t' => Clock::nowDb(), 'r' => $reason, 'u' => Clock::nowDb(), 'id' => $accountId]);
+        });
+        Audit::log('account.locked', 'customer_account', (string)$accountId, ['locked' => false], ['locked' => true], $reason);
+    }
+
+    public static function unlock(int $accountId): void
+    {
+        $a = self::find($accountId);
+        if ($a['locked_at'] === null) throw new ApiError('NOT_LOCKED', 'Tài khoản không bị khóa.', 409);
+        Db::update('customer_accounts', ['locked_at' => null, 'locked_reason' => null, 'updated_at' => Clock::nowDb()], 'id = :id', ['id' => $accountId]);
+        Audit::log('account.unlocked', 'customer_account', (string)$accountId, ['locked' => true, 'reason' => $a['locked_reason']], ['locked' => false]);
+    }
+
+    /** Buộc đăng xuất trên mọi thiết bị (khách vẫn đăng nhập lại được). */
+    public static function revokeSessions(int $accountId): void
+    {
+        self::find($accountId);
+        Db::exec('UPDATE customer_accounts SET session_version = session_version + 1, updated_at = :u WHERE id = :id', ['u' => Clock::nowDb(), 'id' => $accountId]);
+        Audit::log('account.sessions_revoked', 'customer_account', (string)$accountId);
+    }
+
+    /**
+     * Gỡ một cách đăng nhập (VD: khách mất tài khoản Facebook). Không gỡ cách đăng nhập cuối cùng —
+     * khi đó dùng Xóa tài khoản. Phiên đang mở bị đăng xuất để phiên tạo bằng danh tính vừa gỡ không còn dùng được.
+     */
+    public static function unlinkIdentity(int $accountId, int $identityId): void
+    {
+        $ident = Db::tx(function () use ($accountId, $identityId) {
+            $rows = Db::all('SELECT id, provider, email FROM account_identities WHERE account_id = :a FOR UPDATE', ['a' => $accountId]);
+            $ident = array_values(array_filter($rows, fn($r) => (int)$r['id'] === $identityId))[0] ?? null;
+            if (!$ident) throw ApiError::notFound('Cách đăng nhập này không thuộc tài khoản.');
+            if (count($rows) <= 1) throw new ApiError('LAST_IDENTITY', 'Đây là cách đăng nhập duy nhất của tài khoản. Muốn ngừng hẳn, hãy khóa hoặc xóa tài khoản.', 409);
+            Db::exec('DELETE FROM account_identities WHERE id = :id', ['id' => $identityId]);
+            Db::exec('UPDATE customer_accounts SET session_version = session_version + 1, updated_at = :u WHERE id = :a', ['u' => Clock::nowDb(), 'a' => $accountId]);
+            return $ident;
+        });
+        Audit::log('account.identity_unlinked', 'customer_account', (string)$accountId, ['provider' => $ident['provider'], 'identity_id' => (int)$ident['id']], null);
+    }
+
+    /** Lịch sử thao tác liên quan tới tài khoản (đăng nhập không ghi nhật ký — chỉ lưu thời điểm gần nhất). */
+    public static function history(int $accountId, int $limit = 30): array
+    {
+        return Db::all("SELECT a.action, a.note, a.actor_type, a.created_at, u.full_name FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
+                         WHERE a.entity_type = 'customer_account' AND a.entity_id = :id ORDER BY a.id DESC LIMIT :l", ['id' => (string)$accountId, 'l' => $limit]);
     }
 }

@@ -23,6 +23,7 @@ final class Auth
         'content.publish'    => 'Duyệt và xuất bản/gỡ nội dung',
         'crosssell.review'   => 'Duyệt gợi ý mua kèm',
         'care.view'          => 'Xem danh sách chăm sóc lại',
+        'accounts.manage'    => 'Quản lý tài khoản đăng nhập của khách (xem, khóa, buộc đăng xuất, gỡ liên kết, xóa)',
         'users.manage'       => 'Quản lý tài khoản và phân quyền',
         'settings.manage'    => 'Cấu hình hệ thống, khóa API',
         'audit.view'         => 'Xem nhật ký thao tác và giám sát',
@@ -117,6 +118,15 @@ final class Auth
         self::$loaded = false;
         Audit::log('login', 'user', (string)$u['id']);
         return true;
+    }
+
+    /** Mở khóa tài khoản nhân viên bị tạm khóa do nhập sai mật khẩu (Quản trị → Tài khoản nhân viên). */
+    public static function unlock(int $userId): void
+    {
+        $u = Db::one('SELECT failed_logins, locked_until FROM users WHERE id = :id', ['id' => $userId]);
+        if (!$u) throw ApiError::notFound();
+        Db::update('users', ['failed_logins' => 0, 'locked_until' => null, 'updated_at' => Clock::nowDb()], 'id = :id', ['id' => $userId]);
+        Audit::log('user.unlock', 'user', (string)$userId, ['failed_logins' => (int)$u['failed_logins'], 'locked_until' => $u['locked_until']], ['failed_logins' => 0]);
     }
 
     public static function logout(): void

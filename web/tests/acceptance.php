@@ -513,6 +513,86 @@ check('EX-08', 'Đăng nhập tùy chọn Google/Facebook: xác thực state/non
     return 'state dùng một lần, nonce/PKCE/hạn/issuer, appsecret_proof; email chưa xác minh không gộp; đơn khách lẻ không lộ; xóa theo yêu cầu Facebook có mã tra cứu';
 });
 
+check('EX-09', 'Quản trị tài khoản khách: phân quyền, tìm kiếm, khóa/mở khóa, buộc đăng xuất, gỡ liên kết, xóa thay khách; mở khóa nhân viên', function () {
+    $A = \App\Domain\CustomerAccountService::class;
+    $C = \App\Http\Admin\CustomerAccountController::class;
+    $prof = fn(string $prov, string $uid, ?string $email, bool $ver = true, string $name = 'Trần Minh') => ['provider' => $prov, 'uid' => $uid, 'email' => $email, 'email_verified' => $ver, 'name' => $name];
+    unset($_SESSION['acct_id'], $_SESSION['acct_ver']);
+    $acc = $A::loginWithProfile($prof('google', 'g-ad-1', 'minh.tran@gmail.com'));
+    ok($A::loginWithProfile($prof('facebook', 'fb-ad-1', 'minh.tran@gmail.com')) === $acc && count($A::identities($acc)) === 2, 'tài khoản có 2 cách đăng nhập');
+    Db::update('customer_accounts', ['ship_phone' => '0909111222'], 'id = :id', ['id' => $acc]);
+    $xss = $A::loginWithProfile($prof('facebook', 'fb-ad-xss', null, false, '<script>alert(1)</script>'));
+
+    // Phân quyền: máy chủ chặn vai trò không có accounts.manage
+    t_user('operations');
+    expect_error('FORBIDDEN', fn() => (new $C())->index());
+    expect_error('FORBIDDEN', fn() => (new $C())->show((string)$acc));
+    $adm = t_user('admin');
+    $_GET = ['q' => '0909 111 222'];
+    $html = (new $C())->index();
+    ok(str_contains($html, 'Trần Minh') && str_contains($html, '090****222') && !str_contains($html, '0909111222'), 'tìm theo SĐT giao hàng; danh sách che SĐT');
+    $_GET = ['provider' => 'facebook'];
+    $html = (new $C())->index();
+    ok(str_contains($html, '&lt;script&gt;alert(1)') && !str_contains($html, '<script>alert(1)'), 'tên từ nhà cung cấp được mã hóa HTML');
+    $_GET = [];
+    $html = (new $C())->show((string)$acc);
+    ok(str_contains($html, 'Cách đăng nhập đã liên kết') && substr_count($html, 'Gỡ liên kết') === 2 && str_contains($html, 'Đã xác minh'), 'trang chi tiết: danh tính, trạng thái xác minh email, nút gỡ');
+    expect_error('NOT_FOUND', fn() => (new $C())->show('999999'));
+
+    // Khóa: phiên đang mở mất hiệu lực; không đăng nhập lại được, kể cả bằng nhà cung cấp mới cùng email đã xác minh
+    $A::startSession($acc);
+    ok(($A::current()['id'] ?? null) === $acc, 'khách đang đăng nhập');
+    expect_error('VALIDATION_ERROR', fn() => $A::lock($acc, ' '));
+    $A::lock($acc, 'Khách báo mất điện thoại');
+    ok($A::current() === null, 'khóa → phiên đang mở bị đăng xuất');
+    expect_error('ACCOUNT_LOCKED', fn() => $A::loginWithProfile($prof('google', 'g-ad-1', 'minh.tran@gmail.com')));
+    expect_error('ACCOUNT_LOCKED', fn() => $A::loginWithProfile($prof('google', 'g-ad-new', 'minh.tran@gmail.com')));
+    ok(count($A::identities($acc)) === 2, 'không "lách" khóa bằng tài khoản Google khác cùng email (danh tính mới bị hoàn tác)');
+    expect_error('ALREADY_LOCKED', fn() => $A::lock($acc, 'lần hai'));
+    ok((int)Db::val("SELECT user_id FROM audit_logs WHERE action = 'account.locked' AND entity_id = :a", ['a' => (string)$acc]) === $adm, 'nhật ký ghi người khóa');
+    ok(str_contains((new $C())->show((string)$acc), 'Khách báo mất điện thoại'), 'trang chi tiết hiện lý do khóa');
+    $A::unlock($acc);
+    expect_error('NOT_LOCKED', fn() => $A::unlock($acc));
+    ok($A::loginWithProfile($prof('google', 'g-ad-1', 'minh.tran@gmail.com')) === $acc, 'mở khóa → đăng nhập lại được');
+
+    // Buộc đăng xuất: phiên cũ hết hiệu lực, và phiên cũ KHÔNG dùng được để liên kết thêm nhà cung cấp
+    $A::startSession($acc);
+    $A::revokeSessions($acc);
+    $_SESSION['acct_id'] = $acc; // giả lập trình duyệt cũ vẫn giữ cookie phiên
+    $stranger = $A::loginWithProfile($prof('google', 'g-ad-stranger', null, false, 'Người lạ'));
+    ok($stranger !== $acc && count($A::identities($acc)) === 2, 'phiên đã bị buộc đăng xuất không liên kết được danh tính lạ');
+    $A::startSession($acc);
+    ok(($A::current()['id'] ?? null) === $acc, 'đăng nhập lại sau khi buộc đăng xuất');
+
+    // Gỡ liên kết: chỉ danh tính của tài khoản; không gỡ cách đăng nhập cuối cùng
+    $ids = array_column($A::identities($acc), 'id', 'provider');
+    expect_error('NOT_FOUND', fn() => $A::unlinkIdentity($acc, (int)Db::val("SELECT id FROM account_identities WHERE provider_uid = 'fb-ad-xss'")));
+    $A::unlinkIdentity($acc, (int)$ids['facebook']);
+    ok(array_column($A::identities($acc), 'provider') === ['google'] && $A::current() === null, 'gỡ Facebook, phiên đang mở bị đăng xuất');
+    expect_error('LAST_IDENTITY', fn() => $A::unlinkIdentity($acc, (int)$ids['google']));
+    ok($A::loginWithProfile($prof('facebook', 'fb-ad-1', 'minh.tran@gmail.com')) === $acc, 'khách đăng nhập lại bằng Facebook cùng email đã xác minh → liên kết lại');
+
+    // Xóa thay khách: bắt buộc lý do + xác nhận; có mã tra cứu, nhật ký ghi nhân viên
+    $_POST = ['delete_reason' => '', 'confirm' => ''];
+    $e = expect_error('VALIDATION_ERROR', fn() => (new $C())->delete((string)$acc));
+    ok(isset($e->data['fields']['delete_reason'], $e->data['fields']['confirm']), 'thiếu lý do / ô xác nhận bị từ chối');
+    $_POST = [];
+    $code = $A::delete($acc, 'admin', 'Khách gọi hotline 26/11');
+    ok(!Db::val('SELECT 1 FROM customer_accounts WHERE id = :a', ['a' => $acc]) && Db::val('SELECT source FROM account_deletions WHERE confirmation_code = :c', ['c' => $code]) === 'admin', 'xóa tài khoản, mã tra cứu nguồn "admin"');
+    ok((int)Db::val("SELECT user_id FROM audit_logs WHERE action = 'account.deleted' AND entity_id = :a", ['a' => (string)$acc]) === $adm, 'nhật ký xóa ghi nhân viên thực hiện');
+
+    // Nhân viên bị tạm khóa do sai mật khẩu → quản trị viên mở khóa
+    $uid = t_user('warehouse');
+    Db::update('users', ['password_hash' => password_hash('Dung@123456', PASSWORD_DEFAULT)], 'id = :id', ['id' => $uid]);
+    for ($i = 0; $i < 5; $i++) \App\Core\Auth::attempt('test_warehouse@xuong.local', 'sai-mat-khau');
+    ok(!\App\Core\Auth::attempt('test_warehouse@xuong.local', 'Dung@123456'), 'sai 5 lần → tạm khóa, mật khẩu đúng cũng bị từ chối');
+    t_user('admin');
+    ok(str_contains((new \App\Http\Admin\SystemController())->users(), 'Tạm khóa do sai mật khẩu'), 'trang Tài khoản nhân viên hiện trạng thái tạm khóa');
+    \App\Core\Auth::unlock($uid);
+    ok(\App\Core\Auth::attempt('test_warehouse@xuong.local', 'Dung@123456'), 'mở khóa → đăng nhập được ngay');
+    return 'quyền accounts.manage; khóa chặn cả nhà cung cấp mới cùng email; phiên cũ bị vô hiệu và không liên kết được; không gỡ cách đăng nhập cuối; xóa có mã + nhật ký';
+});
+
 check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử dụng: có sẵn, chèn cấu hình an toàn, không ghi đè trang đã sửa', function () {
     ok((int)Db::val("SELECT COUNT(*) FROM schema_migrations WHERE version = '004_legal_pages'") === 1, 'migration PHP 004 đã chạy');
     foreach (['bao-mat' => 'Chính sách bảo mật thông tin', 'dieu-khoan-su-dung' => 'Điều khoản sử dụng'] as $slug => $title) {
