@@ -8,7 +8,10 @@
 > - **Claude + ChatGPT**;
 > - **Telegram** là kênh của Owner;
 > - **AI tự xuất bản** FAQ và blog, có 5 lớp chặn;
-> - chi phí tính theo **bảng giá thật** và trần 50 USD.
+> - chi phí tính theo **bảng giá thật**, trần **50 USD/tháng**;
+> - máy: i5-11400F, **RX 560, 16 GB RAM**, nên không chạy LLM cục bộ;
+> - **lịch đăng bài theo giờ vàng**, tăng dần số bài (ADR-16);
+> - Owner **tự cài đặt Telegram trong dashboard** (ADR-15).
 > Tài liệu gốc: `docs/SRS-v1.0.md`. Các tài liệu đi kèm: `BRAIN_SPEC.md`, `AGENT_DESIGN.md`, `DATABASE_SCHEMA.md`, `SECURITY_PLAN.md`, `TEST_PLAN.md`, `IMPLEMENTATION_PLAN.md`, `QUESTIONS_FOR_OWNER.md`.
 
 ## 1. Bối cảnh và ràng buộc thực tế
@@ -18,10 +21,10 @@ SRS mô tả nền tảng ở dạng tổng quát. Phần thiết kế này gắ
 | Thực tế | Hệ quả cho kiến trúc |
 |---|---|
 | Website bán hàng (repo `moctam-shop`, PHP 8 + MySQL trên **Hostinger shared hosting**) là nơi giữ dữ liệu chính thức về sản phẩm, giá, kho, đơn, khách | Nền tảng **không ghi thẳng vào CSDL website**. Mọi trao đổi đi qua API có phạm vi quyền (đã có `/api/sync/events`, `snapshot`, `catalog`, `feedback`, `drafts`) |
-| Shared hosting không chạy được Docker, Postgres hay worker nền | Owner chọn chạy trên **máy cá nhân Windows 11** (i5-11400F, 6 nhân 12 luồng; card đồ họa và RAM chưa rõ). Xem §6 và ADR-01 |
+| Shared hosting không chạy được Docker, Postgres hay worker nền | Owner chọn chạy trên **máy cá nhân Windows 11**: i5-11400F (6 nhân 12 luồng), **AMD Radeon RX 560**, **16 GB RAM**. Mọi LLM chạy trên đám mây; cả hệ thống phải gọn trong khoảng 6 GB RAM (§6, ADR-01) |
 | Owner muốn AI **tự xuất bản** và **báo qua Telegram** | Website thêm API xuất bản/gỡ bài dùng khóa riêng (ADR-16). Telegram là kênh điều hành chính của Owner (ADR-15) |
 | Đã có dịch vụ AI cục bộ `ai/` và bộ não "Trưởng văn phòng" (PR #5). Hai thứ này đã chứng minh được: học từ duyệt/sửa/từ chối, nội quy, chỉ cho phép bản nháp, không nhận dữ liệu cá nhân | Đây là **thiết kế tham chiếu** được đưa sang nền tảng mới (BRAIN_SPEC §10). Dịch vụ cũ vẫn chạy cho tới khi nền tảng mới qua nghiệm thu |
-| Quy mô kinh doanh nhỏ; trần LLM **50 USD** (đang hiểu là mỗi tháng, chờ xác nhận Q-B1a) | Chi phí LLM là chi phí vận hành lớn nhất. Phải có ngân sách theo agent, theo ngày, theo nhiệm vụ ngay từ Sprint 1, và định tuyến phần lớn việc sang model rẻ (§8) |
+| Quy mô kinh doanh nhỏ; trần LLM **50 USD/tháng** (Owner xác nhận) | Chi phí LLM là chi phí vận hành lớn nhất. Phải có ngân sách theo agent, theo ngày, theo nhiệm vụ ngay từ Sprint 1, và định tuyến phần lớn việc sang model rẻ (§8) |
 | Owner quyết định **bỏ qua phần pháp lý** (26/11/2026) | Không có bước rà soát pháp lý trong kế hoạch. Vẫn giữ: dữ liệu khách **ẩn danh mặc định**; **Content Gate** chống đăng thông tin sai về sản phẩm; không thu thập dữ liệu tự động trái điều khoản nền tảng (để tránh bị khóa tài khoản) (SECURITY_PLAN §6) |
 
 ## 2. Nguyên tắc kiến trúc
@@ -64,7 +67,7 @@ flowchart TB
     RD[(Redis/Valkey)]
     OBJ[(Lưu tệp<br/>thư mục cục bộ, giao diện S3)]
     WK[Workers Dramatiq<br/>hàng đợi theo agent]
-    GPU[LLM cục bộ trên card rời<br/>tùy chọn, chờ Q-T3a]
+    CFG[Cài đặt trong dashboard<br/>Telegram · lịch đăng bài · ngân sách]
   end
 
   subgraph Ext["Bên ngoài"]
@@ -87,7 +90,7 @@ flowchart TB
   TGG --> POL
   TGG --> TASK
   MGW --> LLM
-  MGW -.-> GPU
+  UI --> CFG --> TGG
   SCH --> TASK
   TASK & MEM & BUS & POL & EVAL & LEARN & ORCH --- PG
   WK --- RD
@@ -168,13 +171,25 @@ Owner chọn chạy toàn bộ trên máy cá nhân (Q-A2, Q-A3). Đây cũng l�
 | Postgres 16/17 + pgvector, Redis/Valkey | Container Linux trong Docker Desktop (backend WSL2), dữ liệu nằm trên **volume WSL2** (nhanh hơn ổ Windows mount vào) |
 | API, worker, scheduler, Telegram Gateway | Container Python |
 | Dashboard Next.js | Container Node; mở `http://localhost:3000` trên máy. Xem từ xa là tùy chọn (Tailscale) |
-| LLM cục bộ (tùy chọn) | Ollama cho Windows dùng card rời, **chỉ khi Q-T3a cho thấy đủ VRAM** |
+| LLM cục bộ | **Không dùng.** Card RX 560 (kiến trúc Polaris, 2–4 GB VRAM) không nằm trong danh sách GPU AMD mà Ollama hỗ trợ qua ROCm. Đường Vulkan còn thử nghiệm, và VRAM quá nhỏ để có ích. Embedding dùng API OpenAI (rẻ, không tốn RAM máy) |
 | Lưu tệp (ảnh, video, tài liệu) | Thư mục trên ổ D: hoặc volume, qua giao diện S3 (ADR-10) |
 
-**Yêu cầu máy dự kiến:**
-- **RAM:** tối thiểu 16 GB, khuyến nghị 32 GB. Docker Desktop mặc định lấy tối đa 50% RAM cho WSL2.
+**Máy của Owner: i5-11400F, RX 560, 16 GB RAM. Ngân sách RAM (bắt buộc):**
+
+| Thành phần | RAM tối đa |
+|---|---|
+| Windows 11 + trình duyệt + phần mềm khác của Owner | ~8 GB (không đụng tới) |
+| WSL2 (đặt trong `.wslconfig`: `memory=6GB`, `swap=4GB`) | **6 GB** cho cả hệ thống |
+| ↳ Postgres + pgvector (`shared_buffers=512MB`) | ~1 GB |
+| ↳ Redis/Valkey | ~150 MB |
+| ↳ API + 2 worker + scheduler + Telegram (Python, LangGraph) | ~2 GB |
+| ↳ Dashboard Next.js (bản build production, không chạy dev server) | ~400 MB |
+| ↳ Dự phòng | ~2 GB |
+
+- Số worker mặc định là 2. Mỗi worker chạy nhiều agent theo kiểu async: agent chủ yếu chờ API, nên 2 worker đủ cho 15 agent.
+- **Nâng RAM lên 32 GB** là việc nên làm khi vượt 15 agent, hoặc khi Owner hay mở nhiều phần mềm nặng cùng lúc. Chi phí thấp và hiệu quả hơn mọi tối ưu khác.
 - **Ổ đĩa:** SSD còn trống ≥ 100 GB.
-- **CPU:** i5-11400F 6 nhân 12 luồng là đủ cho 15 agent, vì phần lớn thời gian các agent chờ API trả lời, không tính toán.
+- **CPU:** i5-11400F đủ cho 15 agent.
 
 **Vì máy cá nhân có thể tắt, ngủ hoặc tự khởi động lại để cập nhật Windows:**
 - Docker Desktop đặt "Start when you sign in"; container `restart: unless-stopped`; Windows tự đăng nhập hoặc chạy Docker như dịch vụ.
@@ -195,7 +210,7 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 
 ### ADR-01 (v0.2). Chạy trên máy cá nhân Windows 11 bằng Docker Desktop (WSL2)
 - **Lý do:** Owner quyết định (Q-A2, Q-A3). Không tốn tiền thuê máy chủ; dữ liệu nằm trong nhà.
-- **Ưu:** không có chi phí hạ tầng; dùng được card đồ họa sẵn có; không cần mở cổng vào mạng nhà.
+- **Ưu:** không có chi phí hạ tầng; không cần mở cổng vào mạng nhà.
 - **Nhược:**
   - máy tắt, ngủ hoặc cập nhật Windows thì các agent dừng (website không bị ảnh hưởng);
   - phải tự lo sao lưu ngoài máy;
@@ -263,7 +278,7 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
   | `reasoning_high` | Claude Opus 5.5 | Chiến lược tuần của AI CEO; chỉ khi ngân sách cho phép |
   | `fallback` | OpenAI GPT-5.4 mini | Khi Claude lỗi hoặc chạm giới hạn tần suất |
   | `judge` | OpenAI (họ khác với model đã viết) | LLM-judge trong Evaluation Service (BRAIN_SPEC §8) |
-  | `embed_vi` | Embedding của OpenAI, hoặc model nhỏ chạy trên CPU/card rời | Truy hồi trí nhớ (Anthropic không cung cấp API embedding riêng) |
+  | `embed_vi` | Embedding của OpenAI | Truy hồi trí nhớ. Anthropic không cung cấp API embedding riêng; card RX 560 không chạy được model cục bộ |
 
 ### ADR-07. Frontend Next.js (App Router) + TypeScript + Tailwind; realtime bằng SSE
 - **Lý do:** đúng SRS. Realtime chỉ cần một chiều (máy chủ → trình duyệt), nên SSE đơn giản hơn WebSocket và đi qua proxy dễ hơn.
@@ -300,7 +315,7 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 - **Lý do:** tiếng Việt có/không dấu, viết tắt ("sp", "ship", "cf"). Repo hiện có `textnorm.fold`/BM25 đã hiệu chỉnh và khớp giữa PHP và Python. Postgres không có bộ tách từ tiếng Việt.
 - **Thiết kế:**
   - Tìm từ khóa: cột `search_text` đã bỏ dấu + `tsvector` cấu hình `simple` + `pg_trgm`.
-  - Tìm vector: embedding đa ngôn ngữ, chạy cục bộ trên GPU nếu có (vd họ BGE-M3), dự phòng bằng embedding đám mây.
+  - Tìm vector: embedding đa ngôn ngữ qua API OpenAI (v0.2: card RX 560 không chạy được model cục bộ). Nếu sau này có card mạnh hơn, chuyển sang model chạy cục bộ (vd họ BGE-M3) chỉ bằng cấu hình.
   - Ghép thứ hạng bằng Reciprocal Rank Fusion, rồi nhân trọng số thời gian, độ tin cậy và trạng thái xác minh.
 - **Mở rộng:** đổi model embedding → job nhúng lại theo lô. Mỗi vector lưu `embedding_model_id` nên chạy song song được hai model trong lúc chuyển.
 
@@ -327,6 +342,13 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
   | Duyệt | Việc rủi ro thấp/trung bình: **[Duyệt] [Từ chối] [Góp ý]**. Việc rủi ro cao chỉ có link mở dashboard (SECURITY_PLAN §3.2) |
   | Lệnh | `/chiphi`, `/tamdung <agent|all>`, `/tieptuc`, `/viecchoduyet` |
 
+- **Owner tự cài đặt trong dashboard** (Q-TG1, *Cài đặt → Telegram*):
+  1. Dán **token bot** (đã tạo qua @BotFather). Hệ thống gọi `getMe` để kiểm tra, rồi lưu mã hóa. Sau đó chỉ hiển thị 4 ký tự cuối.
+  2. Bấm **"Kết nối điện thoại"**: dashboard hiện mã 6 số, hiệu lực 10 phút. Owner nhắn `/ketnoi 123456` cho bot. Chat đó được thêm vào danh sách. Thêm nhân viên hay nhóm chat theo cùng cách, mỗi chat có vai trò riêng (nhận báo cáo, hay được bấm duyệt).
+  3. Bật/tắt từng loại tin: bài mới, báo cáo 18:00, cảnh báo, duyệt. Đặt **giờ yên lặng** (mặc định 22:00–7:00, chỉ cảnh báo khẩn mới gửi).
+  4. Nút **"Gửi thử"**; nút **"Đổi token"** khi bot bị lộ.
+
+  Đổi token hoặc thêm chat được quyền duyệt là thao tác rủi ro cao: phải nhập lại mật khẩu + mã 2FA, và có ghi audit.
 - **Bảo mật:**
   - chỉ chấp nhận tin từ **chat ID đã đăng ký**;
   - mỗi nút mang dữ liệu đã ký HMAC, có hạn dùng và digest nội dung;
@@ -341,8 +363,27 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
   1. **Content Gate** (SECURITY_PLAN §6.3): trượt kiểm tra tất định (công dụng chữa bệnh, giá, khuyến mãi, so sánh đối thủ…) thì *không bao giờ* tự xuất bản.
   2. **Review của Marketing Director** theo rubric. Đây là review của agent khác, không phải agent viết bài tự chấm.
   3. **Chủ đề chỉ người duyệt** (sức khỏe, dị ứng, giá, khuyến mãi; cấu hình được) thì thành `interrupt()` chờ Owner bấm Duyệt trên Telegram.
-  4. **Hạn mức**: mặc định tối đa 1 blog + 3 FAQ/ngày, chỉ trong 8:00–21:00 (Q-A1a). Cách này cũng tránh vi phạm chính sách chống nội dung hàng loạt của Google.
+  4. **Lịch đăng và hạn mức** theo giờ vàng, tăng dần số bài (xem *Lịch đăng bài* bên dưới). Cách này cũng tránh vi phạm chính sách chống nội dung hàng loạt của Google.
   5. **Website kiểm tra lần cuối** ở phía máy chủ: khóa `content:publish`, chỉ áp cho nội dung AI tạo, bộ lọc HTML danh sách trắng (đã có), `info_version` còn đúng, và hạn mức ngày đếm ở website (máy cá nhân có lỗi cũng không vượt được).
+- **Lịch đăng bài (Owner giao Claude chỉ định, Q-A1a):**
+
+  *Giờ vàng ban đầu* lấy theo thói quen online phổ biến ở Việt Nam: sáng 7:00–9:00, trưa 11:00–13:00, tối 19:00–22:00. Sau 4 tuần, Data Analyst **tính lại giờ vàng riêng của xưởng** từ dữ liệu thật: giờ đặt đơn trên website (đã có qua đồng bộ), cộng lượt truy cập theo giờ khi có GA4. Lịch tự điều chỉnh trong khung 7:00–21:30 và báo Owner qua Telegram.
+
+  | Giai đoạn | Blog | FAQ | Điều kiện lên giai đoạn sau |
+  |---|---|---|---|
+  | 1. Thử (2 tuần đầu) | 2 bài/tuần: **Thứ Ba và Thứ Bảy, 19:30** | 1 bài/ngày, **11:30** | Không bài nào bị gỡ vì sai thông tin; tỉ lệ gỡ < 10% |
+  | 2. Ổn định (tuần 3–6) | 3 bài/tuần: **Thứ Ba, Thứ Năm, Thứ Bảy, 19:30** | Tối đa 2 bài/ngày: **7:30, 11:30** | Như trên, tính trên 4 tuần |
+  | 3. Đầy đủ (sau tuần 6) | Tối đa 1 bài/ngày, **19:30** | Tối đa 3 bài/ngày: **7:30, 11:30, 17:30** | Owner có thể nới thêm trong dashboard |
+
+  Quy tắc kèm theo:
+  - **Blog đăng tối** vì đó là lúc người đọc có thời gian đọc bài dài; sau này bài sẽ được chia sẻ lên Facebook đúng giờ này.
+  - **FAQ đăng trưa và sáng**, vì FAQ trả lời câu hỏi khách vừa hỏi, nên đăng sớm.
+  - Không đăng sau 21:30 hay trước 7:00, để Owner kịp thấy link và gỡ nếu cần.
+  - Hai bài cách nhau ít nhất 3 giờ.
+  - Bài soạn xong sớm vào **hàng chờ xuất bản**. **Ngay trước giờ đăng**, Content Gate chạy lại để đối chiếu giá và tồn với website mới nhất.
+  - **Tự lùi giai đoạn:** Owner gỡ ≥ 2 bài trong 7 ngày thì lùi một giai đoạn và báo Telegram.
+  - Ngày nghỉ (Tết…) và lệnh `/tamdung xuatban` dừng hàng chờ.
+  - Owner sửa lịch trong *Cài đặt → Lịch đăng bài*. Lịch là cấu hình, không hardcode (SRS §14).
 - **Sau khi xuất bản:** Telegram gửi link + nút **Gỡ bài** (gọi `unpublish` ngay; bản đã gỡ vẫn lưu để xem lại). Mọi lần xuất bản và gỡ đều ghi audit ở cả hai phía.
 - **Thay đổi phía website:**
   - API `POST /api/sync/publish`, `POST /api/sync/unpublish`;
@@ -390,9 +431,12 @@ Cách tính phương án B:
 - Bài sẽ xuất bản (4 bài × 10K vào/3K ra) ≈ 0,2 USD.
 - Phần còn lại qua Haiku ≈ 0,2 USD.
 
-**Đề xuất:**
-- Nếu trần là **50 USD/tháng**: bắt đầu bằng **phương án B**, kèm trần ngày 1,67 USD. Một ngày được tiêu tới 3 USD nếu tháng còn dư. Đạt 80% thì Telegram cảnh báo; đạt 100% thì chỉ còn việc khẩn chạy, và chạy bằng Haiku.
-- Nếu trần là **50 USD/ngày**: phương án A, cộng Opus cho kế hoạch tuần của CEO, vẫn còn dư cho tạo ảnh/video.
+**Quyết định (Owner xác nhận 50 USD/tháng):** chạy **phương án B**, kèm trần ngày 1,67 USD. Một ngày được tiêu tới 3 USD nếu tháng còn dư.
+- Đạt 80% trần tháng: Telegram cảnh báo.
+- Đạt 100%: chỉ việc khẩn được chạy, và chạy bằng Haiku.
+- Opus 5.5 không dùng mặc định. Owner bật được cho kế hoạch tuần của CEO nếu tháng còn dư.
+- Embedding qua OpenAI tốn không đáng kể so với trần.
+- Lịch đăng bài ở giai đoạn 1–2 tốn ít hơn mức ước tính, nên có chỗ dư cho việc học tập ban đêm (Batch API, rẻ hơn 50%).
 - **Ảnh và video tính riêng.** Ví dụ video Sora 2 khoảng 0,10 USD/giây theo bảng giá OpenAI, tức một video 30 giây khoảng 3 USD. Với 50 USD/tháng, Creative Agent chỉ nên làm ảnh và kịch bản video; dựng video thật cần ngân sách riêng (Q-I6).
 
 Các cách giảm chi phí đã có sẵn trong thiết kế:
@@ -430,4 +474,4 @@ Các cách giảm chi phí đã có sẵn trong thiết kế:
 | R9 | Máy cá nhân tắt, ngủ hoặc tự khởi động lại; ổ đĩa hỏng | Trung bình | Làm bù khi bật, checkpoint LangGraph, báo Telegram khi bật lại, sao lưu ngoài máy hằng ngày (§6) |
 | R10 | Bài tự xuất bản sai sự thật hoặc vi phạm quảng cáo | Cao | 5 lớp chặn + hạn mức thấp + nút Gỡ bài (ADR-16) |
 | R11 | Lộ token bot Telegram, hoặc người lạ bấm nút | Trung bình | Danh sách chat ID, nút ký HMAC có hạn, việc rủi ro cao không duyệt qua Telegram (ADR-15) |
-| R12 | Trần 50 USD bị hiểu sai (ngày hay tháng) | Trung bình | Q-B1a; mặc định theo cách hiểu thấp hơn |
+| R12 | 16 GB RAM chật khi Owner mở nhiều phần mềm cùng lúc | Trung bình | Giới hạn WSL2 6 GB, 2 worker, cảnh báo Telegram khi bộ nhớ thiếu; khuyến nghị nâng 32 GB (§6) |

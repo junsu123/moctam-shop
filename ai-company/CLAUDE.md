@@ -52,5 +52,6 @@ Owner chưa duyệt kiến trúc (SRS §21, bước 5). Trước khi Owner ghi r
 - Tài liệu, giao diện và thông báo lỗi cho người dùng viết bằng **tiếng Việt**. Mã nguồn, tên biến và commit message có thể dùng tiếng Anh. Tài liệu hiện có viết tiếng Việt thì giữ tiếng Việt.
 - Thời gian lưu UTC, hiển thị Asia/Ho_Chi_Minh. Tiền VND dùng số nguyên.
 - Máy chạy là **Windows 11 + Docker Desktop (WSL2)**. Mọi dịch vụ chạy trong container Linux. Script cài đặt hoặc vận hành cho Owner viết bằng PowerShell; script trong container viết bằng bash. Đường dẫn trong mã không được giả định dấu phân cách của Windows.
-- Telegram là kênh của Owner: không gửi dữ liệu cá nhân khách, giá vốn hay secret qua Telegram.
+- Máy Owner: i5-11400F, RX 560, **16 GB RAM**. Cả hệ thống phải chạy trong **6 GB** (WSL2): 2 worker, không LLM cục bộ, dashboard chạy bản build production. Thêm dịch vụ mới thì phải ghi rõ RAM nó dùng.
+- Telegram là kênh của Owner, cấu hình trong dashboard (token mã hóa, không để trong `.env`). Không gửi dữ liệu cá nhân khách, giá vốn hay secret qua Telegram.
 - Lệnh (sẽ có từ Sprint 0): `make test`, `make lint`, `docker compose up` (trên Windows: `docker compose up` trong PowerShell).

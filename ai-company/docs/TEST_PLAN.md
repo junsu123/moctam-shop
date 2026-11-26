@@ -57,6 +57,9 @@
 | IT-PUB-04 | Chủ đề chỉ-người-duyệt → `interrupt()`, không tự xuất bản; quá hạn không trả lời → hủy |
 | IT-PUB-05 | Bấm Gỡ bài → `unpublish` → bài biến mất khỏi website, `retracted` vào kênh học |
 | IT-TG-01…04 | Chat ID lạ bị bỏ qua; nút hết hạn hoặc dùng lần hai bị từ chối; chữ ký sai bị từ chối; tin nhắn đi ra không chứa SĐT/email/giá vốn (quét tự động) |
+| IT-TG-05 | Cài đặt trong dashboard: token sai thì `getMe` báo lỗi rõ; token đúng thì lưu mã hóa, chỉ hiện 4 ký tự cuối; mã `/ketnoi` đúng thì thêm chat, mã hết hạn hoặc dùng lại bị từ chối; đổi token khi thiếu 2FA bị chặn; giờ yên lặng chặn tin thường, không chặn cảnh báo khẩn |
+| IT-PUB-06 | Lịch đăng: chỉ đăng đúng khung giờ của giai đoạn hiện tại, không ngoài 7:00–21:30, cách nhau ≥ 3 giờ; giá đổi trên website sau khi soạn thì Content Gate chạy lại trước giờ đăng và chặn bài |
+| IT-PUB-07 | Lên/lùi giai đoạn: đủ điều kiện thì lên; Owner gỡ 2 bài trong 7 ngày thì lùi một giai đoạn và báo Telegram; ngày nghỉ và `/tamdung xuatban` giữ hàng chờ |
 | IT-WIN-01 | Tắt toàn bộ container 3 giờ (giả lập tắt máy) → bật lại → Scheduler làm bù các lịch bị lỡ (≤ 24 giờ), Telegram báo "máy đã tắt từ … đến …" |
 | IT-WIN-02 | Sao lưu ra thư mục ngoài → khôi phục trên CSDL mới → chạy tiếp được (bổ sung cho IT-BK-01) |
 | WEB-AT-09' | Ca nghiệm thu phía website (`web/tests/acceptance.php`), thay cho AT-09: khóa `drafts:write` không xuất bản được; khóa `content:publish` chỉ xuất bản được nội dung AI, trong hạn mức, có audit; `unpublish` hoạt động |
@@ -104,6 +107,7 @@ Kết quả lưu thành báo cáo `docs/KET-QUA-NGHIEM-THU-AI-COMPANY.md`, giố
 | PT-03 Truy hồi | 1 triệu bản ghi trí nhớ, 1 triệu vector: p95 truy hồi lai < 150 ms |
 | PT-04 API | p95 < 300 ms cho đọc dashboard với 20 người dùng đồng thời |
 | PT-05 Chi phí | Đếm chi phí khớp 100% với tổng tính lại từ `model_usage` |
+| PT-06 Bộ nhớ (v0.2) | Chạy PT-01 trong WSL2 giới hạn 6 GB: không container nào bị kill vì hết RAM; tổng RAM thực dùng ≤ 5 GB |
 
 ## 8. Ánh xạ tiêu chí nghiệm thu SRS §19 sang test
 

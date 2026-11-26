@@ -11,7 +11,10 @@
   - Claude + ChatGPT (ADR-06);
   - Telegram là kênh của Owner (ADR-15);
   - AI tự xuất bản FAQ/blog có 5 lớp chặn (ADR-16);
-  - trần LLM 50 USD (chờ xác nhận ngày hay tháng).
+  - trần LLM **50 USD/tháng** (phương án B);
+  - máy RX 560 + 16 GB RAM: không LLM cục bộ, hệ thống gọn trong 6 GB;
+  - lịch đăng bài theo giờ vàng, tăng dần 3 giai đoạn;
+  - Owner tự cài đặt Telegram trong dashboard.
 - **Vẫn đề xuất, chờ Owner duyệt:**
   1. Langfuse và n8n để giai đoạn sau (ADR-08, ADR-09).
   2. Đổi thứ tự Sprint: làm một **lát cắt dọc** chạy được đầu–cuối sớm (§2).
@@ -35,11 +38,11 @@ Kích thước tương đối: S ≈ 1 tuần, M ≈ 2 tuần, L ≈ 3 tuần (m
 
 | Sprint | Nội dung (giữ đủ mục SRS §20) | Kích thước | Tiêu chí thoát (đo được) | Cần Owner trước |
 |---|---|---|---|---|
-| **0. Quyết định và khung** | Owner duyệt thiết kế; CI (lint, type, test, quét secret); `CLAUDE.md`; mẫu PR có DoD; **hướng dẫn cài đặt trên Windows 11** (Docker Desktop/WSL2, tự khởi động, tắt chế độ ngủ, BitLocker, sao lưu) | S | CI xanh trên khung rỗng; `docker compose up` chạy được trên máy Owner; Owner đã trả lời các câu 🔴 | Q-B1a, Q-T3a, Q-TG1, Q-A2b |
-| **1. Foundation** | Backend FastAPI, frontend Next.js (khung + đăng nhập + i18n vi), Postgres + pgvector, Redis/Valkey, Docker Compose, Authentication + 2FA Owner, **Model Gateway** (adapter **Anthropic + OpenAI**, registry có giá thật, chi phí, trần ngày/tháng, che dữ liệu), log + OpenTelemetry, audit chuỗi băm, **Telegram Gateway bản thông báo** (cảnh báo chi phí, máy vừa bật lại) | L | UT-MGW-* đạt; gọi thật Claude và OpenAI qua gateway; IT-DB-01/03, IT-TG-01…04 đạt; Owner nhận tin Telegram đầu tiên | Q-TG1 |
+| **0. Quyết định và khung** | Owner duyệt thiết kế; CI (lint, type, test, quét secret); `CLAUDE.md`; mẫu PR có DoD; **hướng dẫn cài đặt trên Windows 11** (Docker Desktop/WSL2, `.wslconfig` giới hạn 6 GB, tự khởi động, tắt chế độ ngủ, BitLocker, sao lưu) | S | CI xanh trên khung rỗng; `docker compose up` chạy được trên máy Owner (16 GB RAM) | **Duyệt kiến trúc** |
+| **1. Foundation** | Backend FastAPI, frontend Next.js (khung + đăng nhập + i18n vi), Postgres + pgvector, Redis/Valkey, Docker Compose, Authentication + 2FA Owner, **Model Gateway** (adapter **Anthropic + OpenAI**, registry có giá thật, chi phí, trần ngày/tháng, che dữ liệu), log + OpenTelemetry, audit chuỗi băm, **Telegram Gateway bản thông báo** + **trang Cài đặt → Telegram** (dán token, kết nối bằng mã 6 số, loại tin, giờ yên lặng) | L | UT-MGW-* đạt; gọi thật Claude và OpenAI qua gateway; IT-DB-01/03, IT-TG-01…05 đạt; Owner tự cài bot và nhận tin Telegram đầu tiên | — |
 | **2. Agent Core** | Agent Registry, vòng đời, Brain Loader (bundle YAML, schema, hash, phiên bản, ghim), cấu hình agent, **Tool Registry + Tool Gateway**, **Policy Engine** (4 cấp, danh sách bắt buộc duyệt, hạn mức), `approvals` | L | UT-AG-*, UT-BRAIN-*, UT-POL-*, UT-TOOL-* đạt; tạm dừng/tiếp tục agent qua API | — |
 | **3. Memory System** | Private/dept/shared, episodic/semantic/procedural/working, RLS, truy hồi lai + chuẩn hóa tiếng Việt, embedding qua gateway (cục bộ/đám mây), `memory_access_log` | M | UT-MEM-*, IT-DB-02, IT-VEC-*, PT-03 đạt | Q-T3 (GPU) |
-| **4. Orchestration + lát cắt dọc** | **Đồ thị LangGraph** (checkpoint Postgres, `interrupt` + tiếp tục qua Telegram, job đối soát), AI CEO, 3 Director, Task Engine (9 trạng thái, lease, retry, phụ thuộc), Message Bus (outbox), cộng tác + giải quyết bất đồng; **SEO + Content Agent** chạy đầu–cuối với website moctam thật; **website thêm API `publish`/`unpublish` + sửa AT-09** (trong `web/`); **Content Gate**; **tự xuất bản + link Telegram + nút Gỡ bài**; Evaluation Service bản đầu (tất định + phản hồi người + OpenAI chấm chéo); **Claude soạn bản giọng văn thương hiệu** để Owner duyệt | L+ | IT-ORCH-01/02, IT-REC-*, IT-A2A-*, IT-LG-*, IT-PUB-*, WEB-AT-09' đạt; **AC-BRAIN-01 đạt cho SEO và Content**; số liệu chi phí thật cho 1 tuần chạy thử | Q-A1a, Q-B2 |
+| **4. Orchestration + lát cắt dọc** | **Đồ thị LangGraph** (checkpoint Postgres, `interrupt` + tiếp tục qua Telegram, job đối soát), AI CEO, 3 Director, Task Engine (9 trạng thái, lease, retry, phụ thuộc), Message Bus (outbox), cộng tác + giải quyết bất đồng; **SEO + Content Agent** chạy đầu–cuối với website moctam thật; **website thêm API `publish`/`unpublish` + sửa AT-09** (trong `web/`); **Content Gate**; **tự xuất bản theo lịch giờ vàng 3 giai đoạn** (hàng chờ xuất bản, chạy lại Content Gate trước giờ đăng, tự lùi giai đoạn) **+ link Telegram + nút Gỡ bài**; trang *Cài đặt → Lịch đăng bài*; Evaluation Service bản đầu (tất định + phản hồi người + OpenAI chấm chéo); **Claude soạn bản giọng văn thương hiệu** để Owner duyệt | L+ | IT-ORCH-01/02, IT-REC-*, IT-A2A-*, IT-LG-*, IT-PUB-01…07, WEB-AT-09' đạt; **AC-BRAIN-01 đạt cho SEO và Content**; số liệu chi phí thật cho 1 tuần chạy thử | Q-B2 |
 | **5. Learning Engine** | Research Collector, Knowledge Extractor (đọc cách ly), Validator (5 cửa), Memory Manager (gộp/tóm tắt), Experience Evaluator (thang bằng chứng), Learning Scheduler, Knowledge Version Manager, shadow brain | L | LT-01…08 đạt; một bài học L2 sinh ra từ dữ liệu thật có nhãn "tương quan" | — |
 | **6. Chuyên viên đợt 1** | SEO và Content (hoàn thiện), Social, Creative (+ **Claude thiết kế brand guidelines hình ảnh**: màu, font, logo, mẫu ảnh, dựa trên giao diện website hiện tại, Owner duyệt), Data Analyst (sandbox tính toán, schema phân tích) | L | AC-BRAIN-01 đạt cho 5 agent; ST-01…06 đạt với các agent đọc web; brand guidelines đã duyệt nằm trong shared knowledge | Q-I1, Q-I6 |
 | **7. Chuyên viên đợt 2** | Ads, Customer, Affiliate, Sales Intelligence, Web CRO, Automation | L | AC-BRAIN-01 đạt cho 15 agent; Content Gate chặn đúng bộ câu cấm; mỗi lead có `source_url` | Q-I2…I5 |
@@ -89,5 +92,5 @@ Phiên bản cụ thể được khóa ở Sprint 0. Giấy phép cần kiểm t
 ## 7. Việc Owner cần làm ngay
 
 1. Xem `DECISIONS.md`: kiểm tra mình đã hiểu đúng câu trả lời của Owner chưa.
-2. Trả lời 4 câu 🔴 mới ở `QUESTIONS_FOR_OWNER.md` §G: Q-B1a, Q-T3a, Q-A1a, Q-TG1.
+2. ~~Trả lời 4 câu 🔴 mới~~: đã trả lời đủ (lần 3, 21:53).
 3. Ghi **"duyệt kiến trúc"** (hoặc yêu cầu chỉnh). Khi duyệt, Sprint 0 bắt đầu.

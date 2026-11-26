@@ -90,7 +90,7 @@ Cột "Khả dụng" cho biết agent làm được gì **khi chưa có tích h�
 
 | | 13 Web CRO `web_cro_agent` | 14 Data Analyst `data_analyst` | 15 Automation `automation_agent` |
 |---|---|---|---|
-| Việc chính | Phân tích trang sản phẩm, tỉ lệ thoát, phễu thanh toán; đề xuất giao diện; đề xuất A/B | Doanh thu, chi phí, lợi nhuận, hiệu quả quảng cáo, KPI, báo cáo; **cung cấp số liệu cho Evaluation Service** | Kết nối nền tảng, workflow, lịch, đồng bộ dữ liệu, theo dõi lỗi hệ thống |
+| Việc chính | Phân tích trang sản phẩm, tỉ lệ thoát, phễu thanh toán; đề xuất giao diện; đề xuất A/B | Doanh thu, chi phí, lợi nhuận, hiệu quả quảng cáo, KPI, báo cáo; **cung cấp số liệu cho Evaluation Service**; mỗi 4 tuần **tính lại giờ vàng** của xưởng từ giờ đặt đơn (và lượt truy cập khi có GA4) để cập nhật lịch đăng bài (ADR-16) | Kết nối nền tảng, workflow, lịch, đồng bộ dữ liệu, theo dõi lỗi hệ thống |
 | Model | R-mid | R-mid (diễn giải) + **tính toán bằng mã** (không để LLM tự cộng số) | C, R-mid |
 | Công cụ | `ga4.read`, `site.page_audit` (Lighthouse cục bộ), `site.funnel_stats` | `sql.readonly` trên **schema phân tích** (view đã ẩn danh), `python.sandbox` (không mạng), `site.aggregates`, `finance.read` (giá vốn, phạm vi riêng) | `integration.status`, `workflow.*`, `n8n.trigger` (nếu bật), `alerts.*` |
 | KPI | Mức tăng chuyển đổi đã kiểm chứng từ đề xuất được áp dụng | Báo cáo đúng hạn; sai lệch số liệu so với website = 0 (đối soát tự động) | Thời gian tích hợp hoạt động; số lỗi đồng bộ tự phát hiện trước khi người thấy |

@@ -1,7 +1,7 @@
 # DECISIONS: sổ quyết định của Owner
 
 > Ghi lại câu trả lời của Owner cho `QUESTIONS_FOR_OWNER.md` và hệ quả kỹ thuật của từng câu.
-> Lần 1: 26/11/2026. Tài liệu thiết kế được cập nhật lên **v0.2** theo sổ này.
+> Lần 1: 26/11/2026 (21:34). Lần 2: 21:48 (bỏ qua pháp lý). Lần 3: 21:53. Tài liệu thiết kế được cập nhật lên **v0.2** theo sổ này.
 > Kiến trúc **vẫn chờ Owner ghi "duyệt kiến trúc"** trước khi viết mã (CLAUDE.md).
 
 ## 1. Đã quyết
@@ -22,14 +22,21 @@
 | Q-L1 | Đồng ý mặc định: chỉ mã ẩn danh; Customer Agent chỉ soạn nháp; không gửi dữ liệu cá nhân cho LLM nước ngoài | Giữ P6 | Telegram cũng **không** được nhận dữ liệu cá nhân của khách | SECURITY §6.1 |
 | Q-L2…L6 | **"Phần pháp lý bỏ qua"** (21:48) | Đóng toàn bộ câu hỏi pháp lý. Không có bước rà soát luật sư; không có mục pháp lý chặn Sprint. Áp mặc định kỹ thuật: lead tự xóa sau 180 ngày; audit giữ ≥ 2 năm; ảnh AI chỉ gắn nhãn nội bộ. **Giữ** Content Gate (chống đăng thông tin sai về sản phẩm), ẩn danh dữ liệu khách, không scrape, vì đây là biện pháp chất lượng, bảo mật và chống khóa tài khoản | Owner tự chịu trách nhiệm về khía cạnh pháp lý | SECURITY §6, ARCH §1/R4, PLAN |
 
+### Lần 3 (21:53)
+
+| Mã | Owner trả lời | Quyết định kỹ thuật | Tài liệu đổi |
+|---|---|---|---|
+| (3 biện pháp) | **Đồng ý giữ** Content Gate, ẩn danh dữ liệu khách, không scrape | Giữ nguyên SECURITY §6 | — |
+| Q-B1a | **50 USD/tháng** | Phương án B (~42 USD/tháng): trần ngày 1,67 USD, một ngày tối đa 3 USD; cảnh báo ở 80%; Opus tắt mặc định | ARCH §8.3 |
+| Q-T3a | **AMD Radeon RX 560, RAM 16 GB** | Không chạy LLM cục bộ (RX 560 không được Ollama/ROCm hỗ trợ; VRAM nhỏ). Embedding qua OpenAI. Cả hệ thống giới hạn 6 GB RAM trong WSL2, 2 worker. Khuyến nghị nâng 32 GB khi mở rộng | ARCH §6, ADR-06, R12; TEST PT-06 |
+| Q-A1a | **Claude chỉ định** cách đăng hợp lý, chọn giờ vàng | Lịch 3 giai đoạn tăng dần: blog 19:30 (Thứ Ba/Thứ Bảy → thêm Thứ Năm → tối đa mỗi ngày); FAQ 11:30 → thêm 7:30, 17:30. Không đăng ngoài 7:00–21:30; cách nhau ≥ 3 giờ. Tự lùi giai đoạn khi Owner gỡ ≥ 2 bài/7 ngày. Sau 4 tuần, giờ vàng tính lại từ dữ liệu thật của xưởng | ARCH ADR-16, DB `publication_queue`, TEST IT-PUB-06/07 |
+| Q-TG1 | **Đã có bot**; Owner **tự cập nhật trong trang quản trị** | Trang *Cài đặt → Telegram* trong dashboard: dán token (kiểm tra `getMe`, lưu mã hóa), kết nối chat bằng mã 6 số (`/ketnoi`), vai trò từng chat, bật/tắt loại tin, giờ yên lặng, gửi thử, đổi token. Thao tác nhạy cảm cần mật khẩu + 2FA | ARCH ADR-15, SECURITY §3.4, DB, TEST IT-TG-05 |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |
 |---|---|---|
-| **Q-B1a** 🔴 | 50 USD là **mỗi ngày** hay **mỗi tháng**? | 50 USD/tháng |
-| **Q-T3a** 🔴 | Card đồ họa (tên, VRAM), dung lượng RAM, ổ đĩa trống | Không chạy LLM cục bộ |
-| Q-A1a 🔴 | Tự xuất bản những loại nào, tối đa mấy bài/ngày, giờ nào? | FAQ + blog; tối đa 1 blog + 3 FAQ/ngày; 8:00–21:00; chủ đề sức khỏe, dị ứng, giá, khuyến mãi luôn chờ duyệt |
-| Q-TG1 🔴 | Telegram: Owner tạo bot qua @BotFather và cho biết chat ID (nhắn riêng hay nhóm)? | Nhắn riêng cho một tài khoản Owner |
 | Q-A2b | Giữ mã trong repo `moctam-shop` hay tạo repo riêng? | Giữ trong `moctam-shop/ai-company/` |
-| Q-W1 | Máy bật những giờ nào? Có UPS (bộ lưu điện) không? | 8:00–22:00, không có UPS |
+| Q-W1 | Máy bật những giờ nào? Có UPS (bộ lưu điện) không? | 7:00–22:00 (bao trùm các giờ đăng bài), không có UPS |
+| **Duyệt kiến trúc** 🔴 | Owner ghi "duyệt kiến trúc" để bắt đầu Sprint 0 | — |
 | Q-B2, Q-T4, Q-I1…I6 | Như `QUESTIONS_FOR_OWNER.md` | Như mặc định đã ghi ở đó |

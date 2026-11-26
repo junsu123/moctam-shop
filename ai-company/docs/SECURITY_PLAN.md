@@ -92,7 +92,8 @@ Owner không trả lời **không** được coi là đồng ý: việc chờ du
 
 ### 3.4. Telegram
 
-- Token bot lưu trong kho secret (§5). Không lưu trong mã, không gửi qua chat.
+- Owner **dán token bot trong dashboard** (*Cài đặt → Telegram*). Hệ thống kiểm tra bằng `getMe`, mã hóa vào kho secret (§5), và chỉ hiển thị 4 ký tự cuối. Không lưu trong mã, `.env` hay git; không gửi qua chat.
+- Kết nối chat bằng **mã 6 số** hiện trên dashboard (hiệu lực 10 phút, dùng một lần), không bằng cách gõ chat ID. Đổi token hoặc thêm chat có quyền duyệt cần **mật khẩu + 2FA**, và có ghi audit.
 - Chỉ xử lý tin nhắn và nút bấm từ **chat ID trong danh sách** `telegram_chats`. Tin từ nơi khác bị bỏ qua và ghi audit.
 - Dữ liệu của nút (`callback_data`) gồm: mã hành động + ID đối tượng + digest + hạn dùng, ký HMAC. Mỗi nút dùng được một lần.
 - **Không gửi** dữ liệu cá nhân của khách, giá vốn hay secret qua Telegram. Báo cáo chỉ có số tổng hợp.

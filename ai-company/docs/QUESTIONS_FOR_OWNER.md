@@ -53,7 +53,8 @@ Gồm: psycopg (LGPL), Dramatiq (LGPL), n8n (Sustainable Use License, nếu bậ
 
 ## D. Tổ chức và vận hành
 
-**🔴 Q-O1. Ai duyệt việc của AI?**
+**✅ Q-O1. Ai duyệt việc của AI?**  
+→ *Suy ra từ câu trả lời Q-A1/Q-O2/Q-TG1: Owner duyệt qua Telegram; việc rủi ro cao duyệt trên dashboard + 2FA. Muốn thêm nhân viên duyệt thì kết nối chat của họ trong Cài đặt → Telegram.*
 Chỉ Owner, hay có nhân viên được giao duyệt nội dung, quảng cáo, chăm sóc khách? Mỗi người duyệt được bao nhiêu mục mỗi ngày? Con số này quyết định "sức duyệt", tức số bản nháp tối đa đang chờ.
 
 **✅ Q-O2. Phòng Công nghệ & Dữ liệu (Web CRO, Data Analyst, Automation) báo cáo cho ai?**  
@@ -98,26 +99,31 @@ Owner quyết định **bỏ qua phần pháp lý**. Các câu Q-L2…Q-L6 đã 
 
 ## G. Câu hỏi mới (phát sinh từ câu trả lời ngày 26/11/2026)
 
-**🔴 Q-B1a. 50 USD là trần mỗi ngày hay mỗi tháng?**
+**✅ Q-B1a. 50 USD là trần mỗi ngày hay mỗi tháng?**  
+→ *Owner: 50 USD/tháng.*
 Hai cách hiểu chênh nhau 30 lần (ARCHITECTURE §8.3).
 - *Mặc định:* 50 USD/tháng.
 
-**🔴 Q-T3a. Máy có card đồ họa gì (tên, VRAM), bao nhiêu RAM, ổ đĩa còn trống bao nhiêu?**
+**✅ Q-T3a. Máy có card đồ họa gì (tên, VRAM), bao nhiêu RAM, ổ đĩa còn trống bao nhiêu?**  
+→ *Owner: AMD Radeon RX 560, RAM 16 GB; không chạy LLM cục bộ.*
 i5-11400F không có đồ họa tích hợp nên chắc chắn có card rời. Card 8 GB VRAM trở lên chạy được model nhỏ cục bộ (phân loại, embedding). RAM nên từ 16 GB, tốt nhất 32 GB, vì Docker + Postgres + trình duyệt cùng chạy.
 - *Mặc định:* không chạy LLM cục bộ.
 
-**🔴 Q-A1a. AI được tự xuất bản những gì, bao nhiêu, lúc nào?**
+**✅ Q-A1a. AI được tự xuất bản những gì, bao nhiêu, lúc nào?**  
+→ *Owner: Claude chỉ định lịch hợp lý theo giờ vàng (ARCHITECTURE ADR-16).*
 - *Mặc định:* FAQ và blog; tối đa 1 blog + 3 FAQ mỗi ngày; chỉ 8:00–21:00. Chủ đề sức khỏe, dị ứng, giá, khuyến mãi luôn chờ Owner bấm duyệt trên Telegram.
 - Lý do giới hạn: Google có chính sách chống nội dung hàng loạt kém chất lượng, nên đăng quá nhiều bài AI một lúc có thể làm hại SEO.
 
-**🔴 Q-TG1. Telegram.**
+**✅ Q-TG1. Telegram.**  
+→ *Owner: đã có bot; tự cài đặt trong dashboard (ADR-15).*
 Owner mở @BotFather, tạo bot, giữ *token* (sẽ nhập vào máy lúc cài đặt, không gửi qua chat). Owner muốn nhận tin nhắn riêng hay trong một nhóm (vd có cả nhân viên)?
 - *Mặc định:* nhắn riêng cho một tài khoản Owner.
 
 **🟡 (Sprint 0) Q-A2b. Mã nguồn giữ trong repo `moctam-shop` hay tạo repo riêng?**
 - *Mặc định:* giữ trong `moctam-shop/ai-company/`.
 
-**🟡 (Sprint 1) Q-W1. Máy bật những giờ nào trong ngày? Có bộ lưu điện (UPS) không?**
+**🟡 (Sprint 1) Q-W1. Máy bật những giờ nào trong ngày? Có bộ lưu điện (UPS) không?**  
+*Mặc định cập nhật:* 7:00–22:00 để bao trùm các giờ đăng bài.
 Lịch chạy của các agent sẽ dồn vào giờ máy bật.
 - *Mặc định:* 8:00–22:00, không có UPS.
 

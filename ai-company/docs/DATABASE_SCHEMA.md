@@ -165,7 +165,10 @@ Nguyên tắc: dữ liệu bán hàng là **bản sao chỉ đọc** từ websit
 | `audit_logs` | `id`, `at`, `actor` (user/agent/system), `action`, `resource`, `before_digest`, `after_digest`, `reason`, `request_id`, `prev_hash`, `hash` | **Chỉ thêm**; chuỗi băm phát hiện sửa/xóa; không vai trò nào có UPDATE/DELETE (SRS §15) |
 | ➕ `users`, `roles`, `user_sessions` | Người dùng Owner/nhân viên, RBAC, phiên |
 | ➕ `publications` (v0.2) | `id`, `site_content_id`, `kind` (`faq/blog`), `url`, `task_id`, `agent_id`, `compliance_report jsonb`, `review_id`, `published_at`, `unpublished_at`, `unpublished_by`, `telegram_message_id` | Mọi bài AI tự xuất bản; hạn mức ngày đếm ở đây **và** ở website |
-| ➕ `telegram_chats` (v0.2) | `chat_id`, `user_id`, `role`, `enabled`, `added_at` | Danh sách chat được phép (ADR-15) |
+| ➕ `telegram_chats` (v0.2) | `chat_id`, `title`, `user_id`, `can_approve bool`, `receives jsonb` (bài mới/báo cáo/cảnh báo/duyệt), `quiet_hours`, `enabled`, `added_at`, `added_by` | Danh sách chat được phép; Owner quản lý trong *Cài đặt → Telegram* (ADR-15) |
+| ➕ `telegram_link_codes` (v0.2) | `code_hash`, `requested_by`, `can_approve`, `expires_at`, `used_at`, `used_chat_id` | Mã 6 số để kết nối chat, hiệu lực 10 phút, dùng một lần |
+| ➕ `publication_queue` (v0.2) | `id`, `task_id`, `kind`, `title`, `content_ref`, `slot_at`, `phase`, `status` (`queued/rechecking/published/blocked/cancelled`), `recheck_report jsonb` | Hàng chờ xuất bản theo lịch giờ vàng; Content Gate chạy lại ngay trước `slot_at` |
+| ➕ `publish_schedule` (v0.2) | `version`, `phase`, `slots jsonb` (blog/FAQ theo thứ trong tuần, giờ), `window` (7:00–21:30), `min_gap_minutes`, `blackout_dates`, `source` (`default/learned/owner`), `active_from` | Lịch có phiên bản: mặc định → giờ vàng học được → Owner sửa |
 | ➕ `notifications` (v0.2) | `id`, `channel` (`telegram/dashboard`), `chat_id`, `kind` (`publish/report/alert/approval`), `subject_type`, `subject_id`, `text_digest`, `status`, `sent_at`, `attempts` | Outbox thông báo: máy mất mạng thì gửi lại sau |
 | ➕ `telegram_actions` (v0.2) | `nonce`, `action`, `subject_type`, `subject_id`, `content_digest`, `chat_id`, `expires_at`, `used_at`, `result` | Mỗi nút bấm dùng một lần, có hạn |
 
