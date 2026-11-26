@@ -1,0 +1,15 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+# Node
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+# Môi trường, dữ liệu cục bộ
+.env
+data/
+backups/

@@ -4,14 +4,21 @@ Hướng dẫn cho Claude Code khi làm việc trong thư mục này. Đọc h�
 
 ## Trạng thái dự án
 
-**GIAI ĐOẠN THIẾT KẾ: CHƯA ĐƯỢC VIẾT MÃ.**
+**ĐÃ DUYỆT KIẾN TRÚC (26/11/2026 22:43) · ĐANG LÀM: SPRINT 0.**
 
-Owner chưa duyệt kiến trúc (SRS §21, bước 5). Trước khi Owner ghi rõ "duyệt kiến trúc" và đổi dòng trạng thái này:
-- chỉ được sửa tài liệu trong `docs/`;
-- trả lời câu hỏi;
-- làm rõ thiết kế.
+Owner ưu tiên **trang quản trị trọn gói** (Control Center) có sớm. Thứ tự Sprint ghi trong `docs/IMPLEMENTATION_PLAN.md` §3.
+- Chỉ làm việc của Sprint hiện tại. Việc của Sprint sau thì ghi vào `docs/progress/` thay vì làm luôn.
+- Đổi Sprint hiện tại thì sửa dòng trạng thái này trong cùng PR với báo cáo `docs/progress/sprint-N.md`.
 
-**Không** tạo mã ứng dụng, migration hay Dockerfile.
+Cấu trúc mã:
+- `backend/`: FastAPI, Python 3.12+;
+- `frontend/`: trang quản trị Next.js;
+- `infrastructure/`: Docker Compose, cấu hình;
+- `scripts/windows/`: PowerShell cho máy Owner.
+
+Lệnh kiểm tra:
+- `make -C ai-company test`;
+- hoặc `cd backend && uv run pytest`, `cd frontend && npm run build`.
 
 ## Đọc theo thứ tự
 

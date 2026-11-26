@@ -1,0 +1,75 @@
+# AI Marketing Company: chạy trên máy Owner (Windows 11 + Docker Desktop/WSL2).
+# Ngân sách RAM: cả hệ thống ≤ 6 GB (ARCHITECTURE §6). Giới hạn từng dịch vụ ghi ở mem_limit.
+# Mọi cổng chỉ mở trên 127.0.0.1: không lộ ra mạng LAN hay Internet.
+name: aico
+
+x-db-url: &db_url postgresql+psycopg://aico:${AICO_DB_PASSWORD:?Thiếu AICO_DB_PASSWORD trong .env}@db:5432/aico
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: aico
+      POSTGRES_PASSWORD: ${AICO_DB_PASSWORD:?Thiếu AICO_DB_PASSWORD trong .env}
+      POSTGRES_DB: aico
+    command: ["postgres", "-c", "shared_buffers=512MB", "-c", "max_connections=40", "-c", "work_mem=8MB"]
+    volumes: [aico_pg:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aico -d aico"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    mem_limit: 1g           # ~1 GB
+    restart: unless-stopped
+
+  queue:
+    image: valkey/valkey:8-alpine
+    command: ["valkey-server", "--maxmemory", "128mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
+    volumes: [aico_queue:/data]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    mem_limit: 192m         # ~150 MB
+    restart: unless-stopped
+
+  migrate:                  # chạy một lần mỗi khi khởi động: cập nhật lược đồ CSDL rồi thoát
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      AICO_DATABASE_URL: *db_url
+    depends_on:
+      db: { condition: service_healthy }
+    mem_limit: 256m
+    restart: "no"
+
+  backend:
+    build: ./backend
+    environment:
+      AICO_ENV: prod
+      AICO_DATABASE_URL: *db_url
+      AICO_REDIS_URL: redis://queue:6379/0
+      AICO_MASTER_KEY: ${AICO_MASTER_KEY:?Thiếu AICO_MASTER_KEY trong .env}
+      AICO_LOG_LEVEL: INFO
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      queue: { condition: service_healthy }
+    ports: ["127.0.0.1:8000:8000"]
+    mem_limit: 768m         # API; worker và scheduler thêm ở Sprint 2–4
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        AICO_BACKEND_URL: http://backend:8000
+    depends_on:
+      backend: { condition: service_healthy }
+    ports: ["127.0.0.1:3000:3000"]
+    mem_limit: 512m         # ~150–300 MB
+    restart: unless-stopped
+
+volumes:
+  aico_pg:
+  aico_queue:
