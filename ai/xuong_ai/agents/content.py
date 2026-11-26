@@ -34,36 +34,56 @@ def _facts(p: dict) -> str:
     return "\n".join(lines)
 
 
+def _guidance_block(guidance: list[str] | None) -> str:
+    """Góp ý của người duyệt cho các bản nháp trước — bộ não rút ra từ phản hồi trên website."""
+    if not guidance:
+        return ""
+    return "\n\nNgười duyệt của xưởng đã góp ý cho các bản nháp trước, hãy tuân theo:\n" + "\n".join(f"- {textnorm.redact(g)[:200]}" for g in guidance[:5])
+
+
+def blog_ref(p: dict, attempt: int = 1) -> str:
+    base = f"blog:product:{p['id']}@v{p['info_version']}"
+    return base if attempt <= 1 else f"{base}:r{attempt}"
+
+
+def draft_blog(store: Store, llm: Llm, p: dict, ref: str | None = None, guidance: list[str] | None = None) -> dict | None:
+    """Soạn MỘT bài blog cho một sản phẩm. Ném BudgetExceeded/LlmUnavailable để người gọi quyết định dừng.
+    Trả None nếu phản hồi của mô hình không hợp lệ."""
+    ref = ref or blog_ref(p)
+    prompt = (
+        "Viết một bài blog 450–700 chữ hướng dẫn sử dụng/bảo quản và gợi ý cách thưởng thức sản phẩm dưới đây.\n"
+        "HTML chỉ dùng thẻ p, h2, h3, ul, li, strong. JSON gồm: title (≤ 70 ký tự), meta_description (≤ 155 ký tự), keywords, body.\n\n"
+        + _facts(p) + _guidance_block(guidance)
+    )
+    try:
+        data = parse_json_block(llm.complete("blog_draft", SYSTEM, prompt, max_tokens=2000))
+    except ValueError as e:
+        log.warning("Phản hồi không hợp lệ cho sản phẩm %s: %s", p["id"], e)
+        return None
+    enqueue(store, ref, "blog", {
+        "title": data.get("title", "")[:250], "meta_description": data.get("meta_description", "")[:320], "keywords": data.get("keywords", ""),
+        "body": data.get("body", ""), "product_id": p["id"], "category_id": p["category_id"],
+        "source_refs": [{"product_id": p["id"], "info_version": p["info_version"]}], "generated_by": llm.cfg.model,
+    })
+    Memory(store).add_pending("blog_outline", ref, data.get("title", p["name"]), "", "san_pham", p["category_id"], p["id"], str(p["info_version"]))
+    return {"client_ref": ref, "title": data.get("title", "")}
+
+
 def blog_drafts(store: Store, llm: Llm, catalog: dict, limit: int = 2) -> dict:
     done = {r["source_ref"] for r in store.all("SELECT source_ref FROM knowledge WHERE kind = 'blog_outline'")}
     made, skipped = 0, 0
     for p in catalog.get("products", []):
         if made >= limit:
             break
-        ref = f"blog:product:{p['id']}@v{p['info_version']}"
-        if ref in done:
+        if blog_ref(p) in done:
             skipped += 1
             continue
-        prompt = (
-            "Viết một bài blog 450–700 chữ hướng dẫn sử dụng/bảo quản và gợi ý cách thưởng thức sản phẩm dưới đây.\n"
-            "HTML chỉ dùng thẻ p, h2, h3, ul, li, strong. JSON gồm: title (≤ 70 ký tự), meta_description (≤ 155 ký tự), keywords, body.\n\n"
-            + _facts(p)
-        )
         try:
-            data = parse_json_block(llm.complete("blog_draft", SYSTEM, prompt, max_tokens=2000))
+            if draft_blog(store, llm, p):
+                made += 1
         except (BudgetExceeded, LlmUnavailable) as e:
             log.warning("Dừng soạn blog: %s", e)
             break
-        except ValueError as e:
-            log.warning("Phản hồi không hợp lệ cho sản phẩm %s: %s", p["id"], e)
-            continue
-        enqueue(store, ref, "blog", {
-            "title": data.get("title", "")[:250], "meta_description": data.get("meta_description", "")[:320], "keywords": data.get("keywords", ""),
-            "body": data.get("body", ""), "product_id": p["id"], "category_id": p["category_id"],
-            "source_refs": [{"product_id": p["id"], "info_version": p["info_version"]}], "generated_by": llm.cfg.model,
-        })
-        Memory(store).add_pending("blog_outline", ref, data.get("title", p["name"]), "", "san_pham", p["category_id"], p["id"], str(p["info_version"]))
-        made += 1
     return {"drafted": made, "skipped_existing": skipped}
 
 
@@ -82,18 +102,52 @@ def cluster_questions(questions: list[dict], sim: float = 0.3) -> list[dict]:
     return clusters
 
 
+def faq_ref(question: str, attempt: int = 1) -> str:
+    base = "faq:q:" + hashlib.sha1(textnorm.fold(question).encode()).hexdigest()[:12]
+    return base if attempt <= 1 else f"{base}:r{attempt}"
+
+
+def draft_faq(store: Store, llm: Llm, cluster: dict, ref: str | None = None, guidance: list[str] | None = None) -> dict | None:
+    """Soạn MỘT FAQ cho một cụm câu hỏi {rep, n, variants}. Ném BudgetExceeded/LlmUnavailable."""
+    mem = Memory(store)
+    q = cluster["rep"]
+    qt = question_type(q)
+    ref = ref or faq_ref(q)
+    # Ngữ cảnh: FAQ đã duyệt + nhãn sản phẩm liên quan nhất
+    ctx_rows = mem.search(q, kinds=("faq", "label"), statuses=("approved",), limit=4)
+    ctx = "\n\n".join(f"[{r['kind']}] {r['title']}\n{textnorm.redact(r['body'].split('[search] ')[0])[:800]}" for r, _ in ctx_rows)
+    refs = [{"product_id": r["product_id"], "info_version": int(r["source_version"])} for r, _ in ctx_rows if r["kind"] == "label" and r["source_version"]]
+    prompt = (
+        f"Khách hỏi (các cách hỏi khác nhau): {'; '.join(cluster['variants'][:5])}\n\n"
+        f"Thông tin đã duyệt của xưởng:\n{ctx or '(không có)'}\n\n"
+        "Soạn MỘT câu hỏi thường gặp chuẩn và câu trả lời 2–5 câu, chỉ dựa trên thông tin trên. "
+        "Nếu thông tin không đủ, câu trả lời phải mời khách liên hệ hotline/Zalo của xưởng, không phỏng đoán. "
+        'JSON: {"question": ..., "answer": ..., "keywords": "từ khóa không dấu, cách nhau dấu phẩy", "sufficient": true|false}'
+        + _guidance_block(guidance)
+    )
+    try:
+        data = parse_json_block(llm.complete("faq_draft", SYSTEM, prompt, max_tokens=700))
+    except ValueError:
+        return None
+    enqueue(store, ref, "faq", {
+        "title": data.get("question", q)[:250], "body": data.get("answer", ""), "body_is_text": True,
+        "keywords": data.get("keywords", ""), "source_refs": refs + [{"asked": cluster["n"], "sufficient": bool(data.get("sufficient"))}],
+        "generated_by": llm.cfg.model,
+    })
+    mem.add_pending("faq", ref, data.get("question", q), data.get("answer", ""), qt, source_version=None, ttl_days=60)
+    return {"client_ref": ref, "question": data.get("question", q), "sufficient": bool(data.get("sufficient"))}
+
+
 def faq_drafts(store: Store, llm: Llm, catalog: dict, threshold: float, limit: int = 5) -> dict:
     mem = Memory(store)
     stats = {"clusters": 0, "memory_hits": 0, "drafted": 0, "llm_skipped": 0}
-    questions = catalog.get("unanswered_questions", [])
-    clusters = cluster_questions(questions)
+    clusters = cluster_questions(catalog.get("unanswered_questions", []))
     stats["clusters"] = len(clusters)
     for c in clusters:
         if stats["drafted"] >= limit:
             break
         q = c["rep"]
-        qt = question_type(q)
-        hits = mem.search(q, kinds=("faq",), statuses=("approved", "pending"), qtype=qt)
+        hits = mem.search(q, kinds=("faq",), statuses=("approved", "pending"), qtype=question_type(q))
         top = hits[0] if hits else None
         if top and top[1] >= threshold:
             # Đã có tri thức (đã duyệt hoặc đang chờ duyệt) → không gọi LLM
@@ -101,33 +155,13 @@ def faq_drafts(store: Store, llm: Llm, catalog: dict, threshold: float, limit: i
             stats["memory_hits"] += 1
             continue
         mem.record_hit("faq_draft", False, top[1] if top else None)
-        ref = "faq:q:" + hashlib.sha1(textnorm.fold(q).encode()).hexdigest()[:12]
-        if store.one("SELECT 1 FROM outbox WHERE client_ref = ?", (ref,)):
+        if store.one("SELECT 1 FROM outbox WHERE client_ref = ?", (faq_ref(q),)):
             continue
-        # Ngữ cảnh: FAQ đã duyệt + nhãn sản phẩm liên quan nhất
-        ctx_rows = mem.search(q, kinds=("faq", "label"), statuses=("approved",), limit=4)
-        ctx = "\n\n".join(f"[{r['kind']}] {r['title']}\n{textnorm.redact(r['body'].split('[search] ')[0])[:800]}" for r, _ in ctx_rows)
-        refs = [{"product_id": r["product_id"], "info_version": int(r["source_version"])} for r, _ in ctx_rows if r["kind"] == "label" and r["source_version"]]
-        prompt = (
-            f"Khách hỏi (các cách hỏi khác nhau): {'; '.join(c['variants'][:5])}\n\n"
-            f"Thông tin đã duyệt của xưởng:\n{ctx or '(không có)'}\n\n"
-            "Soạn MỘT câu hỏi thường gặp chuẩn và câu trả lời 2–5 câu, chỉ dựa trên thông tin trên. "
-            "Nếu thông tin không đủ, câu trả lời phải mời khách liên hệ hotline/Zalo của xưởng, không phỏng đoán. "
-            'JSON: {"question": ..., "answer": ..., "keywords": "từ khóa không dấu, cách nhau dấu phẩy", "sufficient": true|false}'
-        )
         try:
-            data = parse_json_block(llm.complete("faq_draft", SYSTEM, prompt, max_tokens=700))
+            if draft_faq(store, llm, c):
+                stats["drafted"] += 1
         except (BudgetExceeded, LlmUnavailable) as e:
             log.warning("Dừng soạn FAQ: %s", e)
             stats["llm_skipped"] += 1
             break
-        except ValueError:
-            continue
-        enqueue(store, ref, "faq", {
-            "title": data.get("question", q)[:250], "body": data.get("answer", ""), "body_is_text": True,
-            "keywords": data.get("keywords", ""), "source_refs": refs + [{"asked": c["n"], "sufficient": bool(data.get("sufficient"))}],
-            "generated_by": llm.cfg.model,
-        })
-        mem.add_pending("faq", ref, data.get("question", q), data.get("answer", ""), qt, source_version=None, ttl_days=60)
-        stats["drafted"] += 1
     return stats

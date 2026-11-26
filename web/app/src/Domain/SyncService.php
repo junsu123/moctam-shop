@@ -177,7 +177,88 @@ final class SyncService
         foreach ($faqs as &$f) {
             $f['answer'] = \App\Core\Text::excerpt((string)$f['answer'], 2000);
         }
-        return ['categories' => $cats, 'products' => $products, 'published_faqs' => $faqs, 'generated_at' => Clock::nowDb()];
+        // Bài blog đang xuất bản theo sản phẩm: để AI không soạn trùng bài nhân viên đã viết
+        $blogs = Db::all("SELECT id, product_id, category_id, pub_title AS title, published_at, updated_at FROM contents WHERE kind = 'blog' AND status = 'published'");
+        foreach ($blogs as &$b) {
+            $b['id'] = (int)$b['id'];
+            $b['product_id'] = $b['product_id'] === null ? null : (int)$b['product_id'];
+            $b['category_id'] = $b['category_id'] === null ? null : (int)$b['category_id'];
+        }
+        return ['categories' => $cats, 'products' => $products, 'published_faqs' => $faqs, 'published_blogs' => $blogs, 'generated_at' => Clock::nowDb()];
+    }
+
+    /**
+     * Kết quả duyệt các bản nháp AI đã nhận (để "bộ não" Python học từ phản hồi của nhân viên).
+     * Chỉ trả trạng thái + ghi chú duyệt, không có dữ liệu khách hàng.
+     *
+     * status: pending | approved | edited (nhân viên sửa rồi mới xuất bản) | rejected | retracted (đã gỡ)
+     *         | invalid (website từ chối khi nhận) | duplicate | gone (đã bị xóa) | done (danh sách chăm sóc đã xử lý hết)
+     */
+    public static function feedback(?string $since = null, int $limit = 2000): array
+    {
+        $limit = max(1, min($limit, 5000));
+        if ($since === null || !preg_match('/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/', $since)) {
+            $since = Clock::db(Clock::now()->modify('-120 days'));
+        }
+        $rows = Db::all('SELECT client_ref, kind, status, result, created_at FROM sync_inbox WHERE created_at >= :s ORDER BY id DESC LIMIT :l', ['s' => $since, 'l' => $limit]);
+        $items = [];
+        foreach ($rows as $r) {
+            $it = ['client_ref' => $r['client_ref'], 'kind' => $r['kind'], 'received_at' => $r['created_at'], 'status' => 'pending', 'note' => null, 'reviewed_at' => null];
+            $res = (string)$r['result'];
+            if ($r['status'] === 'rejected') {
+                $it['status'] = 'invalid';
+                $it['note'] = mb_substr($res, 0, 300);
+            } elseif (preg_match('/^content:(\d+)$/', $res, $m)) {
+                $it = array_merge($it, self::contentFeedback((int)$m[1]));
+            } elseif (preg_match('/^relation:(\d+)$/', $res, $m)) {
+                $rel = Db::one('SELECT status FROM product_relations WHERE id = :id', ['id' => (int)$m[1]]);
+                $it['status'] = $rel ? ($rel['status'] === 'approved' ? 'approved' : $rel['status']) : 'gone';
+            } elseif (str_starts_with($res, 'exists:')) {
+                $it['status'] = 'duplicate';
+            } elseif (preg_match('/^care:([A-Za-z0-9_-]+):\d+$/', $res, $m)) {
+                $cnt = ['pending' => 0, 'contacted' => 0, 'skipped' => 0];
+                foreach (Db::all('SELECT status, COUNT(*) AS n FROM care_suggestions WHERE batch_id = :b GROUP BY status', ['b' => $m[1]]) as $c) {
+                    $cnt[$c['status']] = (int)$c['n'];
+                }
+                $it['counts'] = $cnt;
+                $it['status'] = $cnt['pending'] > 0 ? 'pending' : 'done';
+            }
+            $items[] = $it;
+        }
+        $content = Db::all("SELECT kind, COUNT(*) AS n, MIN(created_at) AS oldest FROM contents WHERE source = 'ai' AND status = 'pending_review' GROUP BY kind");
+        $backlog = ['faq' => 0, 'blog' => 0, 'cross_sell' => 0, 'care' => 0, 'oldest_pending_at' => null];
+        $oldest = [];
+        foreach ($content as $c) {
+            $backlog[$c['kind']] = (int)$c['n'];
+            $oldest[] = $c['oldest'];
+        }
+        $rel = Db::one("SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM product_relations WHERE source = 'ai' AND status = 'pending'");
+        $backlog['cross_sell'] = (int)$rel['n'];
+        if ($rel['oldest']) $oldest[] = $rel['oldest'];
+        $backlog['care'] = (int)Db::val("SELECT COUNT(*) FROM care_suggestions WHERE status = 'pending'");
+        $backlog['oldest_pending_at'] = $oldest ? min($oldest) : null;
+        return ['items' => $items, 'backlog' => $backlog, 'generated_at' => Clock::nowDb()];
+    }
+
+    private static function contentFeedback(int $id): array
+    {
+        $c = Db::one('SELECT status, published_version_id FROM contents WHERE id = :id', ['id' => $id]);
+        if (!$c) {
+            return ['status' => 'gone'];
+        }
+        $aiVid = (int)Db::val("SELECT id FROM content_versions WHERE content_id = :c AND created_source = 'ai' ORDER BY version_no LIMIT 1", ['c' => $id]);
+        $rev = Db::one('SELECT review_note, reviewed_at FROM content_versions WHERE content_id = :c AND reviewed_at IS NOT NULL ORDER BY reviewed_at DESC, id DESC LIMIT 1', ['c' => $id]);
+        $out = ['status' => 'pending', 'note' => null, 'reviewed_at' => $rev['reviewed_at'] ?? null];
+        if ($c['status'] === 'published') {
+            $out['status'] = (int)$c['published_version_id'] === $aiVid ? 'approved' : 'edited';
+            $out['note'] = $rev['review_note'] ?? null;
+        } elseif ($c['status'] === 'unpublished') {
+            $out['status'] = 'retracted';
+        } elseif ($c['status'] === 'draft' && $rev && str_starts_with((string)$rev['review_note'], 'Từ chối:')) {
+            $out['status'] = 'rejected';
+            $out['note'] = trim(mb_substr((string)$rev['review_note'], 8));
+        }
+        return $out;
     }
 
     /** Dọn sự kiện cũ; ghi lại mốc để trả CURSOR_EXPIRED đúng. */

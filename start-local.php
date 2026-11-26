@@ -173,7 +173,7 @@ echo "  Cửa hàng:   $base\n";
 echo "  Quản trị:   $base/admin\n";
 echo "  Tài khoản:  admin@xuong.local   (mật khẩu Demo@12345)\n";
 echo "              vanhanh@ · kho@ · doisoat@ · noidung@xuong.local — cùng mật khẩu, để thử phân quyền\n";
-echo "  Thử AI:     mở cửa sổ lệnh khác →  cd ai  →  python -m xuong_ai once sync\n";
+echo "  Thử AI:     mở cửa sổ lệnh khác →  cd ai  →  python -m xuong_ai tick   (rồi: think, brief)\n";
 echo "  Dừng:       Ctrl+C\n\n";
 
 if (empty($opt['no-browser'])) {

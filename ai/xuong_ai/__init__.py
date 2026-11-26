@@ -4,4 +4,4 @@ Chạy trên máy cá nhân; website vẫn bán hàng bình thường khi dịch
 Chỉ dùng thư viện chuẩn của Python 3.11+.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"

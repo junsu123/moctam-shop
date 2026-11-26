@@ -29,9 +29,35 @@ crosssell_max_per_product = 3
 blog_drafts_per_run    = 2
 faq_drafts_per_run     = 5
 
-[schedule]   # phút giữa hai lần chạy
+[brain]      # bộ não "Trưởng văn phòng" — xem docs/VAN-PHONG-AI.md
+paused             = false   # công tắc tạm dừng (hoặc tạo tệp STOP cạnh tệp này)
+tick_seconds       = 60      # nhịp làm việc
+max_tasks_per_tick = 6
+max_pending_review = 15      # không để quá N bản nháp AI chờ nhân viên duyệt
+care_backlog_cap   = 60      # danh sách chăm sóc còn quá N khách chưa xử lý → ngừng gửi thêm
+human_only_question_types = ["di_ung"]   # loại câu hỏi AI không được soạn câu trả lời → chuyển người
+max_ai_attempts    = 2       # bản nháp bị từ chối N lần → chuyển người viết
+brief_hour         = 7       # giờ (Việt Nam) viết bản tin văn phòng; tệp ở office/
+office_dir         = "office"
+
+[brain.goals]   # trọng số mục tiêu: càng cao càng được ưu tiên
+van_hanh      = 1.0   # website vận hành ổn định, đồng bộ kịp thời
+tra_loi_khach = 0.8   # khách hỏi gì cũng có câu trả lời đúng
+giu_chan      = 0.6   # nhắc khách cũ mua lại đúng lúc
+gia_tri_don   = 0.4   # gợi ý mua kèm
+noi_dung_seo  = 0.4   # bài viết cho sản phẩm
+
+[brain.daily_caps]   # tối đa mỗi ngày
+faq_draft   = 5
+blog_draft  = 2
+care_list   = 1
+crosssell   = 1
+maintenance = 1
+
+[schedule]   # phút giữa hai lần chạy (việc định kỳ; việc soạn nháp do bộ não quyết)
 sync        = 10
 catalog     = 60
+feedback    = 60
 crosssell   = 1440
 care        = 1440
 faq_drafts  = 1440

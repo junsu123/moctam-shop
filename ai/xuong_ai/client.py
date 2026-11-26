@@ -53,5 +53,8 @@ class SiteClient:
     def catalog(self):
         return self._req("GET", "/api/sync/catalog", self.read_key)
 
+    def feedback(self, since: str | None = None):
+        return self._req("GET", "/api/sync/feedback", self.read_key, {"since": since} if since else None)
+
     def send_drafts(self, items: list[dict]):
         return self._req("POST", "/api/sync/drafts", self.write_key, body={"items": items})

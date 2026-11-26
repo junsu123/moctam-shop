@@ -107,6 +107,7 @@ $r->get('/api/health', [ApiController::class, 'health']);
 $r->get('/api/sync/events', [SyncController::class, 'events']);
 $r->get('/api/sync/snapshot', [SyncController::class, 'snapshot']);
 $r->get('/api/sync/catalog', [SyncController::class, 'catalog']);
+$r->get('/api/sync/feedback', [SyncController::class, 'feedback']);
 $r->post('/api/sync/drafts', [SyncController::class, 'drafts']);
 
 // ---------------- Quản trị
