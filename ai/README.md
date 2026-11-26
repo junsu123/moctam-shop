@@ -35,6 +35,16 @@ python -m xuong_ai office        # nhân sự, độ tin cậy đã học, việ
 python -m xuong_ai brief         # viết bản tin văn phòng ngay
 ```
 
+**Màn hình "Diễn biến trực tiếp"**: khi chạy `python -m xuong_ai run`, máy mở sẵn trang **http://127.0.0.1:8765**. Trang này cho thấy:
+- văn phòng có đang làm việc không;
+- **làn hoạt động 60 phút** của từng nhân viên (đang làm, xong, lỗi, hoãn);
+- bảng nhân viên: ai đang làm gì, vừa làm gì, kết quả ra sao;
+- việc đang chờ và lý do;
+- việc cần anh/chị;
+- dòng diễn biến cập nhật mỗi 2 giây, lọc được theo từng nhân viên.
+
+Trang chỉ để xem và chỉ mở được trên chính máy này. Muốn mở riêng màn hình (vd khi văn phòng đang chạy ở cửa sổ khác) thì dùng `python -m xuong_ai monitor`. Tắt màn hình kèm theo bằng `run --no-monitor`.
+
 **Tạm dừng văn phòng**: tạo tệp `STOP` trong thư mục `ai` (hoặc đặt `paused = true`). Xóa tệp để làm việc lại.
 
 ## Chạy nền
@@ -52,7 +62,7 @@ python -m xuong_ai run --legacy  # (dự phòng) bộ hẹn giờ cũ: chạy m�
 
 | Lệnh | Việc làm |
 |---|---|
-| `run` / `think` / `tick` / `office` / `brief` | Văn phòng AI (xem phần trên) |
+| `run` / `think` / `tick` / `office` / `brief` / `monitor` | Văn phòng AI (xem phần trên) |
 | `once sync` | Kéo sự kiện đơn (con trỏ chỉ dời sau khi ghi xong cả lô) |
 | `once feedback` | Lấy kết quả duyệt bản nháp AI và số bản đang chờ duyệt |
 | `once catalog` | Nạp danh mục, FAQ đã duyệt, câu hỏi chat chưa có câu trả lời |

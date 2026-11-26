@@ -5,6 +5,7 @@
   python -m xuong_ai tick                # làm đúng một nhịp
   python -m xuong_ai office              # tình hình văn phòng: nhân sự, độ tin cậy, việc cần chủ xưởng
   python -m xuong_ai brief               # viết bản tin văn phòng ngay
+  python -m xuong_ai monitor             # mở màn hình "Diễn biến trực tiếp" (http://127.0.0.1:8765)
   python -m xuong_ai once sync|catalog|crosssell|care|faq_drafts|blog_drafts|maintenance
   python -m xuong_ai snapshot            # tải lại toàn bộ bản chụp
   python -m xuong_ai calibrate [tệp.jsonl]
@@ -28,6 +29,9 @@ def main(argv=None) -> int:
     ap.add_argument("-v", "--verbose", action="store_true")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run"); r.add_argument("--legacy", action="store_true", help="dùng bộ hẹn giờ cũ thay cho bộ não")
+    r.add_argument("--no-monitor", action="store_true", help="không mở màn hình diễn biến kèm theo")
+    r.add_argument("--port", type=int, default=8765, help="cổng của màn hình diễn biến")
+    mo = sub.add_parser("monitor"); mo.add_argument("--port", type=int, default=8765); mo.add_argument("--no-browser", action="store_true")
     o = sub.add_parser("once"); o.add_argument("job", choices=["sync", "catalog", "feedback", "crosssell", "care", "faq_drafts", "blog_drafts", "maintenance"])
     sub.add_parser("think")
     sub.add_parser("tick")
@@ -43,10 +47,21 @@ def main(argv=None) -> int:
     app = App(config.load(a.config))
 
     if a.cmd == "run":
+        if not a.no_monitor:
+            from . import monitor
+            try:
+                _, url = monitor.serve(app.cfg, port=a.port, background=True)
+                print(f"Màn hình diễn biến trực tiếp: {url}")
+            except OSError as e:  # cổng đang bận (vd đã mở `monitor` riêng) — văn phòng vẫn làm việc
+                print(f"Không mở được màn hình diễn biến trên cổng {a.port}: {e}")
         try:
             app.loop_legacy() if a.legacy else app.loop()
         except KeyboardInterrupt:
             return 0
+    elif a.cmd == "monitor":
+        from . import monitor
+        print(f"Màn hình diễn biến trực tiếp: http://127.0.0.1:{a.port}  (Ctrl+C để tắt)")
+        monitor.serve(app.cfg, port=a.port, open_browser=not a.no_browser)
     elif a.cmd in ("think", "tick", "office", "brief"):
         from .brain import brief as briefmod
         brain = app.brain()
