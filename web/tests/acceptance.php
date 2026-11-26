@@ -630,6 +630,38 @@ check('EX-10', 'Địa chỉ một cấp .html: dựng/giải link, đường d�
     return 'một cấp .html; duy nhất toàn site; link cũ → 301 đúng đích (kể cả mục bị đổi đường dẫn khi nâng cấp)';
 });
 
+check('EX-11', 'SEO trang khách: tiêu đề/mô tả, canonical trang phân trang, JSON-LD (Product, Breadcrumb, Organization), robots.txt, sitemap lastmod', function () {
+    $S = \App\Domain\Seo::class;
+    ok(mb_strlen($S::title(str_repeat('Trà gừng mật ong ', 8))) <= 60 && $S::title('Trà gừng', 'Xưởng') === 'Trà gừng — Xưởng', 'tiêu đề ≤ 60 ký tự, kèm tên xưởng khi vừa');
+    ok(mb_strlen($S::description(str_repeat('Bột ngũ cốc dinh dưỡng ', 20))) <= 160 && $S::description('<p>Đoạn một.</p><p>Đoạn hai</p>') === 'Đoạn một. Đoạn hai', 'mô tả ≤ 160 ký tự, không dính chữ giữa các đoạn');
+
+    $prod = Db::one("SELECT id, slug FROM products WHERE status = 'active' AND EXISTS (SELECT 1 FROM skus s WHERE s.product_id = products.id AND s.status = 'active') ORDER BY id LIMIT 1");
+    $evil = 'Trà </script><script>alert(1)</script>';
+    Db::update('products', ['name' => $evil], 'id = :id', ['id' => $prod['id']]);
+    $_SERVER['REQUEST_URI'] = '/' . $prod['slug'] . '.html'; $_GET = [];
+    $html = (new \App\Http\StoreController())->resolve($prod['slug']);
+    ok(!str_contains($html, '</script><script>alert(1)'), 'tên sản phẩm chứa </script> không phá được thẻ JSON-LD');
+    preg_match('#<script type="application/ld\+json">(.*?)</script>#s', $html, $m);
+    $g = json_decode($m[1] ?? '', true)['@graph'] ?? [];
+    $types = array_column($g, '@type');
+    $offers = $g[0]['offers'] ?? [];
+    $offers = isset($offers['@type']) ? [$offers] : $offers;
+    ok($types === ['Product', 'BreadcrumbList'] && $g[0]['name'] === $evil && $offers && !array_filter($offers, fn($o) => !ctype_digit($o['price']) || $o['priceCurrency'] !== 'VND' || !str_starts_with($o['availability'], 'https://schema.org/')), 'trang sản phẩm: Product + Offer (giá, VND, tình trạng) + Breadcrumb');
+    ok(str_contains($html, '<meta property="og:url"') && str_contains($html, 'twitter:card') && preg_match('#<title>([^<]+)</title>#u', $html, $t) && mb_strlen(html_entity_decode($t[1])) <= 60, 'thẻ chia sẻ và tiêu đề');
+
+    $cat = Db::one('SELECT slug FROM categories WHERE is_active = 1 ORDER BY id LIMIT 1');
+    $_SERVER['REQUEST_URI'] = '/' . $cat['slug'] . '.html?trang=2&sap-xep=gia-tang'; $_GET = ['trang' => '2', 'sap-xep' => 'gia-tang'];
+    $html = (new \App\Http\StoreController())->resolve($cat['slug']);
+    ok(preg_match('#<link rel="canonical" href="[^"]+/' . preg_quote($cat['slug']) . '\.html\?trang=2">#', $html) && str_contains($html, '— Trang 2'), 'trang 2: canonical giữ ?trang=2, bỏ tham số sắp xếp; tiêu đề riêng');
+    $_GET = []; $_SERVER['REQUEST_URI'] = '/';
+    ok(str_contains((new \App\Http\StoreController())->home(), '"@type": "Organization"'), 'trang chủ khai báo Organization');
+
+    $robots = \App\Http\StoreController::robotsTxt();
+    ok(str_contains($robots, "Disallow: /admin\n") && str_contains($robots, 'Disallow: /dat-hang.html') && str_contains($robots, 'Sitemap: ') && !str_contains($robots, '/assets'), 'robots.txt chặn trang riêng tư, chỉ tới sitemap, không chặn tài nguyên');
+    ok(preg_match('#<loc>[^<]+/' . preg_quote($prod['slug']) . '\.html</loc><lastmod>\d{4}-\d\d-\d\d</lastmod>#', \App\Http\StoreController::sitemapXml()) === 1, 'sitemap có lastmod');
+    return 'tiêu đề ≤60, mô tả ≤160; JSON-LD an toàn và đủ thuộc tính bắt buộc; canonical phân trang; robots + sitemap';
+});
+
 check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử dụng: có sẵn, chèn cấu hình an toàn, không ghi đè trang đã sửa', function () {
     ok((int)Db::val("SELECT COUNT(*) FROM schema_migrations WHERE version = '004_legal_pages'") === 1, 'migration PHP 004 đã chạy');
     foreach (['bao-mat' => 'Chính sách bảo mật thông tin', 'dieu-khoan-su-dung' => 'Điều khoản sử dụng'] as $slug => $title) {

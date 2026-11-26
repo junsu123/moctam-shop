@@ -27,7 +27,7 @@ Trình cài đặt tự tìm PHP, kiểm tra kết nối CSDL, đặt mã nguồ
 
 1. `docs/THIET-KE.md`: kiến trúc, sơ đồ dữ liệu, luồng đặt hàng, trạng thái đơn, đối soát, đồng bộ, AI, bảng truy vết FR/NFR → mã nguồn.
 2. `docs/TRIEN-KHAI-HOSTINGER.md`: cài đặt từng bước, cron, cấu hình trước khi mở bán.
-3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (24/24 ca website + 15/15 kiểm thử Python đạt), đo tải.
+3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (25/25 ca website + 15/15 kiểm thử Python đạt), đo tải.
 4. `docs/API.md`, `docs/SAO-LUU-KHOI-PHUC.md`, `ai/README.md`.
 
 ## Chạy thử trên máy tính — một lệnh

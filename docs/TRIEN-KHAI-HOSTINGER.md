@@ -171,3 +171,11 @@ Nếu tệp cấu hình cài từ phiên bản cũ chưa có mục này, thêm n
 - Website không lưu mã truy cập của Google/Facebook; lỗi nhà cung cấp chỉ ảnh hưởng nút đăng nhập, không ảnh hưởng bán hàng.
 - Quản lý tài khoản khách ở **Quản trị → Tài khoản khách** (quyền *Quản lý tài khoản đăng nhập của khách*, mặc định chỉ Quản trị viên): xem cách đăng nhập đã liên kết, buộc đăng xuất mọi thiết bị, tạm khóa đăng nhập, gỡ một cách đăng nhập, xóa tài khoản khi khách yêu cầu qua hotline (hệ thống cấp mã xác nhận để gửi khách). Chỉ xóa sau khi xác minh đúng chủ tài khoản, ví dụ khách gửi email từ chính địa chỉ đăng nhập.
 - Chạy thử trên máy: Google chấp nhận `http://localhost:8080/auth/google/callback`; Facebook cho phép `localhost` ở chế độ phát triển.
+
+## SEO sau khi mở bán
+
+1. Điền đủ **Cấu hình**: tên xưởng, khẩu hiệu (hiện trong tiêu đề và mô tả trang chủ), hotline, email, địa chỉ, Zalo — các thông tin này được khai báo cho Google (dữ liệu có cấu trúc `Organization`).
+2. Thay ảnh chia sẻ mặc định `public_html/assets/img/og-mac-dinh.png` (1200×630, hiện khi chia sẻ trang chủ/danh mục/bài viết không có ảnh lên Facebook, Zalo) và logo `public_html/assets/img/logo-512.png` (512×512) bằng ảnh của xưởng, giữ nguyên tên tệp và kích thước.
+3. [Google Search Console](https://search.google.com/search-console): thêm tên miền, xác minh, gửi `https://tenmien.vn/sitemap.xml`. Mục *Cải thiện* sẽ hiện kết quả kiểm tra dữ liệu sản phẩm, breadcrumb, hỏi đáp.
+4. Kiểm tra một trang sản phẩm bằng [Kiểm tra kết quả nhiều định dạng](https://search.google.com/test/rich-results).
+5. Ảnh sản phẩm nên là JPG/PNG/WebP, cạnh dài ≥ 1200px, có mô tả ảnh (alt) — Google Hình ảnh và Google Mua sắm ưu tiên ảnh lớn.

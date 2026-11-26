@@ -25,6 +25,24 @@ $path = $_SERVER['REQUEST_URI'] ?? '/';
 $isApi = str_starts_with($path, '/api/');
 $isSync = str_starts_with($path, '/api/sync/');
 
+// Một nội dung — một địa chỉ: www.tenmien.vn ↔ tenmien.vn → 301 về tên miền trong base_url.
+// Chỉ khi hai tên miền khác nhau đúng phần "www." — cấu hình sai cũng không gây vòng lặp chuyển hướng.
+$canonHost = strtolower((string)parse_url((string)config('base_url'), PHP_URL_HOST));
+$reqHost = strtolower(preg_replace('/:\d+$/', '', (string)($_SERVER['HTTP_HOST'] ?? '')));
+if ($canonHost !== '' && $reqHost !== $canonHost && ($reqHost === 'www.' . $canonHost || 'www.' . $reqHost === $canonHost)
+    && ($method === 'GET' || $method === 'HEAD') && !$isApi) {
+    header('Location: ' . rtrim((string)config('base_url'), '/') . $path, true, 301);
+    exit;
+}
+
+// "/tra-tui-loc.html/" → 301 "/tra-tui-loc.html" (tránh trùng lặp trên Google)
+$pathOnly = (string)parse_url($path, PHP_URL_PATH);
+if (($method === 'GET' || $method === 'HEAD') && strlen($pathOnly) > 1 && str_ends_with($pathOnly, '/') && !$isApi && !str_starts_with($pathOnly, '/admin')) {
+    $qs = (string)parse_url($path, PHP_URL_QUERY);
+    header('Location: ' . (rtrim($pathOnly, '/') ?: '/') . ($qs !== '' ? '?' . $qs : ''), true, 301);
+    exit;
+}
+
 if (!$isSync) {
     Session::start();
 }
@@ -47,6 +65,7 @@ $r->get('/' . $F['login'] . '.html', [AccountController::class, 'loginForm']);
 $r->get('/' . $F['deletion'] . '.html', [AccountController::class, 'deletionStatus']);
 $r->get('/' . Urls::ORDER_PREFIX . '{code}.html', [StoreController::class, 'orderConfirm']);
 $r->get('/sitemap.xml', [StoreController::class, 'sitemap']);
+$r->get('/robots.txt', [StoreController::class, 'robots']);
 $r->get('/{slug}.html', [StoreController::class, 'resolve']); // danh mục / sản phẩm / bài viết / trang — đặt SAU các trang cố định
 
 // Địa chỉ cũ (trước 11/2026) → 301 sang địa chỉ mới, giữ nguyên tham số truy vấn
@@ -105,7 +124,7 @@ try {
     if (str_starts_with($path, '/admin')) {
         Admin\Base::handleError($e, $method);
     }
-    Http::html(View::render('store/error', ['code' => $e->status, 'message' => $e->getMessage(), 'title' => 'Lỗi'], 'store/layout'), $e->status);
+    Http::html(View::render('store/error', ['code' => $e->status, 'message' => $e->getMessage(), 'title' => $e->status === 404 ? 'Không tìm thấy trang' : 'Có lỗi xảy ra', 'robots' => 'noindex'], 'store/layout'), $e->status);
 } catch (Throwable $e) {
     error_log((string)$e);
     Audit::error('http', 'UNHANDLED', get_class($e) . ': ' . $e->getMessage() . ' @ ' . $path);
@@ -113,5 +132,5 @@ try {
         Http::json(['error' => ['code' => 'SERVER_ERROR', 'message' => 'Hệ thống đang bận, vui lòng thử lại sau ít phút.']], 500);
     }
     $msg = config('debug') ? $e->getMessage() : 'Hệ thống đang bận, vui lòng thử lại sau ít phút.';
-    Http::html(View::render('store/error', ['code' => 500, 'message' => $msg, 'title' => 'Lỗi'], 'store/layout'), 500);
+    Http::html(View::render('store/error', ['code' => 500, 'message' => $msg, 'title' => 'Có lỗi xảy ra', 'robots' => 'noindex'], 'store/layout'), 500);
 }

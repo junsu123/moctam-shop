@@ -30,7 +30,7 @@
     </div>
   <?php else: ?>
     <div class="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-4">
-      <?php foreach ($res['items'] as $p): ?><?= \App\Core\View::partial('store/_card', ['p' => $p]) ?><?php endforeach; ?>
+      <?php foreach ($res['items'] as $p): ?><?= \App\Core\View::partial('store/_card', ['p' => $p, 'h' => $cardHeading ?? 'h3']) ?><?php endforeach; ?>
     </div>
     <?= \App\Core\View::partial('store/_pager', ['page' => $res['page'], 'pages' => $res['pages'], 'base' => $baseUrl, 'query' => $query + ($sort !== 'default' ? ['sap-xep' => $sort] : [])]) ?>
   <?php endif; ?>

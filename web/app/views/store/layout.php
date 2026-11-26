@@ -2,9 +2,15 @@
 /** @var string $content */
 $store = setting('store_name');
 if (!isset($categories)) { try { $categories = \App\Domain\CatalogService::categories(); } catch (\Throwable) { $categories = []; } }
-$pageTitle = $title ?? $store;
-$metaDesc = $description ?? setting('store_tagline');
-$canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+use App\Domain\Seo;
+// Trang phân trang (?trang=N): tiêu đề, mô tả, canonical riêng để Google lập chỉ mục cả các trang sau
+$pageNo = max(1, (int)($_GET['trang'] ?? 1));
+$pageTitle = Seo::title(($title ?? $store) . ($pageNo > 1 ? ' — Trang ' . $pageNo : ''));
+$metaDesc = Seo::description(($pageNo > 1 ? 'Trang ' . $pageNo . ': ' : '') . ($description ?? '') ?: setting('store_tagline'));
+$path = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
+$path = $path === '/' ? '/' : rtrim($path, '/');
+$canonical = Seo::abs($path . ($pageNo > 1 ? '?trang=' . $pageNo : '')); // bỏ tham số sắp xếp/lọc → gộp về một địa chỉ
+$ogImg = !empty($ogImage) ? Seo::abs($ogImage) : Seo::abs('/assets/img/og-mac-dinh.png');
 ?><!doctype html>
 <html lang="vi">
 <head>
@@ -14,10 +20,18 @@ $canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_U
 <meta name="description" content="<?= e($metaDesc) ?>">
 <?php if (!empty($robots)): ?><meta name="robots" content="<?= e($robots) ?>"><?php endif; ?>
 <link rel="canonical" href="<?= e($canonical) ?>">
+<meta property="og:locale" content="vi_VN">
+<meta property="og:site_name" content="<?= e($store) ?>">
+<meta property="og:type" content="<?= e($ogType ?? 'website') ?>">
+<meta property="og:url" content="<?= e($canonical) ?>">
 <meta property="og:title" content="<?= e($pageTitle) ?>">
 <meta property="og:description" content="<?= e($metaDesc) ?>">
-<meta property="og:type" content="<?= e($ogType ?? 'website') ?>">
-<?php if (!empty($ogImage)): ?><meta property="og:image" content="<?= e(rtrim((string)config('base_url'), '/') . $ogImage) ?>"><?php endif; ?>
+<meta property="og:image" content="<?= e($ogImg) ?>">
+<?php if (empty($ogImage)): ?><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><?php endif; ?>
+<meta property="og:image:alt" content="<?= e($ogImageAlt ?? $pageTitle) ?>">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#2F5D46">
+<?= Seo::script($jsonLd ?? []) ?>
 <meta name="csrf-token" content="<?= e(\App\Core\Csrf::token()) ?>">
 <link rel="preload" href="/assets/fonts/be-vietnam-pro-vietnamese-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= asset('css/app.css') ?>">

@@ -249,3 +249,20 @@ Giữ nguyên: `/admin/*`, `/api/*`, `/sitemap.xml`, `/auth/*` (đã khai báo v
 - **Link cũ** chuyển hướng 301, giữ nguyên tham số truy vấn (`?trang=2`, `?q=`, `?t=`, `?ma=`). Migration 009 đổi đường dẫn các mục đang trùng (giữ mục ưu tiên hơn: danh mục > sản phẩm > blog > trang; mục bị đổi thêm hậu tố `-san-pham`, `-bai-viet`…), lưu địa chỉ cũ vào `url_aliases` để link cũ vẫn tới đúng chỗ, và ghi nhật ký `url.slug_renamed`. Ca kiểm thử EX-10.
 - Nội dung đã xuất bản (blog, FAQ) có link kiểu cũ trong thân bài vẫn dùng được nhờ chuyển hướng; trang pháp lý được cập nhật link qua migration 009.
 
+
+## 14. SEO trang khách
+
+`App\Domain\Seo` + `views/store/layout.php`. Kiểm tra: Lighthouse SEO 100/100 ở mọi trang được lập chỉ mục; ca nghiệm thu EX-11.
+
+| Hạng mục | Cách làm |
+|---|---|
+| Tiêu đề | `Seo::title()`: "Tên trang — Tên xưởng", ≤ 60 ký tự (quá dài thì bỏ tên xưởng, cắt ở ranh giới từ). Trang phân trang thêm "— Trang N". |
+| Mô tả | `Seo::description()` ≤ 160 ký tự từ số liệu thật: sản phẩm = mô tả ngắn + quy cách + giá từ; danh mục = mô tả + số sản phẩm + giá từ. |
+| Canonical | Đường dẫn không tham số; giữ `?trang=N` khi N > 1 (Google lập chỉ mục cả trang sau), bỏ `?sap-xep=`. `/x.html/` → 301 `/x.html`; `www.` ↔ không `www.` → 301 về tên miền trong `base_url`. |
+| Dữ liệu có cấu trúc (JSON-LD) | Trang chủ: `Organization` (logo PNG 512px, hotline, email, Zalo) + `WebSite`. Sản phẩm: `Product` với mỗi quy cách là một `Offer` (giá thực bán gồm Flash Sale + `priceValidUntil`, VND, còn/hết hàng, khối lượng). `BreadcrumbList` mọi trang nội dung. Blog: `BlogPosting`. Hỏi đáp: `FAQPage`. In bằng `JSON_HEX_TAG` nên dữ liệu chứa `</script>` không phá trang. |
+| Không khai báo | Đánh giá/sao (website chưa có chức năng đánh giá), chính sách đổi trả và phí ship dạng schema (chưa có cấu hình số ngày đổi trả; phí ship theo tỉnh). Khi có, bổ sung `hasMerchantReturnPolicy`, `shippingDetails` vào `Seo::product()`. |
+| Chia sẻ mạng xã hội | `og:url`, `og:site_name`, `og:locale`, `og:image` (ảnh sản phẩm / ảnh bài viết / `assets/img/og-mac-dinh.png` 1200×630), `twitter:card`. |
+| Không lập chỉ mục | Giỏ hàng, đặt hàng, xác nhận đơn (`noindex, nofollow`); tìm kiếm (`noindex, follow`); đăng nhập, trạng thái xóa dữ liệu, trang lỗi (`noindex`). |
+| robots.txt | Sinh động (`/robots.txt`): chặn `/admin`, `/api/`, `/auth/`, tài khoản, giỏ, đặt hàng, tìm kiếm, đơn hàng, trang sắp xếp; không chặn CSS/JS/ảnh; dòng `Sitemap:` tuyệt đối. |
+| sitemap.xml | Chỉ trang được lập chỉ mục, kèm `lastmod` (ngày cập nhật sản phẩm/bài viết). |
+| Thứ bậc tiêu đề | Mỗi trang đúng một H1; thẻ sản phẩm trong lưới là H2 ở trang danh mục/tìm kiếm, H3 ở nơi khác. |
