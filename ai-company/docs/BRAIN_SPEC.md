@@ -1,6 +1,6 @@
 # BRAIN_SPEC: Agent Brain Blueprint
 
-> Trạng thái: v0.1, chờ Owner duyệt. Đây là module ưu tiên số 1 của SRS ("Individual Brain Engine").
+> Trạng thái: v0.2 (26/11/2026, theo `DECISIONS.md`), chờ Owner duyệt. Đây là module ưu tiên số 1 của SRS ("Individual Brain Engine").
 > Mục tiêu của tài liệu: các agent phải khác nhau về **trạng thái, dữ liệu, quyền và lịch sử**, chứ không chỉ khác nhau ở system prompt (SRS §1.3).
 
 ## 1. Bộ não gồm những gì
@@ -136,6 +136,8 @@ flowchart TD
   E --> X[Đề xuất bài học → hàng chờ thẩm định<br/>KHÔNG ghi thẳng]
 ```
 
+**Hiện thực (v0.2, ADR-05):** vòng trên là một **đồ thị LangGraph**. Mỗi ô là một nút; checkpoint được lưu sau mỗi nút vào Postgres. Ô `WAITING_APPROVAL` dùng `interrupt()`; Owner bấm nút trên Telegram hoặc dashboard thì đồ thị chạy tiếp. Đồ thị được dựng từ brain bundle, nên mọi agent dùng chung một mã đồ thị nhưng khác policy, công cụ và trí nhớ.
+
 Các quy tắc của runtime:
 - **Checkpoint sau mỗi bước.** Worker chết thì lease hết hạn, worker khác tiếp tục từ checkpoint. Lời gọi công cụ có tác động mang khóa chống trùng (`task_id:step_no`), nên chạy lại không bị làm hai lần.
 - **Giới hạn cứng** trên mỗi task: số bước, số lời gọi công cụ, token, USD, thời gian. Vượt giới hạn thì `FAILED` kèm lý do và báo cấp trên.
@@ -219,6 +221,14 @@ Những thứ **không bao giờ** được tự động duyệt:
 
 - Độ tin cậy là Beta trên 90 ngày, theo **(agent, loại việc)**.
 - Góp ý của người duyệt thành *ghi chú hướng dẫn* trong ngữ cảnh của lần sau.
+- **Phản hồi qua Telegram (v0.2):**
+
+  | Owner làm gì | Hệ thống hiểu là |
+  |---|---|
+  | Bấm **Gỡ bài** | `retracted` (không đạt) |
+  | Bấm **Góp ý** | Ghi chú hướng dẫn, như từ chối kèm góp ý |
+  | Bấm **Duyệt** cho bài chờ duyệt | `approved` |
+  | Không làm gì với bài đã tự xuất bản | **Không** tính là đồng ý. Chất lượng bài sẽ được đo bằng số liệu thật (GSC, thời gian đọc) sau 28 ngày |
 - **Mới so với bản hiện tại:** khi nhân viên *sửa* bản nháp, hệ thống lưu bản diff. Learning Engine gom các mẫu sửa lặp lại (vd luôn bỏ câu mở đầu quảng cáo) thành ứng viên quy tắc phong cách, rồi đưa qua thẩm định.
 
 ## 8. Đánh giá độc lập
@@ -230,7 +240,7 @@ Nguyên tắc: **người làm không tự chấm việc mình làm**. Evaluatio
 | 1. Kiểm tra tất định | Đúng schema, độ dài title/meta, không có cụm cấm (cam kết chữa bệnh…), giá/số liệu khớp DB, link nội bộ tồn tại, đủ nguồn | Cổng chặn (trượt = 0) |
 | 2. Phản hồi con người | Duyệt/sửa/từ chối, chấm sao trên dashboard | Cao nhất |
 | 3. Kết quả kinh doanh | Click và vị trí GSC của trang, CTR quảng cáo, đơn hàng có gắn nguồn | Cao, nhưng phải có cửa sổ quan sát và mẫu tối thiểu |
-| 4. LLM-judge | Rubric chấm bởi model **khác họ** với model đã viết | Thấp, chỉ dùng khi đã đo độ khớp với người (≥ 50 mẫu, κ ≥ 0,6); tự giảm trọng số nếu lệch |
+| 4. LLM-judge | Rubric chấm bởi model **khác họ** với model đã viết (v0.2: bài do Claude viết thì OpenAI chấm, và ngược lại) | Thấp, chỉ dùng khi đã đo độ khớp với người (≥ 50 mẫu, κ ≥ 0,6); tự giảm trọng số nếu lệch |
 
 KPI của agent được tính từ các tầng trên, không từ báo cáo tự khai của agent. Dashboard hiển thị cả số mẫu và khoảng tin cậy, để không ai kết luận từ 3 mẫu.
 

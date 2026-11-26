@@ -2,7 +2,15 @@
 
 Nền tảng nhiều agent AI vận hành như một công ty marketing cho xưởng: có AI CEO, 3 giám đốc và 12 chuyên viên. Mỗi agent có bộ não, trí nhớ, kiến thức và kinh nghiệm riêng. Owner giao mục tiêu, giám sát và phê duyệt.
 
-> **Trạng thái: thiết kế v0.1, chờ Owner duyệt.** Chưa có mã. Xem `docs/IMPLEMENTATION_PLAN.md` §7.
+> **Trạng thái: thiết kế v0.2, đã cập nhật theo câu trả lời của Owner ngày 26/11/2026; chờ Owner ghi "duyệt kiến trúc".** Chưa có mã. Xem `docs/IMPLEMENTATION_PLAN.md` §7.
+>
+> Đã quyết:
+> - chạy trên máy Windows 11 của Owner;
+> - LangGraph;
+> - Claude + ChatGPT;
+> - Telegram là kênh của Owner;
+> - AI tự xuất bản FAQ/blog (có 5 lớp chặn, gỡ được ngay);
+> - trần LLM 50 USD.
 
 | Tài liệu | Nội dung |
 |---|---|
@@ -14,7 +22,8 @@ Nền tảng nhiều agent AI vận hành như một công ty marketing cho xư�
 | [docs/SECURITY_PLAN.md](docs/SECURITY_PLAN.md) | Mô hình đe dọa, quyền 4 cấp, phê duyệt, chống prompt injection, pháp lý, sao lưu |
 | [docs/TEST_PLAN.md](docs/TEST_PLAN.md) | Kiểm thử theo tầng; ánh xạ đủ 25 tiêu chí nghiệm thu |
 | [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Lộ trình 10 Sprint, đề xuất công nghệ và phụ thuộc, kế hoạch chuyển từ dịch vụ AI hiện tại |
-| [docs/QUESTIONS_FOR_OWNER.md](docs/QUESTIONS_FOR_OWNER.md) | Câu hỏi cần Owner trả lời, mỗi câu có mặc định đề xuất |
+| [docs/DECISIONS.md](docs/DECISIONS.md) | **Sổ quyết định của Owner** và hệ quả kỹ thuật của từng quyết định |
+| [docs/QUESTIONS_FOR_OWNER.md](docs/QUESTIONS_FOR_OWNER.md) | Câu hỏi cần Owner trả lời (§G: câu mới), mỗi câu có mặc định đề xuất |
 | [CLAUDE.md](CLAUDE.md) | Quy tắc cho Claude Code khi phát triển |
 
 Quan hệ với phần còn lại của repo:

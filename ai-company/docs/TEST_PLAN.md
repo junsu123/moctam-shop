@@ -1,6 +1,6 @@
 # TEST_PLAN: kế hoạch kiểm thử
 
-> Trạng thái: v0.1, chờ Owner duyệt. Quy tắc SRS §21: **không tự nhận đã xong khi chưa có test chạy đạt**.
+> Trạng thái: v0.2 (26/11/2026), chờ Owner duyệt. Quy tắc SRS §21: **không tự nhận đã xong khi chưa có test chạy đạt**.
 
 ## 1. Chiến lược
 
@@ -44,6 +44,23 @@
 | IT-INT-01…n | Mỗi tích hợp có test hợp đồng với sandbox của nền tảng (nếu có) hoặc bản ghi phản hồi thật đã che; token hết hạn → `expired` + làm mới |
 | IT-BK-01 | Sao lưu → khôi phục vào CSDL tạm → kiểm đếm bản ghi, chuỗi băm audit hợp lệ, task chạy tiếp được |
 
+### 3.1. Bổ sung v0.2 (theo `DECISIONS.md`)
+
+| Mã | Nội dung |
+|---|---|
+| IT-LG-01 | Dừng container worker giữa đồ thị LangGraph → khởi động lại → đồ thị chạy tiếp từ checkpoint; nút có tác động không chạy lần hai |
+| IT-LG-02 | `interrupt()` chờ duyệt → khởi động lại toàn hệ thống → bấm Duyệt trên Telegram (giả lập Bot API) → đồ thị tiếp tục đúng với digest đã duyệt; digest lệch thì bị từ chối |
+| IT-LG-03 | Job đối soát: task `IN_PROGRESS` không có worker → đưa lại vào hàng đợi; checkpoint mồ côi → báo |
+| IT-PUB-01 | Bài đạt đủ 5 lớp → `publish` lên website **thật** (PHP + MariaDB) → Telegram nhận link đúng |
+| IT-PUB-02 | Vượt hạn mức ngày: phía máy bị lỗi cố gửi thêm → **website** từ chối |
+| IT-PUB-03 | Bài trượt Compliance Gate → không xuất bản, thành bản nháp + thông báo lý do |
+| IT-PUB-04 | Chủ đề chỉ-người-duyệt → `interrupt()`, không tự xuất bản; quá hạn không trả lời → hủy |
+| IT-PUB-05 | Bấm Gỡ bài → `unpublish` → bài biến mất khỏi website, `retracted` vào kênh học |
+| IT-TG-01…04 | Chat ID lạ bị bỏ qua; nút hết hạn hoặc dùng lần hai bị từ chối; chữ ký sai bị từ chối; tin nhắn đi ra không chứa SĐT/email/giá vốn (quét tự động) |
+| IT-WIN-01 | Tắt toàn bộ container 3 giờ (giả lập tắt máy) → bật lại → Scheduler làm bù các lịch bị lỡ (≤ 24 giờ), Telegram báo "máy đã tắt từ … đến …" |
+| IT-WIN-02 | Sao lưu ra thư mục ngoài → khôi phục trên CSDL mới → chạy tiếp được (bổ sung cho IT-BK-01) |
+| WEB-AT-09' | Ca nghiệm thu phía website (`web/tests/acceptance.php`), thay cho AT-09: khóa `drafts:write` không xuất bản được; khóa `content:publish` chỉ xuất bản được nội dung AI, trong hạn mức, có audit; `unpublish` hoạt động |
+
 ## 4. Learning test
 
 | Mã | Nội dung |
@@ -80,7 +97,7 @@ Kết quả lưu thành báo cáo `docs/KET-QUA-NGHIEM-THU-AI-COMPANY.md`, giố
 
 ## 7. Performance test
 
-| Mã | Mục tiêu (VPS 4 vCPU/8 GB, model giả độ trễ 2 giây) |
+| Mã | Mục tiêu (máy Owner i5-11400F, 16–32 GB RAM, Docker Desktop/WSL2, model giả độ trễ 2 giây) |
 |---|---|
 | PT-01 Agent đồng thời | 15 agent × 3 task song song, không mất việc, p95 thời gian xếp hàng < 5 giây |
 | PT-02 Hàng đợi | 10.000 task nhỏ xử lý hết, không trùng, không mất |
@@ -104,14 +121,14 @@ Kết quả lưu thành báo cáo `docs/KET-QUA-NGHIEM-THU-AI-COMPANY.md`, giố
 | 10 | AI CEO điều phối | IT-ORCH-01 |
 | 11 | Agent trao đổi | IT-A2A-* |
 | 12 | Giao việc | UT-TASK-*, IT-ORCH-* |
-| 13 | Phê duyệt | UT-POL-03, IT-REC-02 |
+| 13 | Phê duyệt | UT-POL-03, IT-REC-02, IT-LG-02, IT-TG-* |
 | 14 | Model Gateway | UT-MGW-* |
 | 15 | Tool Registry | UT-TOOL-* |
 | 16 | Dashboard | Playwright E2E-01…12 (mỗi màn hình SRS §12) |
-| 17 | Lịch tự động | IT-REC-03, UT lịch |
+| 17 | Lịch tự động | IT-REC-03, IT-WIN-01, UT lịch |
 | 18 | Cost tracking | UT-MGW-03, PT-05 |
 | 19 | Audit log | IT-DB-03, ST-12 |
-| 20 | Backup và recovery | IT-BK-01 |
+| 20 | Backup và recovery | IT-BK-01, IT-WIN-02 |
 | 21 | Thêm agent không sửa lõi | Test "agent thứ 16" chỉ thêm bundle → chạy được AC-BRAIN-01 |
 | 22 | Đổi nhà cung cấp AI | UT-MGW-01: cùng agent chạy qua 2 adapter (giả) chỉ bằng đổi registry |
 | 23 | Tạm dừng/khôi phục agent | UT-AG-05, IT-REC-* |

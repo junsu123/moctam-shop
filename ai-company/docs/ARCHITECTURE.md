@@ -1,6 +1,14 @@
 # ARCHITECTURE: AI Marketing Company Platform
 
-> **Trạng thái:** bản thiết kế v0.1, **đang chờ Owner duyệt** (SRS §21, bước 5). Chưa có dòng mã nào được viết.
+> **Trạng thái:** bản thiết kế **v0.2** (26/11/2026), đã cập nhật theo câu trả lời của Owner (`DECISIONS.md`), **vẫn chờ Owner ghi "duyệt kiến trúc"** (SRS §21, bước 5). Chưa có dòng mã nào được viết.
+>
+> Thay đổi chính so với v0.1:
+> - chạy trên **máy cá nhân Windows 11**, không thuê VPS;
+> - **LangGraph** là bộ chạy luồng công việc;
+> - **Claude + ChatGPT**;
+> - **Telegram** là kênh của Owner;
+> - **AI tự xuất bản** FAQ và blog, có 5 lớp chặn;
+> - chi phí tính theo **bảng giá thật** và trần 50 USD.
 > Tài liệu gốc: `docs/SRS-v1.0.md`. Các tài liệu đi kèm: `BRAIN_SPEC.md`, `AGENT_DESIGN.md`, `DATABASE_SCHEMA.md`, `SECURITY_PLAN.md`, `TEST_PLAN.md`, `IMPLEMENTATION_PLAN.md`, `QUESTIONS_FOR_OWNER.md`.
 
 ## 1. Bối cảnh và ràng buộc thực tế
@@ -10,14 +18,15 @@ SRS mô tả nền tảng ở dạng tổng quát. Phần thiết kế này gắ
 | Thực tế | Hệ quả cho kiến trúc |
 |---|---|
 | Website bán hàng (repo `moctam-shop`, PHP 8 + MySQL trên **Hostinger shared hosting**) là nơi giữ dữ liệu chính thức về sản phẩm, giá, kho, đơn, khách | Nền tảng **không ghi thẳng vào CSDL website**. Mọi trao đổi đi qua API có phạm vi quyền (đã có `/api/sync/events`, `snapshot`, `catalog`, `feedback`, `drafts`) |
-| Shared hosting không chạy được Docker, Postgres hay worker nền | Nền tảng phải chạy ở **máy khác** (VPS và/hoặc máy có GPU). Xem §6 và ADR-01 |
+| Shared hosting không chạy được Docker, Postgres hay worker nền | Owner chọn chạy trên **máy cá nhân Windows 11** (i5-11400F, 6 nhân 12 luồng; card đồ họa và RAM chưa rõ). Xem §6 và ADR-01 |
+| Owner muốn AI **tự xuất bản** và **báo qua Telegram** | Website thêm API xuất bản/gỡ bài dùng khóa riêng (ADR-16). Telegram là kênh điều hành chính của Owner (ADR-15) |
 | Đã có dịch vụ AI cục bộ `ai/` và bộ não "Trưởng văn phòng" (PR #5). Hai thứ này đã chứng minh được: học từ duyệt/sửa/từ chối, nội quy, chỉ cho phép bản nháp, không nhận dữ liệu cá nhân | Đây là **thiết kế tham chiếu** được đưa sang nền tảng mới (BRAIN_SPEC §10). Dịch vụ cũ vẫn chạy cho tới khi nền tảng mới qua nghiệm thu |
-| Quy mô kinh doanh nhỏ (một bên bán, một kho) | Chi phí LLM là chi phí vận hành lớn nhất, lớn hơn hạ tầng. Phải có ngân sách theo agent, theo ngày, theo nhiệm vụ ngay từ Sprint 1 |
+| Quy mô kinh doanh nhỏ; trần LLM **50 USD** (đang hiểu là mỗi tháng, chờ xác nhận Q-B1a) | Chi phí LLM là chi phí vận hành lớn nhất. Phải có ngân sách theo agent, theo ngày, theo nhiệm vụ ngay từ Sprint 1, và định tuyến phần lớn việc sang model rẻ (§8) |
 | Pháp lý Việt Nam: Luật BVDLCN 91/2025/QH15, NĐ 356/2025/NĐ-CP, Luật TMĐT 122/2025/QH15 (repo đã áp dụng); quy định quảng cáo thực phẩm | Dữ liệu khách được **ẩn danh hóa mặc định**. Có một cửa kiểm tra tuân thủ cho nội dung quảng cáo. Thu thập lead/KOC phải đúng điều khoản nền tảng (SECURITY_PLAN §6) |
 
 ## 2. Nguyên tắc kiến trúc
 
-1. **P1. Website là nguồn sự thật cho nghiệp vụ bán hàng.** Nền tảng chỉ đọc bản sao qua API đồng bộ và gửi *đề xuất/bản nháp* qua API. Mọi thay đổi giá, đơn, kho đều do người làm trên website.
+1. **P1. Website là nguồn sự thật cho nghiệp vụ bán hàng.** Nền tảng chỉ đọc bản sao qua API đồng bộ. Nó gửi bản nháp, và từ v0.2 được **xuất bản hoặc gỡ FAQ/blog** qua API dùng khóa riêng, có hạn mức và audit (ADR-16). Mọi thay đổi giá, đơn, kho, khuyến mãi đều do người làm trên website.
 2. **P2. Agent là dữ liệu, không phải mã.** Mỗi agent là một *brain bundle* có phiên bản (identity, policy, skills, quyền công cụ, cấu hình model, luật đánh giá) cộng với vùng nhớ riêng. Tất cả chạy trên **một runtime chung**. Thêm agent thứ 16 hay thứ 100 không cần sửa lõi (SRS AC-21).
 3. **P3. Có hai cửa ngõ bắt buộc.** Mọi lời gọi LLM đi qua **Model Gateway**. Mọi tác động ra ngoài (web, API, website, gửi tin) đi qua **Tool Gateway**, nơi kiểm tra quyền, schema, timeout, ngân sách và ghi audit. Agent không cầm khóa API, không có kết nối CSDL.
 4. **P4. Postgres giữ trạng thái, hàng đợi chỉ để đánh thức.** Task, message, memory, phê duyệt và audit đều nằm trong Postgres. Redis/Dramatiq chỉ báo "có việc". Nhờ vậy hệ thống khôi phục được sau khi khởi động lại, gửi lặp không gây hại (idempotent), và kiểm toán được (SRS §7, §14).
@@ -30,15 +39,16 @@ SRS mô tả nền tảng ở dạng tổng quát. Phần thiết kế này gắ
 
 ```mermaid
 flowchart TB
-  subgraph Owner["Owner / nhân viên"]
-    UI[Dashboard Next.js<br/>tiếng Việt, sáng/tối, realtime SSE]
+  subgraph Owner["Owner"]
+    TG[Telegram trên điện thoại<br/>báo cáo · link bài mới · nút Duyệt / Gỡ bài]
+    UI[Dashboard Next.js trên máy<br/>tiếng Việt, sáng/tối, realtime SSE]
   end
 
-  subgraph Core["Máy chủ lõi (VPS, Docker Compose)"]
+  subgraph PC["Máy cá nhân Windows 11 · Docker Desktop (WSL2)"]
     API[API FastAPI<br/>/api/v1 · xác thực · RBAC]
-    ORCH[Orchestrator<br/>CEO → Director → Specialist]
-    TASK[Task Engine<br/>state machine · retry · lease]
-    RT[Agent Runtime<br/>vòng nhận thức một bước]
+    ORCH[Orchestrator<br/>đồ thị LangGraph: CEO → Director → Specialist]
+    TASK[Task Engine<br/>bảng tasks · lease · retry]
+    RT[Agent Runtime<br/>đồ thị nhận thức của từng agent]
     BRAIN[Brain Registry<br/>bundle có phiên bản]
     MEM[Memory Service<br/>private / department / shared · RLS]
     LEARN[Learning Engine<br/>7 module]
@@ -46,40 +56,43 @@ flowchart TB
     POL[Policy Engine<br/>quyền · phê duyệt · ngân sách]
     MGW[Model Gateway<br/>registry · routing · fallback · chi phí]
     TGW[Tool Gateway<br/>registry · schema · audit]
+    TGG[Telegram Gateway<br/>long-polling, không mở cổng]
     INT[Integration Layer<br/>OAuth · webhook · đồng bộ]
-    SCH[Scheduler<br/>lịch cấu hình được]
+    SCH[Scheduler<br/>lịch cấu hình được · làm bù khi bật máy]
     BUS[Message Bus<br/>outbox Postgres]
-    PG[(PostgreSQL + pgvector)]
-    RD[(Redis)]
-    OBJ[(Object storage<br/>S3-compatible)]
+    PG[(PostgreSQL + pgvector<br/>gồm checkpoint LangGraph)]
+    RD[(Redis/Valkey)]
+    OBJ[(Lưu tệp<br/>thư mục cục bộ, giao diện S3)]
     WK[Workers Dramatiq<br/>hàng đợi theo agent]
-  end
-
-  subgraph GPU["Máy có GPU (tùy chọn, chỉ kết nối ra)"]
-    GW[GPU worker<br/>Ollama / vLLM · embedding · phân loại]
+    GPU[LLM cục bộ trên card rời<br/>tùy chọn, chờ Q-T3a]
   end
 
   subgraph Ext["Bên ngoài"]
-    WEB[Website moctam<br/>API đồng bộ có phạm vi]
+    WEB[Website moctam<br/>API đồng bộ + xuất bản có phạm vi]
     G[GA4 · Search Console · Google Ads]
     M[Meta · TikTok · YouTube · Shopee · TikTok Shop]
-    LLM[LLM đám mây<br/>Anthropic · OpenAI-compatible · Google]
-    Z[Zalo OA · Email]
+    LLM[Claude API · OpenAI API]
+    TGAPI[Telegram Bot API]
+    BK[(Sao lưu ngoài máy)]
   end
 
+  TG <--> TGAPI <--> TGG
   UI <--> API
   API --> ORCH & TASK & BRAIN & MEM & POL
   ORCH --> TASK --> WK --> RT
   RT --> BRAIN & MEM & MGW & TGW & BUS
   RT --> EVAL --> LEARN --> MEM
   TGW --> POL
-  TGW --> INT --> WEB & G & M & Z
+  TGW --> INT --> WEB & G & M
+  TGG --> POL
+  TGG --> TASK
   MGW --> LLM
-  MGW <-. "kéo việc qua HTTPS" .-> GW
+  MGW -.-> GPU
   SCH --> TASK
-  TASK & MEM & BUS & POL & EVAL & LEARN --- PG
+  TASK & MEM & BUS & POL & EVAL & LEARN & ORCH --- PG
   WK --- RD
   TGW --- OBJ
+  PG -. "pg_dump hằng ngày, mã hóa" .-> BK
 ```
 
 ## 4. Thành phần
@@ -87,7 +100,7 @@ flowchart TB
 | Thành phần | Trách nhiệm | Không được làm |
 |---|---|---|
 | **API (FastAPI)** | REST `/api/v1/*` theo SRS §16, xác thực, RBAC, validate bằng Pydantic, mã lỗi ổn định, SSE cho realtime | Chứa logic nghiệp vụ của agent |
-| **Orchestrator** | Nhận mục tiêu của Owner, giao cho AI CEO; quản lý cây nhiệm vụ (độ sâu, số nhánh, ngân sách thừa kế); xử lý bất đồng (SRS §6.3) | Tự quyết việc vượt quyền: những việc đó thành yêu cầu phê duyệt |
+| **Orchestrator** | Chạy các **đồ thị LangGraph** cấp tổ chức: nhận mục tiêu của Owner, giao cho AI CEO; quản lý cây nhiệm vụ (độ sâu, số nhánh, ngân sách thừa kế); xử lý bất đồng (SRS §6.3) | Tự quyết việc vượt quyền: những việc đó thành `interrupt()` chờ duyệt |
 | **Task Engine** | Máy trạng thái 9 trạng thái (SRS §7), phụ thuộc, hạn chót, retry có giãn cách, timeout, khóa gửi lặp, *lease* có hạn để khôi phục sau sự cố, hủy | Giữ trạng thái chỉ trong bộ nhớ |
 | **Agent Runtime** | Chạy *một bước nhận thức* (BRAIN_SPEC §4): nạp brain → truy hồi trí nhớ → lập kế hoạch → gọi công cụ → tự kiểm tra tất định → nộp kết quả → ghi trải nghiệm | Ghi thẳng vào semantic/procedural memory (chỉ được *đề xuất*) |
 | **Brain Registry** | Nạp, kiểm tra schema, băm và phiên bản hóa brain bundle; so sánh phiên bản, rollback, chạy *shadow* | Cho agent tự sửa quy tắc cốt lõi |
@@ -100,6 +113,7 @@ flowchart TB
 | **Integration Layer** | Kết nối từng nền tảng: cấu hình, OAuth, làm mới token, webhook, đồng bộ, giới hạn tần suất, trạng thái kết nối | Lưu secret trong mã hoặc trong ngữ cảnh LLM |
 | **Scheduler** | Lịch theo cron cho từng agent (SRS §14), có tạm dừng, tiếp tục, chạy bù khi khởi động lại; lịch lưu trong CSDL | Hardcode giờ |
 | **Message Bus** | Lưu message vào bảng (outbox) rồi phát; giao ít nhất một lần, có khóa chống trùng; 8 loại message (SRS §6.1) | Phụ thuộc Redis để giữ lịch sử |
+| **Telegram Gateway** | Bot Telegram của Owner (ADR-15): gửi báo cáo 18:00, cảnh báo, link bài vừa xuất bản; nhận nút *Duyệt / Từ chối / Gỡ bài / Góp ý*, lệnh `/baocao`, `/chiphi`, `/tamdung`, `/tieptuc`; kiểm tra chat ID và chữ ký của nút | Gửi dữ liệu cá nhân của khách; duyệt việc rủi ro cao (những việc đó cần dashboard + 2FA) |
 | **Dashboard** | Các màn hình SRS §12: tổng quan, agent, bộ não, chat agent, trung tâm nhiệm vụ (Kanban và bảng), trung tâm học tập, chat công ty, phê duyệt | Gọi thẳng LLM |
 
 ## 5. Luồng chính
@@ -138,35 +152,57 @@ BRAIN_SPEC §4 mô tả chi tiết. Tóm tắt:
 4. LLM (qua Model Gateway) lập *kế hoạch có cấu trúc*. Policy Engine kiểm tra từng hành động trong kế hoạch.
 5. Gọi công cụ qua Tool Gateway. Đầu ra không tin cậy được đưa qua tầng "đọc cách ly".
 6. Tự kiểm tra **tất định**: đúng schema, đủ tiêu chí thành công, không có cụm từ bị cấm, số liệu khớp DB.
-7. Nộp kết quả: `WAITING_REVIEW` (Director) hoặc `WAITING_APPROVAL` (Owner), hoặc `COMPLETED` nếu quyền cho phép.
+7. Nộp kết quả: `WAITING_REVIEW` (Director), `WAITING_APPROVAL` (Owner, qua Telegram hoặc dashboard), hoặc `COMPLETED` nếu quyền cho phép. Với FAQ/blog đủ điều kiện tự xuất bản: gọi `site.publish` rồi báo link qua Telegram (ADR-16).
 8. Ghi episodic memory. Gửi đề xuất bài học vào hàng chờ thẩm định (không ghi thẳng).
 
 ### 5.3. Học từ kết quả thật
 
 Kết quả (duyệt/sửa/từ chối, số liệu GSC/GA4/Ads, đơn hàng) → Evaluation Service gắn điểm vào `experience_records` → định kỳ, Learning Engine gom các trải nghiệm tương tự → đề xuất bài học kèm bằng chứng và mức chắc chắn → thẩm định (tự động và/hoặc Owner) → procedural/semantic memory có phiên bản. BRAIN_SPEC §7 có đủ chi tiết, gồm cả quy tắc "tương quan không phải nhân quả".
 
-## 6. Mô hình triển khai
+## 6. Mô hình triển khai (v0.2: máy cá nhân Windows 11)
 
-| Phương án | Mô tả | Ưu | Nhược | Đánh giá |
-|---|---|---|---|---|
-| A. Toàn bộ trên máy cá nhân có GPU | Docker Compose trên PC | Không tốn tiền thuê máy, dùng GPU trực tiếp | Máy tắt là công ty AI "nghỉ việc"; dashboard không mở được từ xa nếu không mở cổng; điện và độ ổn định | Chỉ hợp để thử nghiệm |
-| **B. VPS lõi + GPU worker tùy chọn** (khuyến nghị) | Lõi (Postgres, API, dashboard, scheduler, worker) trên VPS Linux. Máy GPU chạy *GPU worker* **chủ động kết nối ra** VPS để nhận việc (embedding, phân loại, soạn nháp rẻ) | Chạy 24/7, không cần mở cổng vào nhà, máy GPU tắt thì tự chuyển sang model đám mây | Tốn tiền thuê VPS, phải quản trị thêm một máy | **Đề xuất** |
-| C. Toàn bộ trên đám mây (cả GPU) | VPS + GPU thuê theo giờ | Linh hoạt | Chi phí GPU đám mây cao so với quy mô xưởng | Chưa cần |
+Owner chọn chạy toàn bộ trên máy cá nhân (Q-A2, Q-A3). Đây cũng là "Local" trong mô hình *Hybrid Local + Cloud AI API* của SRS: máy nhà chạy phần mềm, còn trí tuệ chính gọi Claude/OpenAI trên đám mây.
 
-Cấu hình VPS tối thiểu dự kiến cho 15 agent: 4 vCPU, 8 GB RAM, 80 GB SSD. Nên dùng 16 GB RAM nếu tự chạy công cụ quan sát nặng (ADR-08). Khi mở rộng tới 100 agent, nút thắt là **hạn mức và chi phí của LLM**, không phải CPU (xem §9).
+| Thành phần | Chạy ở đâu trên máy |
+|---|---|
+| Postgres 16/17 + pgvector, Redis/Valkey | Container Linux trong Docker Desktop (backend WSL2), dữ liệu nằm trên **volume WSL2** (nhanh hơn ổ Windows mount vào) |
+| API, worker, scheduler, Telegram Gateway | Container Python |
+| Dashboard Next.js | Container Node; mở `http://localhost:3000` trên máy. Xem từ xa là tùy chọn (Tailscale) |
+| LLM cục bộ (tùy chọn) | Ollama cho Windows dùng card rời, **chỉ khi Q-T3a cho thấy đủ VRAM** |
+| Lưu tệp (ảnh, video, tài liệu) | Thư mục trên ổ D: hoặc volume, qua giao diện S3 (ADR-10) |
 
-GPU worker chỉ cần: Docker, driver GPU, Ollama hoặc vLLM, và một token worker có phạm vi hẹp. Worker *kéo* việc qua HTTPS (long-poll). Không có cổng nào phải mở vào mạng nhà.
+**Yêu cầu máy dự kiến:**
+- **RAM:** tối thiểu 16 GB, khuyến nghị 32 GB. Docker Desktop mặc định lấy tối đa 50% RAM cho WSL2.
+- **Ổ đĩa:** SSD còn trống ≥ 100 GB.
+- **CPU:** i5-11400F 6 nhân 12 luồng là đủ cho 15 agent, vì phần lớn thời gian các agent chờ API trả lời, không tính toán.
+
+**Vì máy cá nhân có thể tắt, ngủ hoặc tự khởi động lại để cập nhật Windows:**
+- Docker Desktop đặt "Start when you sign in"; container `restart: unless-stopped`; Windows tự đăng nhập hoặc chạy Docker như dịch vụ.
+- Tắt chế độ ngủ (Sleep = Never) khi cắm điện. Đặt "Active hours" của Windows Update trùng giờ làm việc.
+- Khi bật lại, Scheduler **làm bù** các lịch bị lỡ (không làm bù quá 24 giờ), và Telegram báo: "Máy đã tắt từ … đến …, đã làm bù N việc".
+- Task đang chạy dở được tiếp tục từ checkpoint của LangGraph (ADR-05).
+- **Website vẫn bán bình thường** khi máy tắt (P1).
+
+**Mạng:** không mở cổng nào vào nhà. Telegram dùng long-polling (máy chủ động gọi ra). Website và LLM đều là máy gọi ra.
+
+**Sao lưu:** `pg_dump` hằng ngày, mã hóa, chép ra ổ ngoài **và** một thư mục đám mây (OneDrive/Google Drive) (SECURITY_PLAN §8). Sao lưu không được nằm cùng ổ với dữ liệu.
+
+**Lối chuyển sau này:** toàn bộ chạy trong Docker Compose, nên khi cần chạy 24/7 thì chuyển sang VPS chỉ là khôi phục bản sao lưu ở máy mới. Không phải sửa mã.
 
 ## 7. Quyết định kiến trúc (ADR)
 
 Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vận hành, khả năng mở rộng (theo yêu cầu SRS). Các mục đánh dấu ⚠ **khác với gợi ý trong SRS** và cần Owner duyệt riêng.
 
-### ADR-01. Triển khai VPS lõi + GPU worker kết nối ra
-- **Lý do:** shared hosting không chạy được Docker, và máy cá nhân có thể tắt. SRS yêu cầu chạy theo lịch 08:00–18:00, dashboard realtime, khôi phục sau khi khởi động lại.
-- **Ưu:** chạy liên tục; GPU là tài nguyên "có thì tốt", tắt máy không ảnh hưởng tính đúng đắn; không mở cổng vào mạng nhà.
-- **Nhược:** thêm chi phí thuê VPS; cần sao lưu VPS; độ trễ VPS ↔ GPU cao hơn so với chạy cùng máy.
-- **Chi phí:** một VPS cỡ trên, tính theo báo giá nhà cung cấp mà Owner chọn. Điện cho máy GPU khi bật.
-- **Mở rộng:** thêm GPU worker hay worker CPU chỉ là chạy thêm container trỏ về cùng hàng đợi. Có thể chuyển sang Kubernetes sau mà không đổi mã.
+### ADR-01 (v0.2). Chạy trên máy cá nhân Windows 11 bằng Docker Desktop (WSL2)
+- **Lý do:** Owner quyết định (Q-A2, Q-A3). Không tốn tiền thuê máy chủ; dữ liệu nằm trong nhà.
+- **Ưu:** không có chi phí hạ tầng; dùng được card đồ họa sẵn có; không cần mở cổng vào mạng nhà.
+- **Nhược:**
+  - máy tắt, ngủ hoặc cập nhật Windows thì các agent dừng (website không bị ảnh hưởng);
+  - phải tự lo sao lưu ngoài máy;
+  - một máy = một điểm hỏng;
+  - xem dashboard từ xa phải cài thêm (Tailscale).
+- **Chi phí:** điện năng của máy khi bật; Docker Desktop miễn phí cho doanh nghiệp nhỏ theo điều khoản hiện hành của Docker (cần kiểm tra khi cài).
+- **Mở rộng:** chuyển sang VPS hoặc thêm máy worker bằng cách khôi phục bản sao lưu và chạy cùng Compose. Không sửa mã.
 
 ### ADR-02. Backend Python 3.12 + FastAPI + SQLAlchemy 2 + Alembic + Pydantic v2
 - **Lý do:** đúng SRS; hệ sinh thái AI của Python mạnh nhất; đội đã có mã Python (`ai/`).
@@ -179,7 +215,7 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 - **Lý do:** SRS chọn sẵn. Trí nhớ cần *vừa* lọc quyền/metadata/thời gian *vừa* tìm theo nghĩa. Làm cả hai trong một câu SQL vừa đúng vừa nhanh hơn so với ghép hai hệ thống.
 - **Ưu:** Row-Level Security thực thi quyền trí nhớ ngay tại CSDL; giao dịch ACID cho task, phê duyệt và audit; một hệ thống để sao lưu.
 - **Nhược:** vector hàng chục triệu bản ghi thì cần tinh chỉnh (HNSW `m`, `ef_search`, phân vùng). Quy mô của xưởng còn xa ngưỡng đó.
-- **Chi phí:** nằm trong VPS.
+- **Chi phí:** không phát sinh (chạy trong Docker trên máy Owner).
 - **Mở rộng:** 100 agent × vài chục nghìn trí nhớ ≈ vài triệu vector: HNSW chịu được trên một máy. Khi lớn hơn thì phân vùng theo `owner_scope` hoặc tách read-replica.
 
 ### ADR-04. Task Engine trên Postgres + Dramatiq/Redis (không dùng Celery)
@@ -189,16 +225,26 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 - **Chi phí:** Redis nhỏ (vài trăm MB RAM).
 - **Mở rộng:** hàng đợi theo agent hoặc nhóm agent, đặt giới hạn đồng thời cho từng hàng. Chạy thêm worker theo chiều ngang.
 
-### ADR-05 ⚠. Tự xây phần điều phối tổ chức; LangGraph là bộ chạy *tùy chọn* bên trong một agent
-- **Lý do:** SRS ghi LangGraph. Nhưng phần khó nhất ở đây là *điều phối cấp tổ chức*: cây nhiệm vụ nhiều agent, phê duyệt của người kéo dài nhiều ngày, ngân sách, khôi phục, audit. Phần này phải nằm trong Task Engine và Postgres (P4). Nếu dùng LangGraph cho cả việc này thì sẽ có **hai nguồn trạng thái** (checkpoint của LangGraph và bảng `tasks`).
-- **Đề xuất:** vòng nhận thức của agent được định nghĩa qua interface `ReasoningEngine`. Bản mặc định là vòng lặp nội bộ nhỏ, dễ kiểm thử. Có thêm adapter LangGraph cho những agent cần đồ thị suy luận phức tạp (vd Growth Director thiết kế thí nghiệm). Owner có thể bật LangGraph theo từng agent mà không đổi lõi.
-- **Ưu:** một nguồn sự thật; dễ kiểm thử bằng model giả; không phụ thuộc vào thay đổi API của thư viện.
-- **Nhược:** tự viết vòng lặp (khoảng vài trăm dòng); bỏ lỡ một số tiện ích dựng sẵn (trực quan hóa đồ thị).
-- **Chi phí:** không phát sinh.
-- **Mở rộng:** thêm kiểu suy luận mới bằng cách thêm một bản cài `ReasoningEngine`.
-- **Phương án theo đúng SRS:** dùng LangGraph làm bộ chạy chính và lưu checkpoint vào Postgres. Có thể làm được, nhưng phải viết thêm lớp đồng bộ hai nguồn trạng thái. Xem câu hỏi Q-T1.
+### ADR-05 (v0.2). LangGraph là bộ chạy luồng công việc, checkpoint lưu trong Postgres
+- **Lý do:** Owner chọn theo SRS (Q-T1). LangGraph có sẵn ba thứ cần cho hệ thống này:
+  - đồ thị có trạng thái;
+  - checkpoint vào Postgres, để chạy tiếp sau khi tắt máy;
+  - `interrupt()`, để dừng chờ người duyệt rồi tiếp tục.
 
-### ADR-06. Model Gateway tự xây, mỏng, gồm 3 giao thức
+  Cả ba đặc biệt hợp với máy cá nhân hay tắt và với việc duyệt qua Telegram.
+- **Thiết kế:**
+  - Mỗi agent có một **đồ thị nhận thức** (BRAIN_SPEC §4): `recall → plan → policy_check → act → verify → submit → reflect`. Mỗi quy trình liên agent là một **đồ thị tổ chức** (vd "mục tiêu Owner → CEO → Director → chuyên viên → review").
+  - `thread_id` của LangGraph = `tasks.id`. Checkpoint lưu bằng PostgresSaver trong *schema riêng* `langgraph` của cùng CSDL.
+  - **Quy tắc hai nguồn trạng thái:** bảng `tasks` là *góc nhìn nghiệp vụ* (trạng thái SRS, người giao, hạn chót, kết quả). Checkpoint là *trạng thái thực thi* (đang ở nút nào, biến của đồ thị). Mỗi nút đồ thị cập nhật `tasks` qua một hàm duy nhất có khóa phiên bản. Mỗi nút có tác động ra ngoài đều mang khóa chống trùng (`task_id:node:attempt`), nên chạy lại từ checkpoint không gây trùng.
+  - Một job đối soát chạy mỗi 5 phút: task `IN_PROGRESS` mà không có worker và checkpoint đã dừng quá thời hạn thì được đưa lại vào hàng đợi; checkpoint mồ côi thì đánh dấu và báo.
+  - Duyệt của người: nút `await_approval` gọi `interrupt(payload)`. Bấm nút trên Telegram hoặc dashboard thì gửi `Command(resume=...)` kèm digest nội dung đã duyệt.
+  - Dramatiq vẫn là hàng đợi đánh thức worker (ADR-04). LangGraph không thay hàng đợi.
+- **Ưu:** đúng SRS; không phải tự viết cơ chế checkpoint và chờ người duyệt; xem đồ thị trực quan được.
+- **Nhược:** hai nơi lưu trạng thái, nên phải đối soát (đã thiết kế ở trên); phụ thuộc vào nhịp thay đổi API của thư viện. Giảm thiểu: ghim phiên bản; mọi lời gọi LangGraph đi qua lớp `ReasoningEngine` của chúng ta, nên khi cần thay thư viện chỉ sửa một chỗ.
+- **Chi phí:** không phát sinh (giấy phép MIT); thêm một ít dung lượng CSDL cho checkpoint (dọn checkpoint của task đã đóng sau 30 ngày).
+- **Mở rộng:** thêm agent hoặc quy trình bằng cách đăng ký thêm đồ thị.
+
+### ADR-06. Model Gateway tự xây, mỏng, gồm 3 giao thức (v0.2: làm Anthropic + OpenAI trước)
 - **Lý do:** SRS §8 yêu cầu registry, định tuyến, dự phòng, ngân sách, kiểm tra đầu ra có cấu trúc và che dữ liệu, *gắn chặt với CSDL* của chúng ta. Ba giao thức phủ được mọi nhà cung cấp trong SRS:
   - Anthropic Messages;
   - OpenAI-compatible (gồm vLLM, Ollama và nhiều nhà cung cấp khác);
@@ -208,16 +254,26 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 - **Phương án khác:** LiteLLM (phủ hơn 100 nhà cung cấp, nhưng phụ thuộc lớn và vẫn phải tự làm ngân sách và che dữ liệu). Có thể thêm làm adapter thứ 4 nếu cần.
 - **Chi phí:** không phát sinh. Chi phí LLM xem §8.
 - **Mở rộng:** giới hạn tần suất theo nhà cung cấp và theo agent; xếp hàng ưu tiên khi chạm hạn mức.
+- **v0.2:** Owner chọn Claude và ChatGPT (Q-T2). Phân vai mặc định, đổi được trong registry:
+
+  | Hồ sơ | Model mặc định | Dùng cho |
+  |---|---|---|
+  | `cheap` | Claude Haiku 5.5 | Phân loại, trích xuất, soạn nháp đầu, phần lớn việc của chuyên viên |
+  | `writer_vi`, `reasoning_mid` | Claude Sonnet 5.5 | Bản cuối của bài sẽ xuất bản, review của Director, lập kế hoạch |
+  | `reasoning_high` | Claude Opus 5.5 | Chiến lược tuần của AI CEO; chỉ khi ngân sách cho phép |
+  | `fallback` | OpenAI GPT-5.4 mini | Khi Claude lỗi hoặc chạm giới hạn tần suất |
+  | `judge` | OpenAI (họ khác với model đã viết) | LLM-judge trong Evaluation Service (BRAIN_SPEC §8) |
+  | `embed_vi` | Embedding của OpenAI, hoặc model nhỏ chạy trên CPU/card rời | Truy hồi trí nhớ (Anthropic không cung cấp API embedding riêng) |
 
 ### ADR-07. Frontend Next.js (App Router) + TypeScript + Tailwind; realtime bằng SSE
 - **Lý do:** đúng SRS. Realtime chỉ cần một chiều (máy chủ → trình duyệt), nên SSE đơn giản hơn WebSocket và đi qua proxy dễ hơn.
 - **Ưu:** sinh client có kiểu từ OpenAPI; giao diện tiếng Việt mặc định (i18n); có chế độ sáng/tối.
-- **Nhược:** thêm một runtime Node.js trên VPS.
+- **Nhược:** thêm một runtime Node.js trên máy.
 - **Chi phí:** khoảng 200–400 MB RAM.
 - **Mở rộng:** dashboard không giữ trạng thái.
 
 ### ADR-08 ⚠. Quan sát: log JSON + OpenTelemetry + bảng `model_usage` của chính hệ thống; Langfuse để giai đoạn sau
-- **Lý do:** bản tự host Langfuse hiện kéo theo nhiều dịch vụ phụ (theo tài liệu v3: ClickHouse, Redis, object storage), nặng so với một VPS 8 GB. Các con số SRS cần (chi phí, token, độ trễ, lỗi theo agent) đã nằm trong bảng của chúng ta.
+- **Lý do:** bản tự host Langfuse hiện kéo theo nhiều dịch vụ phụ (theo tài liệu v3: ClickHouse, Redis, object storage), nặng so với một máy cá nhân đang chạy cả hệ thống. Các con số SRS cần (chi phí, token, độ trễ, lỗi theo agent) đã nằm trong bảng của chúng ta.
 - **Ưu:** nhẹ; dữ liệu theo dõi có kiểm soát quyền như mọi dữ liệu khác.
 - **Nhược:** thiếu giao diện so sánh prompt/trace dựng sẵn. Cần thì bật Langfuse (tự host hoặc bản đám mây) qua exporter OpenTelemetry.
 - **Chi phí:** gần 0 so với tự host Langfuse.
@@ -254,40 +310,96 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 
 ### ADR-14. Tích hợp website moctam: dùng lại API đồng bộ, bổ sung endpoint có phạm vi khi cần
 - Đọc: `events`/`snapshot` (đơn tối thiểu, `customer_key`), `catalog`, `feedback`.
-- Ghi: `drafts` (FAQ, blog, mua kèm, danh sách chăm sóc; mọi thứ chờ duyệt).
+- Ghi: `drafts` (FAQ, blog, mua kèm, danh sách chăm sóc).
+- **v0.2:** thêm `publish` và `unpublish` cho FAQ/blog do AI tạo, dùng **khóa riêng** phạm vi `content:publish` (ADR-16).
 - Bổ sung dự kiến (Sprint 8): endpoint tổng hợp số liệu (doanh thu và lợi nhuận theo ngày/kênh, *không có dòng chi tiết khách*); kiểu bản nháp mới (`campaign_proposal`, `landing_suggestion`); `office_report`.
 - Giá vốn chỉ đi qua khóa có phạm vi `finance:read`, cấp cho Data Analyst (SRS §10).
+
+### ADR-15 (v0.2). Telegram là kênh điều hành của Owner
+- **Lý do:** Owner muốn nhận báo cáo và link bài mới qua Telegram (Q-A1, Q-O2). Máy chạy ở nhà, không mở cổng: bot Telegram dùng **long-polling** (máy gọi ra), nên Owner điều hành được từ điện thoại mà không phải lộ dashboard ra Internet.
+- **Chức năng:**
+
+  | Loại | Ví dụ |
+  |---|---|
+  | Thông báo | "📝 Bài mới: *Cách pha trà gừng mật ong* → link · Content Agent · đạt kiểm tra tuân thủ" kèm nút **[Gỡ bài] [Góp ý]** |
+  | Báo cáo | 18:00 hằng ngày của AI CEO (SRS §14); báo cáo của phòng Công nghệ & Dữ liệu; `/baocao` để xem ngay |
+  | Cảnh báo | Website không phản hồi, đơn tụt bất thường, chi phí đạt 80% trần, agent lỗi liên tục, máy vừa bật lại sau khi tắt |
+  | Duyệt | Việc rủi ro thấp/trung bình: **[Duyệt] [Từ chối] [Góp ý]**. Việc rủi ro cao chỉ có link mở dashboard (SECURITY_PLAN §3.2) |
+  | Lệnh | `/chiphi`, `/tamdung <agent|all>`, `/tieptuc`, `/viecchoduyet` |
+
+- **Bảo mật:**
+  - chỉ chấp nhận tin từ **chat ID đã đăng ký**;
+  - mỗi nút mang dữ liệu đã ký HMAC, có hạn dùng và digest nội dung;
+  - token bot nằm trong kho secret;
+  - **không gửi dữ liệu cá nhân của khách** (tin nhắn Telegram nằm trên máy chủ Telegram).
+- **Học tập:** bấm *Gỡ bài* tính là `retracted`; *Góp ý* tính là ghi chú hướng dẫn, giống nhân viên từ chối kèm góp ý trên website (BRAIN_SPEC §7.4).
+- **Nhược:** phụ thuộc vào dịch vụ Telegram; nếu Telegram bị chặn thì dashboard vẫn đủ chức năng.
+
+### ADR-16 (v0.2). AI tự xuất bản FAQ/blog, có 5 lớp chặn và gỡ được ngay
+- **Lý do:** Owner quyết định (Q-A1). Thay đổi này mở quyền cho AI tác động thẳng lên website công khai, nên phải có nhiều lớp chặn.
+- **Năm lớp chặn trước khi một bài lên website:**
+  1. **Compliance Gate** (SECURITY_PLAN §6.3): trượt kiểm tra tất định (công dụng chữa bệnh, giá, khuyến mãi, so sánh đối thủ…) thì *không bao giờ* tự xuất bản.
+  2. **Review của Marketing Director** theo rubric. Đây là review của agent khác, không phải agent viết bài tự chấm.
+  3. **Chủ đề chỉ người duyệt** (sức khỏe, dị ứng, giá, khuyến mãi, pháp lý; cấu hình được) thì thành `interrupt()` chờ Owner bấm Duyệt trên Telegram.
+  4. **Hạn mức**: mặc định tối đa 1 blog + 3 FAQ/ngày, chỉ trong 8:00–21:00 (Q-A1a). Cách này cũng tránh vi phạm chính sách chống nội dung hàng loạt của Google.
+  5. **Website kiểm tra lần cuối** ở phía máy chủ: khóa `content:publish`, chỉ áp cho nội dung AI tạo, bộ lọc HTML danh sách trắng (đã có), `info_version` còn đúng, và hạn mức ngày đếm ở website (máy cá nhân có lỗi cũng không vượt được).
+- **Sau khi xuất bản:** Telegram gửi link + nút **Gỡ bài** (gọi `unpublish` ngay; bản đã gỡ vẫn lưu để xem lại). Mọi lần xuất bản và gỡ đều ghi audit ở cả hai phía.
+- **Thay đổi phía website:**
+  - API `POST /api/sync/publish`, `POST /api/sync/unpublish`;
+  - cột `published_by` ('staff' | 'ai');
+  - cấu hình hạn mức;
+  - sửa ca nghiệm thu AT-09 thành: *AI chỉ xuất bản được qua khóa `content:publish`, trong hạn mức, có audit và gỡ được*. Bản nháp gửi bằng khóa `drafts:write` vẫn luôn chờ duyệt.
+- **Nhược:** bài sai có thể hiển thị công khai trong khoảng thời gian đến khi Owner bấm Gỡ. Giảm thiểu bằng 5 lớp trên, hạn mức thấp lúc đầu, và nới dần theo tỉ lệ bài *không bị gỡ*.
 
 ## 8. Chi phí vận hành dự kiến
 
 ### 8.1. Hạ tầng
-| Hạng mục | Ghi chú |
-|---|---|
-| VPS lõi 4 vCPU / 8–16 GB | Theo báo giá nhà cung cấp Owner chọn |
-| Object storage | Vài GB đầu tiên thường rẻ hoặc miễn phí; video làm tăng nhanh |
-| Sao lưu ngoài máy | Bắt buộc (SECURITY_PLAN §8) |
-| Máy GPU | Đã có (giả định). Tốn điện khi bật |
+Máy cá nhân sẵn có (ADR-01), nên không phải thuê máy chủ. Chi phí là điện năng khi máy bật, cộng chỗ lưu sao lưu trên đám mây (vài GB, thường nằm trong gói miễn phí hoặc gói sẵn có).
 
-### 8.2. LLM: chi phí chính
-Công thức nằm trong Model Gateway: `chi_phí = Σ (token_vào × giá_vào + token_ra × giá_ra)` theo từng model trong registry. Giá **không hardcode**; Owner nhập theo bảng giá hiện hành.
+### 8.2. Bảng giá LLM (tra cứu ngày 26/11/2026, USD cho 1 triệu token)
 
-Ước lượng khối lượng token khi chạy lịch mặc định SRS §14 với 15 agent (để lập ngân sách, **cần đo lại sau Sprint 4**):
+| Model | Vào | Ra | Đọc từ cache | Batch |
+|---|---|---|---|---|
+| Claude Opus 5.5 | 4 | 20 | 0,20 | −50% |
+| Claude Sonnet 5.5 | 2 | 10 | 0,10 | −50% |
+| Claude Haiku 5.5 (prompt ≤ 100K token) | 0,10 | 0,50 | 0,01 | −50% |
+| OpenAI GPT-5.4 mini | 0,75 | 4,50 | 0,075 | −50% |
+| OpenAI GPT-5.4 | 2,50 | 15 | 0,25 | −50% |
 
-| Nhóm | Số agent | Lượt gọi / ngày / agent | Token vào / lượt | Token ra / lượt | Token / ngày |
-|---|---|---|---|---|---|
-| CEO + 3 Director (lập kế hoạch, review) | 4 | 10 | 12.000 | 1.500 | ~540.000 |
-| Chuyên viên soạn nội dung (SEO, Content, Social, Creative, Ads) | 5 | 15 | 8.000 | 2.000 | ~750.000 |
-| Chuyên viên phân tích (Customer, Affiliate, SI, CRO, Data, Automation) | 6 | 8 | 10.000 | 1.000 | ~530.000 |
-| **Tổng** | 15 | | | | **~1,8 triệu token/ngày** |
+Nguồn: platform.claude.com/docs/en/about-claude/pricing; openai.com/api/pricing. Giá được nhập vào `model_registry` và **không hardcode**. Giá thay đổi thì sửa registry.
 
-Ví dụ minh họa, **giá giả định không phải bảng giá thật**: nếu 70% token đi qua model tầm trung giá X USD/1M token và 30% qua model rẻ giá X/5, thì chi phí/ngày ≈ 1,8 × (0,7 + 0,06) × X ≈ 1,4·X USD. Owner đặt **trần ngân sách ngày** (mặc định đề xuất: một con số Owner chọn ở Q-B1). Khi chạm trần, Model Gateway hạ việc ưu tiên thấp xuống model rẻ, hoặc hoãn sang hôm sau.
+### 8.3. Khối lượng và chi phí với 15 agent
+
+Ước lượng khối lượng khi chạy lịch SRS §14 (cần đo lại sau Sprint 4):
+
+| Nhóm | Số agent | Lượt/ngày/agent | Token vào/lượt | Token ra/lượt | Vào/ngày | Ra/ngày |
+|---|---|---|---|---|---|---|
+| CEO + 3 Director | 4 | 10 | 12.000 | 1.500 | 480K | 60K |
+| Chuyên viên nội dung | 5 | 15 | 8.000 | 2.000 | 600K | 150K |
+| Chuyên viên phân tích | 6 | 8 | 10.000 | 1.000 | 480K | 48K |
+| **Tổng** | 15 | | | | **1,56M** | **258K** |
+
+| Phương án định tuyến | USD/ngày | USD/tháng | Hợp với trần |
+|---|---|---|---|
+| A. Tất cả qua Sonnet 5.5 | ~5,7 | ~170 | Chỉ hợp nếu trần là 50 USD/**ngày** |
+| B. Director + bài sẽ xuất bản qua Sonnet; còn lại Haiku; có prompt caching | ~1,4 | ~40–45 | **Vừa 50 USD/tháng**, ít chỗ dư |
+| C. Gần như tất cả qua Haiku 5.5; Sonnet chỉ cho bài sẽ xuất bản (~4 bài/ngày) | ~0,5 | ~15 | Dư nhiều; chất lượng lập kế hoạch thấp hơn |
+
+Cách tính phương án B:
+- Director: 480K vào (60% đọc từ cache) + 60K ra ≈ 1,0 USD.
+- Bài sẽ xuất bản (4 bài × 10K vào/3K ra) ≈ 0,2 USD.
+- Phần còn lại qua Haiku ≈ 0,2 USD.
+
+**Đề xuất:**
+- Nếu trần là **50 USD/tháng**: bắt đầu bằng **phương án B**, kèm trần ngày 1,67 USD. Một ngày được tiêu tới 3 USD nếu tháng còn dư. Đạt 80% thì Telegram cảnh báo; đạt 100% thì chỉ còn việc khẩn chạy, và chạy bằng Haiku.
+- Nếu trần là **50 USD/ngày**: phương án A, cộng Opus cho kế hoạch tuần của CEO, vẫn còn dư cho tạo ảnh/video.
+- **Ảnh và video tính riêng.** Ví dụ video Sora 2 khoảng 0,10 USD/giây theo bảng giá OpenAI, tức một video 30 giây khoảng 3 USD. Với 50 USD/tháng, Creative Agent chỉ nên làm ảnh và kịch bản video; dựng video thật cần ngân sách riêng (Q-I6).
 
 Các cách giảm chi phí đã có sẵn trong thiết kế:
-- "Bộ nhớ trước, LLM sau" (đã chứng minh ở dịch vụ hiện tại);
-- tóm tắt ngữ cảnh có ngân sách;
-- model rẻ hoặc chạy cục bộ cho phân loại, embedding, che dữ liệu;
-- prompt caching của nhà cung cấp, nếu có;
-- lịch chạy theo *tín hiệu* (như bộ não Trưởng văn phòng) thay vì chạy mọi agent mỗi giờ.
+- "Bộ nhớ trước, LLM sau";
+- prompt caching (phần brain bundle và quy trình gần như cố định, đọc từ cache rẻ hơn 10–20 lần);
+- Batch API (rẻ hơn 50%) cho việc không gấp như phân tích đêm và học tập;
+- tạo việc theo *tín hiệu* thay vì chạy mọi agent mỗi giờ.
 
 ## 9. Mở rộng lên 100 agent
 
@@ -297,7 +409,7 @@ Các cách giảm chi phí đã có sẵn trong thiết kế:
 | Điều phối | CEO → 3 Director | CEO → ~8 Director → trưởng nhóm | Cây có độ sâu tối đa (mặc định 4), số nhánh tối đa mỗi nút, ngân sách thừa kế. CEO chỉ thấy báo cáo đã tổng hợp |
 | LLM | ~1,8M token/ngày | ~10–15M token/ngày nếu không tối ưu | Tạo việc theo tín hiệu (không chạy lịch dày cho mọi agent), mỗi agent có ngân sách, định tuyến sang model rẻ. **Đây là nút thắt chính** |
 | CSDL | Nhỏ | Vài triệu vector, vài chục triệu dòng log | HNSW, phân vùng `task_logs` và `model_usage` theo tháng, chính sách giữ dữ liệu |
-| Worker | 2–4 worker | 10–30 worker | Mở rộng ngang; giới hạn đồng thời theo hàng đợi |
+| Worker | 2–4 worker | 10–30 worker | Mở rộng ngang; giới hạn đồng thời theo hàng đợi. Một máy cá nhân 32 GB RAM vẫn chạy được, vì agent chủ yếu chờ API; vượt mức đó thì thêm máy worker hoặc chuyển VPS (§6) |
 | Message bus | Vài nghìn tin/ngày | Vài trăm nghìn tin/ngày | Outbox Postgres chịu được; nếu cần thì chuyển sang Redis Streams mà không đổi API |
 | Con người | 1 Owner duyệt | Không thể duyệt từng việc | Ủy quyền theo ngưỡng (cấp 3–4 cho việc rủi ro thấp đã có thành tích), duyệt theo lô, Director review thay |
 
@@ -315,3 +427,7 @@ Các cách giảm chi phí đã có sẵn trong thiết kế:
 | R6 | Chất lượng model cục bộ kém với tiếng Việt marketing | Trung bình | Model cục bộ chỉ dùng cho việc phụ (embedding, phân loại). Đánh giá trên bộ test tiếng Việt trước khi giao việc viết |
 | R7 | Phạm vi SRS rất lớn so với nguồn lực | Cao | Vertical slice sớm (IMPLEMENTATION_PLAN), mỗi Sprint có tiêu chí thoát đo được |
 | R8 | Hai hệ thống AI (cũ và mới) cùng gửi bản nháp | Thấp | Tiền tố `client_ref` riêng, tắt dần từng tác nhân cũ khi tác nhân mới qua nghiệm thu |
+| R9 | Máy cá nhân tắt, ngủ hoặc tự khởi động lại; ổ đĩa hỏng | Trung bình | Làm bù khi bật, checkpoint LangGraph, báo Telegram khi bật lại, sao lưu ngoài máy hằng ngày (§6) |
+| R10 | Bài tự xuất bản sai sự thật hoặc vi phạm quảng cáo | Cao | 5 lớp chặn + hạn mức thấp + nút Gỡ bài (ADR-16) |
+| R11 | Lộ token bot Telegram, hoặc người lạ bấm nút | Trung bình | Danh sách chat ID, nút ký HMAC có hạn, việc rủi ro cao không duyệt qua Telegram (ADR-15) |
+| R12 | Trần 50 USD bị hiểu sai (ngày hay tháng) | Trung bình | Q-B1a; mặc định theo cách hiểu thấp hơn |

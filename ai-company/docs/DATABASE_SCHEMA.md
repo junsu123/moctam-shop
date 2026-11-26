@@ -1,6 +1,6 @@
 # DATABASE_SCHEMA: lược đồ PostgreSQL + pgvector
 
-> Trạng thái: v0.1, chờ Owner duyệt. Có đủ mọi bảng SRS §11 yêu cầu. Bảng **bổ sung** (không có trong SRS) được đánh dấu ➕ kèm lý do.
+> Trạng thái: v0.2 (26/11/2026, theo `DECISIONS.md`), chờ Owner duyệt. Có đủ mọi bảng SRS §11 yêu cầu. Bảng **bổ sung** (không có trong SRS) được đánh dấu ➕ kèm lý do.
 
 ## 1. Quy ước chung
 
@@ -111,6 +111,8 @@ CREATE POLICY mem_write_episodic ON agent_memories FOR INSERT
 | ➕ `approvals` | `id`, `subject_type`, `subject_id`, `action`, `requested_by`, `risk`, `payload_digest`, `status`, `decided_by_user_id`, `decided_at`, `expires_at` | Hàng chờ phê duyệt chung cho task, công cụ, kiến thức, quyền (SRS §13) |
 | ➕ `schedules` | `id`, `agent_id`, `cron`, `timezone`, `task_template jsonb`, `enabled`, `last_run_at`, `next_run_at` | Lịch cấu hình được (SRS §14) |
 
+**Checkpoint LangGraph (v0.2, ADR-05):** bảng do thư viện quản lý (checkpoint, các lần ghi đang chờ) nằm trong schema riêng `langgraph` của cùng CSDL. `thread_id` = `tasks.id`. Bảng `tasks` thêm cột `graph_key` (đồ thị nào đang chạy) và `graph_node` (nút gần nhất, để hiển thị). Checkpoint của task đã đóng được dọn sau 30 ngày.
+
 Các chuyển trạng thái hợp lệ được kiểm tra trong mã **và** bằng trigger:
 
 ```
@@ -162,6 +164,10 @@ Nguyên tắc: dữ liệu bán hàng là **bản sao chỉ đọc** từ websit
 | `system_logs` | Log ứng dụng có cấu trúc (mức ≥ WARN), đã che dữ liệu nhạy cảm |
 | `audit_logs` | `id`, `at`, `actor` (user/agent/system), `action`, `resource`, `before_digest`, `after_digest`, `reason`, `request_id`, `prev_hash`, `hash` | **Chỉ thêm**; chuỗi băm phát hiện sửa/xóa; không vai trò nào có UPDATE/DELETE (SRS §15) |
 | ➕ `users`, `roles`, `user_sessions` | Người dùng Owner/nhân viên, RBAC, phiên |
+| ➕ `publications` (v0.2) | `id`, `site_content_id`, `kind` (`faq/blog`), `url`, `task_id`, `agent_id`, `compliance_report jsonb`, `review_id`, `published_at`, `unpublished_at`, `unpublished_by`, `telegram_message_id` | Mọi bài AI tự xuất bản; hạn mức ngày đếm ở đây **và** ở website |
+| ➕ `telegram_chats` (v0.2) | `chat_id`, `user_id`, `role`, `enabled`, `added_at` | Danh sách chat được phép (ADR-15) |
+| ➕ `notifications` (v0.2) | `id`, `channel` (`telegram/dashboard`), `chat_id`, `kind` (`publish/report/alert/approval`), `subject_type`, `subject_id`, `text_digest`, `status`, `sent_at`, `attempts` | Outbox thông báo: máy mất mạng thì gửi lại sau |
+| ➕ `telegram_actions` (v0.2) | `nonce`, `action`, `subject_type`, `subject_id`, `content_digest`, `chat_id`, `expires_at`, `used_at`, `result` | Mỗi nút bấm dùng một lần, có hạn |
 
 ## 10. Giữ dữ liệu và kích thước
 

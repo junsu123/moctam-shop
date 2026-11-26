@@ -1,6 +1,6 @@
 # SECURITY_PLAN: bảo mật, quyền hạn, tuân thủ
 
-> Trạng thái: v0.1, chờ Owner duyệt. Các nội dung pháp lý dưới đây là **phân tích kỹ thuật**, không phải tư vấn pháp luật. Mục §6 cần luật sư rà soát (Q-L*).
+> Trạng thái: v0.2 (26/11/2026, theo `DECISIONS.md`), chờ Owner duyệt. Các nội dung pháp lý dưới đây là **phân tích kỹ thuật**, không phải tư vấn pháp luật. Mục §6 cần luật sư rà soát (Q-L*).
 
 ## 1. Mô hình đe dọa
 
@@ -23,7 +23,7 @@
 
 | # | Yêu cầu | Biện pháp |
 |---|---|---|
-| 1 | Authentication | Đăng nhập email + mật khẩu (Argon2id), TOTP 2FA **bắt buộc với Owner**, phiên HttpOnly/SameSite/Secure, khóa tạm sau 5 lần sai. GPU worker dùng token riêng có phạm vi hẹp |
+| 1 | Authentication | Đăng nhập email + mật khẩu (Argon2id), TOTP 2FA **bắt buộc với Owner**, phiên HttpOnly/SameSite/Secure, khóa tạm sau 5 lần sai. Telegram: chỉ nhận lệnh từ chat ID đã đăng ký, nút có chữ ký (§3.4) |
 | 2 | RBAC | Vai trò người dùng: `owner`, `manager`, `reviewer`, `viewer`. Quyền chi tiết theo màn hình và API |
 | 3 | Agent Permission Control | Policy Engine mặc định từ chối, theo (agent × công cụ × hành động × cấp tự chủ × hạn mức) |
 | 4 | API Key Encryption | Mã hóa phong bì: khóa dữ liệu AES-256-GCM cho từng secret, khóa chủ lấy từ biến môi trường hoặc KMS, có `key_version` để xoay khóa |
@@ -62,7 +62,7 @@ Không phụ thuộc cấp tự chủ: kể cả L4 cũng không bỏ qua đư�
 | Xóa dữ liệu | Chỉ người dùng |
 | Gửi chiến dịch hàng loạt | Email, Zalo, tin nhắn tới ≥ N người |
 | Thay đổi chính sách | |
-| Xuất bản nội dung có rủi ro pháp lý | Do **cửa tuân thủ** (§6.3) phân loại |
+| Xuất bản nội dung có rủi ro pháp lý | Do **cửa tuân thủ** (§6.3) phân loại. FAQ/blog *không* rủi ro được tự xuất bản theo §3.3 |
 | Thay đổi quyền hạn agent | |
 | ➕ Liên hệ lần đầu với lead hoặc KOC | Rủi ro spam và dữ liệu cá nhân |
 | ➕ Gửi bất kỳ tin nào trực tiếp cho khách | Ở v1, Customer Agent chỉ soạn nháp |
@@ -70,6 +70,33 @@ Không phụ thuộc cấp tự chủ: kể cả L4 cũng không bỏ qua đư�
 | ➕ Thăng hạng phiên bản bộ não | BRAIN_SPEC §9 |
 
 Mỗi phê duyệt gắn với **digest của nội dung** cụ thể. Nội dung đổi sau khi duyệt thì phê duyệt mất hiệu lực. Phê duyệt có hạn (mặc định 72 giờ).
+
+**Duyệt ở đâu (v0.2):**
+
+| Mức rủi ro | Kênh duyệt | Ví dụ |
+|---|---|---|
+| Thấp, trung bình | Nút trên **Telegram** hoặc dashboard | Bài thuộc chủ đề chỉ-người-duyệt, liên hệ lead, gửi danh sách chăm sóc |
+| Cao | **Chỉ dashboard + 2FA**. Telegram chỉ gửi link | Đổi quyền agent, thăng hạng bộ não, tăng ngân sách, gửi tin hàng loạt, bật tích hợp mới, xóa dữ liệu |
+
+Owner không trả lời **không** được coi là đồng ý: việc chờ duyệt hết hạn thì tự hủy.
+
+### 3.3. Tự xuất bản FAQ/blog (Q-A1, ARCHITECTURE ADR-16)
+
+| Kiểm soát | Chi tiết |
+|---|---|
+| Khóa riêng | `content:publish`: khác khóa đọc và khóa gửi bản nháp; chỉ áp cho nội dung `source='ai'`; thu hồi được ngay trên website |
+| Năm lớp chặn | Compliance Gate → review của Marketing Director → chủ đề chỉ-người-duyệt → hạn mức ngày và khung giờ → website kiểm tra lần cuối (hạn mức đếm ở phía website) |
+| Gỡ ngay | Nút **Gỡ bài** trên Telegram và dashboard gọi `unpublish`; bản gỡ được lưu lại |
+| Công tắc tắt | `/tamdung xuatban` trên Telegram, hoặc thu hồi khóa trên website, là dừng toàn bộ việc tự xuất bản |
+| Nới dần | Hạn mức chỉ tăng khi Owner đồng ý, dựa trên tỉ lệ bài không bị gỡ trong 30 ngày |
+
+### 3.4. Telegram
+
+- Token bot lưu trong kho secret (§5). Không lưu trong mã, không gửi qua chat.
+- Chỉ xử lý tin nhắn và nút bấm từ **chat ID trong danh sách** `telegram_chats`. Tin từ nơi khác bị bỏ qua và ghi audit.
+- Dữ liệu của nút (`callback_data`) gồm: mã hành động + ID đối tượng + digest + hạn dùng, ký HMAC. Mỗi nút dùng được một lần.
+- **Không gửi** dữ liệu cá nhân của khách, giá vốn hay secret qua Telegram. Báo cáo chỉ có số tổng hợp.
+- Bot dùng long-polling, nên máy Owner không mở cổng nào.
 
 ## 4. Chống prompt injection (SRS §5.3, §15)
 
@@ -125,17 +152,23 @@ Phòng thủ nhiều lớp. Không có lớp nào đủ một mình:
 - Ghim phiên bản phụ thuộc (lockfile `uv`/`pip-tools`, `pnpm-lock`). Quét lỗ hổng (pip-audit, `pnpm audit`, Trivy cho image) trong CI.
 - Image Docker tối giản, chạy user không phải root, hệ thống tệp chỉ đọc nếu được.
 - Chỉ mở 443 ra ngoài (reverse proxy Caddy/Traefik có TLS tự động). Postgres và Redis không mở ra Internet.
-- GPU worker không nhận kết nối vào, chỉ gọi ra VPS bằng token có phạm vi `gpu:pull`.
+- **Máy Windows 11 của Owner (v0.2):**
+  - bật **BitLocker** cho ổ chứa dữ liệu;
+  - tài khoản Windows có mật khẩu/PIN, khóa màn hình tự động;
+  - Windows Defender bật;
+  - Docker chỉ mở cổng trên `127.0.0.1` (Postgres, Redis, API, dashboard không lộ ra mạng LAN);
+  - không chạy container ở chế độ privileged;
+  - tệp `.env` chỉ tài khoản Owner đọc được.
 - Không agent nào có quyền sửa mã production (SRS §15). CI/CD chỉ do người kích hoạt.
 
 ## 8. Sao lưu và khôi phục
 
 | Mục tiêu | Giá trị đề xuất |
 |---|---|
-| RPO (mất dữ liệu tối đa) | 15 phút (WAL archiving) / 24 giờ (bản dump ngày) |
+| RPO (mất dữ liệu tối đa) | 24 giờ (bản dump ngày). Có thể bật WAL archiving ra ổ ngoài để còn 15 phút |
 | RTO (thời gian dựng lại) | 4 giờ |
 | Lưu giữ | 14 bản ngày + 8 bản tuần + 12 bản tháng |
-| Nơi lưu | Ngoài VPS (object storage khác vùng), mã hóa |
+| Nơi lưu | **Ngoài máy**: ổ cứng ngoài + thư mục đám mây (OneDrive/Google Drive), mã hóa trước khi chép |
 | Diễn tập | Khôi phục thử hằng tháng vào CSDL tạm, có ca kiểm thử tự động (TEST_PLAN IT-BK-01) |
 
 Sau khi khôi phục, Task Engine quét các task `IN_PROGRESS` có lease hết hạn để chạy lại. Nhờ khóa chống trùng ở mọi công cụ có tác động, chạy lại không gây việc trùng.

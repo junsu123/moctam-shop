@@ -19,7 +19,7 @@ Owner chưa duyệt kiến trúc (SRS §21, bước 5). Trước khi Owner ghi r
 2. `docs/ARCHITECTURE.md`: nguyên tắc P1–P8 và ADR.
 3. `docs/BRAIN_SPEC.md`: bộ não riêng, trí nhớ, học tập, đánh giá độc lập. **Module ưu tiên số 1.**
 4. `docs/AGENT_DESIGN.md`, `docs/DATABASE_SCHEMA.md`, `docs/SECURITY_PLAN.md`, `docs/TEST_PLAN.md`.
-5. `docs/IMPLEMENTATION_PLAN.md` (Sprint hiện tại) và `docs/QUESTIONS_FOR_OWNER.md` (quyết định đã có hoặc còn chờ).
+5. `docs/DECISIONS.md` (**quyết định của Owner, ưu tiên hơn đề xuất ở các tài liệu khác**), `docs/QUESTIONS_FOR_OWNER.md` (câu còn chờ), `docs/IMPLEMENTATION_PLAN.md` (Sprint hiện tại).
 
 ## Quy tắc bắt buộc (SRS §21, không ngoại lệ)
 
@@ -37,6 +37,7 @@ Owner chưa duyệt kiến trúc (SRS §21, bước 5). Trước khi Owner ghi r
 ## Ranh giới với website moctam (`../web`)
 
 - Website là nguồn sự thật cho sản phẩm, giá, kho, đơn, khách. **Không** kết nối CSDL website. Chỉ dùng API đồng bộ có khóa phạm vi (`docs/API.md` của repo gốc).
+- AI được tự xuất bản **FAQ/blog** qua khóa `content:publish`, chỉ khi đủ 5 lớp chặn (ARCHITECTURE ADR-16). Không có công cụ nào đổi giá, đơn, kho hay khuyến mãi.
 - Mặc định không nhận tên, SĐT hay địa chỉ khách; chỉ dùng `customer_key`.
 - Muốn thêm endpoint ở website thì làm trong `../web` theo quy ước của nó: kiểm thử ở `web/tests/acceptance.php`, chạy với CSDL tên chứa `test`.
 
@@ -50,4 +51,6 @@ Owner chưa duyệt kiến trúc (SRS §21, bước 5). Trước khi Owner ghi r
 
 - Tài liệu, giao diện và thông báo lỗi cho người dùng viết bằng **tiếng Việt**. Mã nguồn, tên biến và commit message có thể dùng tiếng Anh. Tài liệu hiện có viết tiếng Việt thì giữ tiếng Việt.
 - Thời gian lưu UTC, hiển thị Asia/Ho_Chi_Minh. Tiền VND dùng số nguyên.
-- Lệnh (sẽ có từ Sprint 0): `make test`, `make lint`, `docker compose up`.
+- Máy chạy là **Windows 11 + Docker Desktop (WSL2)**. Mọi dịch vụ chạy trong container Linux. Script cài đặt hoặc vận hành cho Owner viết bằng PowerShell; script trong container viết bằng bash. Đường dẫn trong mã không được giả định dấu phân cách của Windows.
+- Telegram là kênh của Owner: không gửi dữ liệu cá nhân khách, giá vốn hay secret qua Telegram.
+- Lệnh (sẽ có từ Sprint 0): `make test`, `make lint`, `docker compose up` (trên Windows: `docker compose up` trong PowerShell).
