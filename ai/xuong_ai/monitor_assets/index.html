@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Văn phòng AI: diễn biến trực tiếp</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="status" id="status">
+    <span class="pulse" aria-hidden="true"></span>
+    <h1 id="status-text">Đang mở sổ của văn phòng…</h1>
+  </div>
+  <p class="status-sub" id="status-sub"></p>
+  <dl class="facts" id="facts"></dl>
+</header>
+
+<p class="banner" id="banner" hidden></p>
+
+<main class="grid">
+  <section class="lanes-wrap" aria-labelledby="lanes-h">
+    <div class="section-head">
+      <h2 id="lanes-h">60 phút qua</h2>
+      <p class="hint">Mỗi làn là một nhân viên; trục thời gian tính bằng phút. Bấm vào làn để lọc diễn biến của người đó.</p>
+    </div>
+    <div class="axis" aria-hidden="true"><span>−60</span><span>−45</span><span>−30</span><span>−15</span><span>bây giờ</span></div>
+    <div id="lanes" class="lanes"></div>
+    <ul class="legend" aria-label="Chú thích">
+      <li><i class="k working"></i>đang làm</li>
+      <li><i class="k done"></i>xong</li>
+      <li><i class="k failed"></i>lỗi</li>
+      <li><i class="k defer"></i>hoãn hoặc chặn</li>
+      <li><i class="k tick"></i>nhịp cân nhắc</li>
+    </ul>
+
+    <h2 class="mt">Nhân viên</h2>
+    <table class="staff">
+      <thead><tr><th scope="col">Nhân viên</th><th scope="col">Trạng thái</th><th scope="col">Đang làm hoặc vừa làm</th><th scope="col" class="num">24 giờ</th></tr></thead>
+      <tbody id="staff"></tbody>
+    </table>
+
+    <h2 class="mt">Việc đang chờ và lý do</h2>
+    <ul id="waiting" class="waiting"></ul>
+  </section>
+
+  <aside class="side">
+    <section aria-labelledby="esc-h" class="esc-wrap">
+      <h2 id="esc-h">Cần anh/chị</h2>
+      <ul id="escalations" class="escalations"></ul>
+    </section>
+    <section aria-labelledby="feed-h">
+      <div class="section-head row">
+        <h2 id="feed-h">Diễn biến</h2>
+        <label class="filter">Xem
+          <select id="filter"><option value="">tất cả nhân viên</option></select>
+        </label>
+      </div>
+      <ol id="feed" class="feed" aria-live="polite"></ol>
+    </section>
+  </aside>
+</main>
+
+<footer class="foot">Màn hình này chỉ để xem, không thay đổi gì trong văn phòng. Tự cập nhật mỗi 2 giây.</footer>
+<script src="/app.js"></script>
+</body>
+</html>

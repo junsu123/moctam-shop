@@ -117,7 +117,7 @@ flowchart TB
 | **Scheduler** | Lịch theo cron cho từng agent (SRS §14), có tạm dừng, tiếp tục, chạy bù khi khởi động lại; lịch lưu trong CSDL | Hardcode giờ |
 | **Message Bus** | Lưu message vào bảng (outbox) rồi phát; giao ít nhất một lần, có khóa chống trùng; 8 loại message (SRS §6.1) | Phụ thuộc Redis để giữ lịch sử |
 | **Telegram Gateway** | Bot Telegram của Owner (ADR-15): gửi báo cáo 18:00, cảnh báo, link bài vừa xuất bản; nhận nút *Duyệt / Từ chối / Gỡ bài / Góp ý*, lệnh `/baocao`, `/chiphi`, `/tamdung`, `/tieptuc`; kiểm tra chat ID và chữ ký của nút | Gửi dữ liệu cá nhân của khách; duyệt việc rủi ro cao (những việc đó cần dashboard + 2FA) |
-| **Dashboard** | Các màn hình SRS §12: tổng quan, agent, bộ não, chat agent, trung tâm nhiệm vụ (Kanban và bảng), trung tâm học tập, chat công ty, phê duyệt | Gọi thẳng LLM |
+| **Dashboard** | **Màn hình "Diễn biến trực tiếp"** (Owner yêu cầu 26/11; bản mẫu đã chạy ở `ai/xuong_ai/monitor.py`): làn hoạt động theo agent và phòng ban, nút đồ thị LangGraph đang chạy, việc chờ + lý do, việc cần Owner, dòng sự kiện realtime (SSE), chi phí theo agent. Cộng các màn hình SRS §12: tổng quan, agent, bộ não, chat agent, trung tâm nhiệm vụ (Kanban và bảng), trung tâm học tập, chat công ty, phê duyệt | Gọi thẳng LLM |
 
 ## 5. Luồng chính
 

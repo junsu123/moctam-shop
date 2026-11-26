@@ -62,6 +62,7 @@
 | IT-PUB-07 | Lên/lùi giai đoạn: đủ điều kiện thì lên; Owner gỡ 2 bài trong 7 ngày thì lùi một giai đoạn và báo Telegram; ngày nghỉ và `/tamdung xuatban` giữ hàng chờ |
 | IT-WIN-01 | Tắt toàn bộ container 3 giờ (giả lập tắt máy) → bật lại → Scheduler làm bù các lịch bị lỡ (≤ 24 giờ), Telegram báo "máy đã tắt từ … đến …" |
 | IT-WIN-02 | Sao lưu ra thư mục ngoài → khôi phục trên CSDL mới → chạy tiếp được (bổ sung cho IT-BK-01) |
+| E2E-LIVE | Màn hình "Diễn biến trực tiếp": task bắt đầu/xong/lỗi hiện trong ≤ 3 giây; lọc theo agent; agent đang chạy hiển thị đúng nút đồ thị; trang chỉ đọc (không có API ghi); hiển thị đúng khi văn phòng dừng |
 | WEB-AT-09' | Ca nghiệm thu phía website (`web/tests/acceptance.php`), thay cho AT-09: khóa `drafts:write` không xuất bản được; khóa `content:publish` chỉ xuất bản được nội dung AI, trong hạn mức, có audit; `unpublish` hoạt động |
 
 ## 4. Learning test

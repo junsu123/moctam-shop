@@ -32,6 +32,12 @@
 | Q-A1a | **Claude chỉ định** cách đăng hợp lý, chọn giờ vàng | Lịch 3 giai đoạn tăng dần: blog 19:30 (Thứ Ba/Thứ Bảy → thêm Thứ Năm → tối đa mỗi ngày); FAQ 11:30 → thêm 7:30, 17:30. Không đăng ngoài 7:00–21:30; cách nhau ≥ 3 giờ. Tự lùi giai đoạn khi Owner gỡ ≥ 2 bài/7 ngày. Sau 4 tuần, giờ vàng tính lại từ dữ liệu thật của xưởng | ARCH ADR-16, DB `publication_queue`, TEST IT-PUB-06/07 |
 | Q-TG1 | **Đã có bot**; Owner **tự cập nhật trong trang quản trị** | Trang *Cài đặt → Telegram* trong dashboard: dán token (kiểm tra `getMe`, lưu mã hóa), kết nối chat bằng mã 6 số (`/ketnoi`), vai trò từng chat, bật/tắt loại tin, giờ yên lặng, gửi thử, đổi token. Thao tác nhạy cảm cần mật khẩu + 2FA | ARCH ADR-15, SECURITY §3.4, DB, TEST IT-TG-05 |
 
+### Lần 4 (22:32): màn hình theo dõi
+
+| Yêu cầu của Owner | Quyết định kỹ thuật | Tài liệu đổi |
+|---|---|---|
+| "Một màn hình hiển thị tất cả diễn biến đang diễn ra trên phần mềm, từng công việc của từng agent đang làm" | (1) **Làm ngay cho Văn phòng AI hiện tại** (`ai/`): `python -m xuong_ai monitor`, tự mở cùng `run` tại http://127.0.0.1:8765. Nội dung: làn hoạt động 60 phút theo nhân viên, bảng nhân viên, việc chờ + lý do, việc cần Owner, dòng diễn biến 2 giây. (2) **Đưa vào AI Company** thành màn hình **"Diễn biến trực tiếp"** của dashboard, làm từ Sprint 4 (lát cắt dọc). Mở rộng cho 15 agent: làn theo phòng ban, thu gọn/mở rộng, xem bước trong đồ thị LangGraph đang chạy, chi phí theo agent | ARCH §4 (Dashboard), PLAN Sprint 4/8, TEST E2E-LIVE |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |
