@@ -70,6 +70,10 @@ class App:
         path = maintenance.report(self.store, self.cfg, calib)
         return {"report": str(path)}
 
+    def loop(self):
+        """Mặc định: bộ não Trưởng văn phòng quyết định việc gì, lúc nào, ai làm."""
+        self.brain().loop()
+
     def calibrate(self, eval_path=None) -> dict | None:
         from pathlib import Path
         p = Path(eval_path) if eval_path else Path(__file__).resolve().parent.parent / "eval" / "faq_eval.jsonl"
@@ -78,28 +82,41 @@ class App:
             return None
         return evaluate(faqs, load_cases(p))
 
+    def job_feedback(self):
+        from .brain import learning
+        from .brain.state import ensure
+        ensure(self.store)
+        return learning.pull(self.store, self.client, self.store.cache_get("catalog"), dt.datetime.now(dt.UTC).replace(tzinfo=None))
+
     # điều phối -------------------------------------------------------------
-    def run_job(self, name: str):
-        fn = getattr(self, f"job_{name}")
+    def record_job(self, name: str, ok: bool, res=None, error: str | None = None) -> None:
+        """Ghi trạng thái việc vào bảng jobs: thành công → hẹn lần sau theo lịch; lỗi → thử lại giãn cách 1, 2, 4, … tối đa 60 phút."""
         now = dt.datetime.now(dt.UTC).replace(tzinfo=None)
-        try:
-            res = fn()
+        if ok:
             every = int(self.cfg.schedule.get(name, 60))
             self.store.db.execute(
                 "INSERT INTO jobs(name, last_run, next_run, failures, last_error, last_result) VALUES(?,?,?,0,NULL,?) "
                 "ON CONFLICT(name) DO UPDATE SET last_run=excluded.last_run, next_run=excluded.next_run, failures=0, last_error=NULL, last_result=excluded.last_result",
                 (name, now.strftime(FMT), (now + dt.timedelta(minutes=every)).strftime(FMT), json.dumps(res, ensure_ascii=False, default=str)[:2000]))
+            return
+        row = self.store.one("SELECT failures FROM jobs WHERE name = ?", (name,))
+        fails = (row["failures"] if row else 0) + 1
+        wait = min(60, 2 ** (fails - 1))
+        self.store.db.execute(
+            "INSERT INTO jobs(name, last_run, next_run, failures, last_error) VALUES(?,?,?,?,?) "
+            "ON CONFLICT(name) DO UPDATE SET next_run=excluded.next_run, failures=excluded.failures, last_error=excluded.last_error",
+            (name, now.strftime(FMT), (now + dt.timedelta(minutes=wait)).strftime(FMT), fails, (error or "")[:500]))
+        log.warning("[%s] lỗi lần %s, thử lại sau %s phút: %s", name, fails, wait, error)
+
+    def run_job(self, name: str):
+        fn = getattr(self, f"job_{name}")
+        try:
+            res = fn()
+            self.record_job(name, True, res)
             log.info("[%s] %s", name, res)
             return res
-        except Exception as e:  # thử lại có giãn cách: 1, 2, 4, … tối đa 60 phút
-            row = self.store.one("SELECT failures FROM jobs WHERE name = ?", (name,))
-            fails = (row["failures"] if row else 0) + 1
-            wait = min(60, 2 ** (fails - 1))
-            self.store.db.execute(
-                "INSERT INTO jobs(name, last_run, next_run, failures, last_error) VALUES(?,?,?,?,?) "
-                "ON CONFLICT(name) DO UPDATE SET next_run=excluded.next_run, failures=excluded.failures, last_error=excluded.last_error",
-                (name, now.strftime(FMT), (now + dt.timedelta(minutes=wait)).strftime(FMT), fails, str(e)[:500]))
-            log.warning("[%s] lỗi lần %s, thử lại sau %s phút: %s", name, fails, wait, e)
+        except Exception as e:
+            self.record_job(name, False, error=str(e))
             log.debug(traceback.format_exc())
             return None
 
@@ -111,11 +128,16 @@ class App:
             if not r or (r["next_run"] or "") <= now:
                 due.append(name)
         # đồng bộ trước, danh mục trước các tác nhân
-        order = ["sync", "catalog", "crosssell", "care", "faq_drafts", "blog_drafts", "maintenance"]
+        order = ["sync", "catalog", "feedback", "crosssell", "care", "faq_drafts", "blog_drafts", "maintenance"]
         return sorted(due, key=lambda n: order.index(n) if n in order else 99)
 
-    def loop(self, tick: int = 30):
-        log.info("Bắt đầu vòng điều phối (Ctrl+C để dừng)")
+    def brain(self):
+        from .brain import Brain
+        return Brain(self)
+
+    def loop_legacy(self, tick: int = 30):
+        """Bộ hẹn giờ cũ (chạy mọi tác nhân theo lịch cố định). Giữ lại để so sánh / dự phòng: `run --legacy`."""
+        log.info("Bắt đầu vòng điều phối theo lịch cố định (Ctrl+C để dừng)")
         while True:
             for name in self.due_jobs():
                 self.run_job(name)

@@ -95,7 +95,24 @@ Trả `{"as_of_seq": 258, "orders": [...], "products": [...], "next_after_id": 5
 
 ### GET /api/sync/catalog  — quyền `catalog:read`
 
-Trả `categories` (kèm `repurchase_days`), `products` (thông tin nhãn đã duyệt, `info_version`, `skus`), `published_faqs` (kèm `search_text`, `version_id`) và `unanswered_questions` (30 ngày gần nhất, đã che SĐT/email).
+Trả `categories` (kèm `repurchase_days`), `products` (thông tin nhãn đã duyệt, `info_version`, `skus`), `published_faqs` (kèm `search_text`, `version_id`), `published_blogs` (`id, product_id, category_id, title`: để AI không soạn trùng bài nhân viên đã viết) và `unanswered_questions` (30 ngày gần nhất, đã che SĐT/email).
+
+### GET /api/sync/feedback?since=YYYY-MM-DD[%20HH:MM:SS]  — quyền `catalog:read`
+
+Kết quả duyệt các bản nháp AI đã nhận (mặc định 120 ngày gần nhất), dùng cho bộ não Python học từ phản hồi của nhân viên. API không trả dữ liệu khách hàng.
+
+```json
+{"items": [
+  {"client_ref": "faq:q:3f2a…", "kind": "faq", "received_at": "…", "status": "rejected", "note": "Sai giọng văn, không hứa giao trong ngày", "reviewed_at": "…"},
+  {"client_ref": "blog:product:5v3", "kind": "blog", "status": "edited", "note": "Rút gọn mở bài", "reviewed_at": "…"},
+  {"client_ref": "xs:1:3:2026w48", "kind": "cross_sell", "status": "approved"},
+  {"client_ref": "care-20261125", "kind": "care_list", "status": "pending", "counts": {"pending": 12, "contacted": 5, "skipped": 1}}
+ ],
+ "backlog": {"faq": 2, "blog": 1, "cross_sell": 4, "care": 12, "oldest_pending_at": "2026-11-20 03:10:00"},
+ "generated_at": "…"}
+```
+
+`status`: `pending` · `approved` (duyệt nguyên văn) · `edited` (sửa rồi mới xuất bản) · `rejected` (kèm `note`) · `retracted` (đã gỡ) · `invalid` (website từ chối khi nhận, ví dụ `SOURCE_OUTDATED`) · `duplicate` (cặp mua kèm đã có) · `gone` (đã xóa) · `done` (danh sách chăm sóc đã xử lý hết). `client_ref` là mã đã lọc ký tự, chỉ giữ `[A-Za-z0-9_.:-]`.
 
 ### POST /api/sync/drafts  — quyền `drafts:write`
 

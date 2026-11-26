@@ -1,5 +1,10 @@
 """Dòng lệnh:
-  python -m xuong_ai run                 # chạy nền theo lịch
+  python -m xuong_ai run                 # văn phòng AI làm việc nền (bộ não quyết định việc gì, lúc nào, ai làm)
+  python -m xuong_ai run --legacy        # bộ hẹn giờ cũ: chạy mọi tác nhân theo lịch cố định
+  python -m xuong_ai think               # xem bộ não đang nghĩ gì (không làm, không ghi)
+  python -m xuong_ai tick                # làm đúng một nhịp
+  python -m xuong_ai office              # tình hình văn phòng: nhân sự, độ tin cậy, việc cần chủ xưởng
+  python -m xuong_ai brief               # viết bản tin văn phòng ngay
   python -m xuong_ai once sync|catalog|crosssell|care|faq_drafts|blog_drafts|maintenance
   python -m xuong_ai snapshot            # tải lại toàn bộ bản chụp
   python -m xuong_ai calibrate [tệp.jsonl]
@@ -22,8 +27,12 @@ def main(argv=None) -> int:
     ap.add_argument("--config", help="Đường dẫn config.toml")
     ap.add_argument("-v", "--verbose", action="store_true")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("run")
-    o = sub.add_parser("once"); o.add_argument("job", choices=["sync", "catalog", "crosssell", "care", "faq_drafts", "blog_drafts", "maintenance"])
+    r = sub.add_parser("run"); r.add_argument("--legacy", action="store_true", help="dùng bộ hẹn giờ cũ thay cho bộ não")
+    o = sub.add_parser("once"); o.add_argument("job", choices=["sync", "catalog", "feedback", "crosssell", "care", "faq_drafts", "blog_drafts", "maintenance"])
+    sub.add_parser("think")
+    sub.add_parser("tick")
+    sub.add_parser("office")
+    sub.add_parser("brief")
     sub.add_parser("snapshot")
     c = sub.add_parser("calibrate"); c.add_argument("eval", nargs="?")
     sub.add_parser("status")
@@ -35,9 +44,22 @@ def main(argv=None) -> int:
 
     if a.cmd == "run":
         try:
-            app.loop()
+            app.loop_legacy() if a.legacy else app.loop()
         except KeyboardInterrupt:
             return 0
+    elif a.cmd in ("think", "tick", "office", "brief"):
+        from .brain import brief as briefmod
+        brain = app.brain()
+        if a.cmd == "think":
+            print(briefmod.format_thoughts(brain.think()))
+        elif a.cmd == "tick":
+            print(json.dumps(brain.tick(), ensure_ascii=False, indent=2, default=str))
+        elif a.cmd == "office":
+            print(briefmod.format_office(brain, brain.clock()))
+        else:
+            path = brain.maybe_brief(brain.clock(), force=True)
+            print(path.read_text(encoding="utf-8"))
+            print(f"\n(đã lưu: {path})")
     elif a.cmd == "once":
         res = app.run_job(a.job)
         print(json.dumps(res, ensure_ascii=False, indent=2, default=str))

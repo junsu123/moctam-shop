@@ -48,3 +48,24 @@ def run(store: Store, cfg) -> dict:
         ref = f"xs:{s['product_id']}:{s['related_product_id']}:{week[0]}w{week[1]}"
         queued += enqueue(store, ref, "cross_sell", {k: s[k] for k in ("product_id", "related_product_id", "score", "reason")})
     return {"suggestions": len(sugg), "queued": queued}
+
+
+def _pair_sent(store: Store, a: int, b: int) -> bool:
+    return store.one("SELECT 1 FROM outbox WHERE client_ref LIKE ?", (f"xs:{a}:{b}:%",)) is not None
+
+
+def new_pairs(store: Store, min_support: int = 2, max_per_product: int = 3) -> list[dict]:
+    """Các cặp mua kèm CHƯA từng gửi lên website, điểm cao trước — để bộ não không làm phiền nhân viên bằng cặp cũ."""
+    out = [s for s in suggest(store, min_support, max_per_product) if not _pair_sent(store, s["product_id"], s["related_product_id"])]
+    out.sort(key=lambda x: (-x["score"], -x["support"]))
+    return out
+
+
+def run_new(store: Store, cfg, limit: int = 10) -> dict:
+    pairs = new_pairs(store, cfg.crosssell_min_support, cfg.crosssell_max_per_product)[:max(0, limit)]
+    week = dt.date.today().isocalendar()
+    queued = 0
+    for s in pairs:
+        ref = f"xs:{s['product_id']}:{s['related_product_id']}:{week[0]}w{week[1]}"
+        queued += enqueue(store, ref, "cross_sell", {k: s[k] for k in ("product_id", "related_product_id", "score", "reason")})
+    return {"suggestions": len(pairs), "queued": queued}

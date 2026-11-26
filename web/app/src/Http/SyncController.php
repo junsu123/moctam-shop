@@ -55,6 +55,14 @@ final class SyncController
         Http::json($data);
     }
 
+    /** Kết quả duyệt bản nháp AI + số việc đang chờ duyệt. Dùng khóa đọc. */
+    public function feedback(): void
+    {
+        self::authenticate('catalog:read');
+        $since = isset($_GET['since']) ? (string)$_GET['since'] : null;
+        Http::json(SyncService::feedback($since, (int)($_GET['limit'] ?? 2000)));
+    }
+
     public function drafts(): void
     {
         $key = self::authenticate('drafts:write');

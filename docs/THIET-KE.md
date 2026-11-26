@@ -45,7 +45,8 @@ web/                         ← tải lên Hostinger
   tests/acceptance.php       AT-01…AT-11 + quy tắc bổ sung, chạy trên CSDL thử
   frontend/                  nguồn Tailwind (chỉ cần khi sửa giao diện)
 ai/                          ← chạy trên máy cá nhân
-  xuong_ai/                  config, store, client, sync, memory, textnorm, llm, scheduler, calibrate, agents/*
+  xuong_ai/                  config, store, client, sync, memory, textnorm, llm, scheduler, calibrate, agents/*,
+                             brain/* (bộ não "Trưởng văn phòng": senses, planner, learning, brief — xem docs/VAN-PHONG-AI.md)
   eval/faq_eval.jsonl        tập câu hỏi hiệu chỉnh ngưỡng
   tests/                     pytest (AT-08 phía Python…)
 docs/                        tài liệu này, API, triển khai, sao lưu, kết quả nghiệm thu
@@ -146,11 +147,14 @@ VietQR: máy chủ sinh chuỗi EMVCo của NAPAS (BIN, số TK, số tiền, n�
 
 | Tác nhân | Đầu vào | Đầu ra (luôn chờ duyệt) | Cần LLM? |
 |---|---|---|---|
+| **Bộ não — Trưởng văn phòng** (`brain/*`) | Đơn tối thiểu, catalog, kết quả duyệt (`/api/sync/feedback`) | Tín hiệu, quyết định có lý do, việc cần người, bản tin mỗi sáng; học từ duyệt/sửa/từ chối | Không |
 | Điều phối & bộ nhớ (`scheduler`, `memory`) | — | Lịch chạy, thử lại giãn cách 1→60 phút, chạy bù khi bật máy; tri thức có trạng thái approved/pending/retired | Không |
 | Nội dung SEO (`content.blog_drafts`) | Thông tin sản phẩm đã duyệt | Bản nháp blog + nguồn tham chiếu | Có |
 | Tư vấn bán hàng (`content.faq_drafts`, `crosssell`) | Câu hỏi chat chưa có câu trả lời; đơn đã giao | Bản nháp FAQ; gợi ý mua kèm (lift) | FAQ: có (chỉ khi bộ nhớ không có) · Mua kèm: không |
 | Chăm sóc khách hàng (`care`) | Đơn đã giao theo nhóm hàng | Danh sách đến kỳ mua lại (chỉ khách đã đồng ý) | Không |
 | Bảo trì (`maintenance`) | Nhật ký tác vụ, chi phí LLM, hiệu chỉnh ngưỡng | Tệp đề xuất `.md` + ca kiểm thử | Không |
+
+**Bộ não điều phối.** Từ bản 1.1, `python -m xuong_ai run` không chạy tác nhân theo giờ cố định nữa. Mỗi phút, bộ não đọc dữ liệu cục bộ thành tín hiệu, chấm điểm theo trọng số mục tiêu và độ tin cậy đã học, rồi đối chiếu nội quy trước khi giao việc. Nội quy gồm hạn mức LLM, số bản nháp chờ duyệt tối đa, câu hỏi dị ứng/sức khỏe chỉ người được trả lời, ngắt mạch khi website không phản hồi, và công tắc tạm dừng. Việc AI không được làm được chuyển cho chủ xưởng. Chi tiết ở `docs/VAN-PHONG-AI.md`.
 
 **Bộ nhớ trước, LLM sau.** Trước khi gọi LLM, tác nhân FAQ tìm trong bộ nhớ (BM25 trên SQLite) các mẫu đã duyệt hoặc đang chờ duyệt, lọc theo loại câu hỏi (giao hàng, thanh toán, đổi trả, bảo quản, cách dùng, dị ứng, ưu đãi), nhóm sản phẩm và phiên bản nguồn. Điểm tương đồng chỉ là một tín hiệu; ngưỡng được **hiệu chỉnh** bằng `eval/faq_eval.jsonl`, gồm câu gần nghĩa, câu không dấu, câu viết tắt, câu dễ nhầm và câu ngoài phạm vi. BM25 trong Python và PHP cho điểm giống hệt nhau, nên ngưỡng hiệu chỉnh dùng thẳng cho chat trên website.
 

@@ -5,5 +5,7 @@ web/public_html/uploads/products/
 ai/config.toml
 ai/data/
 ai/proposals/
+ai/office/
+ai/STOP
 __pycache__/
 .pytest_cache/

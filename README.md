@@ -5,7 +5,7 @@ Mã nguồn hiện thực *Đặc tả phần mềm website bán hàng v1.0*: b�
 | Thư mục | Nội dung | Chạy ở đâu |
 |---|---|---|
 | `web/` | **Giai đoạn 1**: website cửa hàng + trang quản trị. PHP 8.0+, PDO, MySQL/MariaDB, Tailwind đã biên dịch, JS thuần | Hostinger |
-| `ai/` | **Giai đoạn 2**: dịch vụ AI. Python 3.11, SQLite, BM25, Claude/OpenAI tùy chọn | Máy cá nhân |
+| `ai/` | **Giai đoạn 2**: văn phòng AI chăm sóc website, có bộ não "Trưởng văn phòng" tự cân nhắc việc cần làm và học từ kết quả duyệt (`docs/VAN-PHONG-AI.md`). Python 3.11, SQLite, BM25, Claude/OpenAI tùy chọn | Máy cá nhân |
 | `docs/` | Thiết kế kỹ thuật, API, triển khai Hostinger, sao lưu/khôi phục, kết quả nghiệm thu, ảnh màn hình | — |
 
 ## Cài đặt trên Hostinger — một dòng lệnh
@@ -27,8 +27,9 @@ Trình cài đặt tự tìm PHP, kiểm tra kết nối CSDL, đặt mã nguồ
 
 1. `docs/THIET-KE.md`: kiến trúc, sơ đồ dữ liệu, luồng đặt hàng, trạng thái đơn, đối soát, đồng bộ, AI, bảng truy vết FR/NFR → mã nguồn.
 2. `docs/TRIEN-KHAI-HOSTINGER.md`: cài đặt từng bước, cron, cấu hình trước khi mở bán.
-3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (25/25 ca website + 15/15 kiểm thử Python đạt), đo tải.
-4. `docs/API.md`, `docs/SAO-LUU-KHOI-PHUC.md`, `ai/README.md`.
+3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 và các ca bổ sung (26/26 ca website + 24/24 kiểm thử Python đạt), đo tải.
+4. `docs/VAN-PHONG-AI.md`: bộ não của văn phòng AI (tín hiệu, nội quy, học từ phản hồi, bản tin mỗi sáng).
+5. `docs/API.md`, `docs/SAO-LUU-KHOI-PHUC.md`, `ai/README.md`.
 
 ## Chạy thử trên máy tính — một lệnh
 
@@ -43,7 +44,7 @@ php start-local.php
 Lệnh này tự kiểm tra PHP, tìm MySQL (thử `root` không mật khẩu; nếu không vào được sẽ hỏi), tạo CSDL `moctam_local`, tạo bảng, nạp 16 sản phẩm mẫu và khoảng 40 đơn mẫu, tạo sẵn cấu hình cho dịch vụ AI, rồi mở trình duyệt tại `http://localhost:8000`.
 
 - Quản trị: `http://localhost:8000/admin`, đăng nhập `admin@xuong.local`, mật khẩu `Demo@12345`. Có thêm 4 tài khoản để thử phân quyền: `vanhanh@`, `kho@`, `doisoat@`, `noidung@` (đều đuôi `xuong.local`, cùng mật khẩu).
-- Thử dịch vụ AI: mở cửa sổ lệnh thứ hai, `cd ai`, chạy `python -m xuong_ai once sync`, rồi `python -m xuong_ai once crosssell`. Cần Python 3.11+.
+- Thử dịch vụ AI: mở cửa sổ lệnh thứ hai, `cd ai`, chạy `python -m xuong_ai tick` (một nhịp làm việc của văn phòng AI), rồi `python -m xuong_ai think` để xem bộ não đang tính gì và `python -m xuong_ai brief` để đọc bản tin. Cần Python 3.11+.
 - Dừng bằng Ctrl+C. Gõ lại lệnh là chạy tiếp, dữ liệu được giữ. Thêm `--reset` để làm lại từ đầu, hoặc `--port=8001` để đổi cổng.
 - Chế độ chạy thử dùng `http` và bật hiển thị lỗi, **không dùng cấu hình này cho Hostinger**.
 

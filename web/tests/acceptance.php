@@ -662,7 +662,38 @@ check('EX-11', 'SEO trang khách: tiêu đề/mô tả, canonical trang phân tr
     return 'tiêu đề ≤60, mô tả ≤160; JSON-LD an toàn và đủ thuộc tính bắt buộc; canonical phân trang; robots + sitemap';
 });
 
-check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử dụng: có sẵn, chèn cấu hình an toàn, không ghi đè trang đã sửa', function () {
+check('EX-12', 'Phản hồi duyệt bản nháp AI cho "bộ não" Python: duyệt, sửa rồi duyệt, từ chối kèm góp ý, chờ duyệt, website từ chối', function () {
+    $key = ['id' => Db::insert('api_keys', ['name' => 'fb', 'key_prefix' => 'xk_fb000', 'key_hash' => hash('sha256', 'fb' . microtime()), 'scopes' => 'drafts:write', 'created_at' => Clock::nowDb()])];
+    $p = Db::one("SELECT id, info_version FROM products WHERE status = 'active' ORDER BY id LIMIT 1");
+    $mk = fn(string $ref, string $title) => ['client_ref' => $ref, 'kind' => 'faq', 'data' => ['title' => $title, 'body' => "Trả lời cho $title.", 'body_is_text' => true]];
+    $res = DraftInbox::receive($key, [
+        $mk('fb:ok', 'Câu hỏi được duyệt nguyên văn?'), $mk('fb:edit', 'Câu hỏi được sửa rồi duyệt?'),
+        $mk('fb:no', 'Câu hỏi bị từ chối?'), $mk('fb:wait', 'Câu hỏi còn chờ duyệt?'),
+        ['client_ref' => 'fb:old', 'kind' => 'blog', 'data' => ['title' => 'Cũ', 'body' => 'x', 'body_is_text' => true, 'source_refs' => [['product_id' => (int)$p['id'], 'info_version' => (int)$p['info_version'] + 7]]]],
+    ]);
+    $cid = [];
+    foreach ($res['results'] as $r) {
+        if ($r['status'] === 'accepted') $cid[$r['client_ref']] = (int)substr($r['result'], 8);
+    }
+    t_user('content');
+    ContentService::publish($cid['fb:ok']);
+    ContentService::saveVersion($cid['fb:edit'], ['title' => 'Câu hỏi được sửa rồi duyệt?', 'body' => 'Nhân viên viết lại câu trả lời.', 'body_is_text' => true]);
+    ContentService::publish($cid['fb:edit']);
+    ContentService::reject($cid['fb:no'], 'Sai giọng văn, không được hứa giao trong ngày');
+    $fb = SyncService::feedback();
+    $st = [];
+    foreach ($fb['items'] as $it) $st[$it['client_ref']] = $it;
+    ok($st['fb:ok']['status'] === 'approved', 'duyệt nguyên văn → approved: ' . $st['fb:ok']['status']);
+    ok($st['fb:edit']['status'] === 'edited', 'sửa rồi duyệt → edited: ' . $st['fb:edit']['status']);
+    ok($st['fb:no']['status'] === 'rejected' && str_contains((string)$st['fb:no']['note'], 'Sai giọng văn') && !str_starts_with((string)$st['fb:no']['note'], 'Từ chối'), 'từ chối kèm góp ý: ' . json_encode($st['fb:no'], JSON_UNESCAPED_UNICODE));
+    ok($st['fb:wait']['status'] === 'pending', 'còn chờ duyệt → pending');
+    ok($st['fb:old']['status'] === 'invalid' && str_contains((string)$st['fb:old']['note'], 'đã đổi'), 'nhãn cũ → invalid');
+    ok($fb['backlog']['faq'] >= 1 && $fb['backlog']['oldest_pending_at'] !== null, 'đếm việc chờ duyệt');
+    ok(!preg_match('/09\d{8}|@xuong|address|phone/i', json_encode($fb, JSON_UNESCAPED_UNICODE)), 'không lộ thông tin khách');
+    return 'approved/edited/rejected (kèm góp ý)/pending/invalid; chờ duyệt FAQ: ' . $fb['backlog']['faq'];
+});
+
+check('EX-07','Trang Chính sách bảo mật thông tin & Điều khoản sử dụng: có sẵn, chèn cấu hình an toàn, không ghi đè trang đã sửa', function () {
     ok((int)Db::val("SELECT COUNT(*) FROM schema_migrations WHERE version = '004_legal_pages'") === 1, 'migration PHP 004 đã chạy');
     foreach (['bao-mat' => 'Chính sách bảo mật thông tin', 'dieu-khoan-su-dung' => 'Điều khoản sử dụng'] as $slug => $title) {
         $c = Db::one("SELECT * FROM contents WHERE kind = 'page' AND slug = :s", ['s' => $slug]);
