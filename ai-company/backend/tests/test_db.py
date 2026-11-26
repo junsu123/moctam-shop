@@ -43,7 +43,11 @@ def test_migration_up_down_up() -> None:
     _alembic("downgrade", "base")
     assert _q("SELECT to_regclass('public.system_meta')") is None
     _alembic("upgrade", "head")
-    assert _q("SELECT version_num FROM alembic_version") == "0001_baseline"
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    head = ScriptDirectory.from_config(Config(str(BACKEND / "alembic.ini"))).get_current_head()
+    assert _q("SELECT version_num FROM alembic_version") == head
 
 
 def test_vector_works() -> None:
