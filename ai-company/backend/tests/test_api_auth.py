@@ -42,6 +42,24 @@ async def test_full_setup_then_cannot_setup_again(api: AsyncClient) -> None:
     assert o.csrf
 
 
+async def test_setup_can_restart_before_confirm(api: AsyncClient) -> None:
+    """Tải lại trang giữa bước 1 và 2: vẫn đang 'cần thiết lập', làm lại được với cùng mã thiết lập; mã TOTP cũ hết hiệu lực."""
+    from app.api.v1.auth import issue_setup_token
+    from app.core import db
+
+    async with db.engine().begin() as c:
+        tok = await issue_setup_token(c)
+    body = {"setup_token": tok, "email": "o@xuong.vn", "display_name": "O", "password": "p" * 12}
+    first = (await api.post("/api/v1/auth/setup", json=body)).json()["totp_secret"]
+    assert (await api.get("/api/v1/auth/state")).json()["needs_setup"] is True
+    second = (await api.post("/api/v1/auth/setup", json={**body, "email": "chu@xuong.vn"})).json()["totp_secret"]
+    assert first != second
+    r = await api.post("/api/v1/auth/setup/confirm", json={"email": "chu@xuong.vn", "password": "p" * 12, "code": pyotp.TOTP(second).now()})
+    assert r.status_code == 200
+    r = await api.post("/api/v1/auth/login", json={"email": "o@xuong.vn", "password": "p" * 12, "code": pyotp.TOTP(first).now()})
+    assert r.status_code == 401
+
+
 async def test_setup_unconfirmed_account_cannot_login(api: AsyncClient) -> None:
     from app.api.v1.auth import issue_setup_token
     from app.core import db

@@ -21,6 +21,6 @@ Cập nhật cuối mỗi Sprint. Trạng thái: `chưa làm` · `đang làm` ·
 | §14 | Lịch tự động, khôi phục sau khởi động lại | 4 | chưa làm |
 | §15 | Bảo mật (14 yêu cầu) | 1–9 | **đang làm**: thêm Argon2id + TOTP, khóa tạm, CSRF, xác thực lại, secret mã hóa phong bì, audit chuỗi băm không sửa được, CSP nonce, che dữ liệu trước khi gửi LLM/Telegram |
 | §16 | API `/api/v1` | 1–8 | **đang làm**: health, auth, agents, settings, providers, overview, events (+SSE), telegram |
-| §18 | Kiểm thử tự động | 0–9 | **đang làm**: CI 5 job (thêm E2E Playwright), 64 test backend |
+| §18 | Kiểm thử tự động | 0–9 | **đang làm**: CI 5 job (thêm E2E Playwright), 65 test backend |
 | §19 | 25 tiêu chí nghiệm thu | 9 | chưa làm |
 | §21 | Quy trình bắt buộc cho Claude Code | 0 | **xong**: CLAUDE.md, mẫu PR có DoD, báo cáo Sprint |

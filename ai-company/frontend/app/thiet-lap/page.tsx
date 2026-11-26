@@ -16,11 +16,15 @@ export default function SetupPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    let alive = true;
     api<AuthState>("/auth/state")
       .then((s) => {
-        if (!s.needs_setup) router.replace(s.authenticated ? "/" : "/dang-nhap");
+        if (alive && !s.needs_setup) router.replace(s.authenticated ? "/" : "/dang-nhap");
       })
       .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
   }, [router]);
 
   async function step1(e: React.FormEvent<HTMLFormElement>) {

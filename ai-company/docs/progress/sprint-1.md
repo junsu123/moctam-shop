@@ -34,7 +34,8 @@ Trang quản trị cũng đã dùng được, có các phần: Tổng quan, Agen
 - Sai 5 lần thì khóa 15 phút. Bộ đếm ghi bằng giao dịch riêng nên không bị rollback.
 - Thông báo lỗi giống nhau dù sai email hay sai mật khẩu, thời gian kiểm tra cũng như nhau.
 - Xác thực lại (mật khẩu + mã 2FA, có hiệu lực 5 phút) cho các thao tác: đổi token Telegram, khóa API, tạo chat được duyệt việc.
-- Kiểm chứng: `test_api_auth.py` (14 test).
+- Thiết lập dở dang (tải lại trang giữa bước 1 và 2) làm lại được bằng cùng mã thiết lập; tài khoản chưa nhập mã TOTP không tính là đã thiết lập. Lỗi này lộ ra khi CI chạy E2E lần đầu.
+- Kiểm chứng: `test_api_auth.py` (15 test).
 
 **API Control Center**
 - Agent: danh sách, tạm dừng/chạy lại (có lý do), tạm dừng tất cả. Mọi thao tác đều ghi nhật ký.
@@ -99,7 +100,7 @@ Trang quản trị cũng đã dùng được, có các phần: Tổng quan, Agen
 **Compose**
 - Thêm dịch vụ `telegram` (128 MB). Tổng giới hạn RAM ~2,8 GB.
 
-Tổng: **64 test backend đạt** (ruff, ruff format, mypy strict sạch), **1 test E2E đạt**.
+Tổng: **65 test backend đạt** (ruff, ruff format, mypy strict sạch), **1 test E2E đạt**.
 
 ## Lệch so với kế hoạch (ghi trung thực)
 

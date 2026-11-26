@@ -36,7 +36,8 @@ def _set_cookie(resp: Response, token: str) -> None:
 
 
 async def _has_users(conn: AsyncConnection) -> bool:
-    return bool(await db.scalar(conn, "SELECT EXISTS (SELECT 1 FROM users)"))
+    """Đã có Owner hoàn tất 2FA chưa. Tài khoản tạo dở (chưa nhập mã TOTP) không tính: thiết lập lại được bằng mã thiết lập."""
+    return bool(await db.scalar(conn, "SELECT EXISTS (SELECT 1 FROM users WHERE totp_confirmed_at IS NOT NULL)"))
 
 
 async def issue_setup_token(conn: AsyncConnection) -> str | None:
@@ -110,6 +111,10 @@ async def setup(body: SetupIn, request: Request, conn: AsyncConnection = Depends
     if await _has_users(conn):
         raise AppError("ALREADY_SET_UP", "Đã có tài khoản Owner.", 409)
     await _check_setup_token(conn, body.setup_token)
+    # Bỏ tài khoản tạo dở của lần thiết lập trước (vd tải lại trang giữa bước 1 và 2)
+    for old in await db.all_(conn, "SELECT id FROM users WHERE totp_confirmed_at IS NULL"):
+        await store.delete_secret(conn, f"totp:{old['id']}")
+    await db.execute(conn, "DELETE FROM users WHERE totp_confirmed_at IS NULL")
     sec = security.new_totp_secret()
     uid = uuid7()
     await db.execute(
