@@ -30,7 +30,7 @@ $linked = array_column($identities, 'provider');
         <ul class="mt-4 divide-y divide-ink/10 rounded-xl bg-white">
           <?php foreach ($orders as $o): ?>
             <li class="flex flex-wrap items-center gap-x-4 gap-y-1 p-4">
-              <a href="/don-hang/<?= e($o['code']) ?>?t=<?= e($o['access_token']) ?>" class="font-mono font-semibold"><?= e($o['code']) ?></a>
+              <a href="<?= e(\App\Domain\Urls::order($o['code'], $o['access_token'])) ?>" class="font-mono font-semibold"><?= e($o['code']) ?></a>
               <span class="text-sm text-ink-mute"><?= vn_time($o['created_at'], 'd/m/Y') ?>, <?= (int)$o['line_count'] ?> sản phẩm</span>
               <span class="ml-auto font-bold tabular-nums"><?= money($o['total']) ?></span>
               <span class="w-full text-sm"><strong><?= e(OrderService::STATUS_LABELS[$o['status']]) ?></strong> — <?= e(strtoupper($o['payment_method'])) ?>, <?= e(mb_strtolower(OrderService::PAYMENT_LABELS[$o['payment_status']])) ?></span>
@@ -72,7 +72,7 @@ $linked = array_column($identities, 'provider');
       <section class="rounded-xl bg-white p-5">
         <h2 class="text-lg">Liên kết thêm</h2>
         <p class="mt-1 text-sm text-ink-soft">Để đăng nhập vào cùng tài khoản này bằng cách khác.</p>
-        <div class="mt-3 flex flex-wrap gap-2"><?php foreach ($more as $p): ?><a class="btn-ghost" href="/auth/<?= e($p) ?>?next=/tai-khoan">Liên kết <?= e(OAuth::LABELS[$p]) ?></a><?php endforeach; ?></div>
+        <div class="mt-3 flex flex-wrap gap-2"><?php foreach ($more as $p): ?><a class="btn-ghost" href="/auth/<?= e($p) ?>?next=<?= rawurlencode(fixed_url('account')) ?>">Liên kết <?= e(OAuth::LABELS[$p]) ?></a><?php endforeach; ?></div>
       </section>
       <?php endif; ?>
 

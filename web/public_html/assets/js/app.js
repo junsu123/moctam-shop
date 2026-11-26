@@ -93,7 +93,7 @@
       return true;
     }
     $('[data-add-to-cart]').addEventListener('click', function () { if (add()) toast('Đã thêm vào giỏ hàng'); });
-    $('[data-buy-now]').addEventListener('click', function () { if (add()) location.href = '/gio-hang'; });
+    $('[data-buy-now]').addEventListener('click', function () { if (add()) location.href = '/gio-hang.html'; });
     $$('[data-thumb]').forEach(function (b) { b.addEventListener('click', function () { $('[data-main-img]').src = b.getAttribute('data-thumb'); }); });
     render();
   }
@@ -148,9 +148,9 @@
         var list = $('[data-cart-lines]');
         list.innerHTML = q.lines.map(function (l) {
           return '<li class="flex gap-4 p-4 sm:p-5" data-line="' + l.sku_id + '">' +
-            '<a href="/san-pham/' + esc(l.slug) + '" class="shrink-0"><img src="' + esc(l.image || '/assets/img/placeholder.svg') + '" alt="" width="80" height="80" class="h-20 w-20 rounded-lg bg-jade-50 object-cover"></a>' +
+            '<a href="/' + esc(l.slug) + '.html" class="shrink-0"><img src="' + esc(l.image || '/assets/img/placeholder.svg') + '" alt="" width="80" height="80" class="h-20 w-20 rounded-lg bg-jade-50 object-cover"></a>' +
             '<div class="flex min-w-0 flex-1 flex-col gap-1">' +
-              '<a href="/san-pham/' + esc(l.slug) + '" class="font-semibold text-ink no-underline">' + esc(l.product_name) + '</a>' +
+              '<a href="/' + esc(l.slug) + '.html" class="font-semibold text-ink no-underline">' + esc(l.product_name) + '</a>' +
               '<span class="text-sm text-ink-mute">' + esc(l.variant_label) + ' · ' + esc(l.sku_code) + '</span>' +
               '<span class="text-sm"><span class="font-semibold tabular-nums">' + fmt(l.unit_price) + '</span>' + (l.unit_price < l.list_price ? ' <span class="price-was">' + fmt(l.list_price) + '</span> <span class="chip-sale">Flash Sale</span>' : '') + '</span>' +
               '<div class="mt-1 flex items-center gap-3">' +
@@ -207,7 +207,7 @@
         renderTotals(q);
         var err = $('[data-form-error]');
         var html = issuesHtml(q);
-        err.innerHTML = html ? html + '<a href="/gio-hang" class="mt-2 inline-block font-semibold underline">Sửa giỏ hàng</a>' : '';
+        err.innerHTML = html ? html + '<a href="/gio-hang.html" class="mt-2 inline-block font-semibold underline">Sửa giỏ hàng</a>' : '';
         err.classList.toggle('hidden', !html);
         return q;
       });
@@ -289,7 +289,7 @@
         else if (err.code === 'OUT_OF_STOCK' || err.code === 'ZONE_NOT_SERVED') {
           if (det.quote) { renderTotals(det.quote); }
           var box = $('[data-form-error]');
-          box.innerHTML = '<p class="font-semibold">' + esc(err.message) + '</p>' + (det.quote ? issuesHtml(det.quote) : '') + '<a href="/gio-hang" class="mt-2 inline-block font-semibold underline">Sửa giỏ hàng</a>';
+          box.innerHTML = '<p class="font-semibold">' + esc(err.message) + '</p>' + (det.quote ? issuesHtml(det.quote) : '') + '<a href="/gio-hang.html" class="mt-2 inline-block font-semibold underline">Sửa giỏ hàng</a>';
           box.classList.remove('hidden'); box.focus && box.scrollIntoView({ block: 'center' });
         } else {
           var b = $('[data-form-error]'); b.textContent = err.message || 'Không đặt được hàng, vui lòng thử lại.'; b.classList.remove('hidden');

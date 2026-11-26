@@ -1,7 +1,7 @@
 <section class="wrap py-12">
   <div class="mx-auto max-w-md">
     <h1 class="text-3xl">Đăng nhập</h1>
-    <p class="mt-2 text-ink-soft">Không bắt buộc — bạn vẫn có thể <a href="/gio-hang">đặt hàng không cần tài khoản</a>. Đăng nhập để xem lại đơn đã đặt và không phải nhập lại địa chỉ.</p>
+    <p class="mt-2 text-ink-soft">Không bắt buộc — bạn vẫn có thể <a href="<?= fixed_url('cart') ?>">đặt hàng không cần tài khoản</a>. Đăng nhập để xem lại đơn đã đặt và không phải nhập lại địa chỉ.</p>
 
     <?php foreach ($notices as $f): ?>
       <p class="mt-4 rounded-lg px-3 py-2 text-sm <?= $f['type'] === 'error' ? 'bg-alert-light text-alert' : 'bg-jade-200 text-tea-dark' ?>" role="<?= $f['type'] === 'error' ? 'alert' : 'status' ?>"><?= e($f['msg']) ?></p>
@@ -18,7 +18,7 @@
           <a href="/auth/facebook?next=<?= e(rawurlencode($next)) ?>" class="btn w-full bg-[#1877F2] py-3 text-white hover:bg-[#166fe0]">Tiếp tục với Facebook</a>
         <?php endif; ?>
       </div>
-      <p class="mt-6 text-xs leading-relaxed text-ink-mute">Xưởng chỉ nhận tên, email và mã định danh tài khoản từ nhà cung cấp, không đăng bài hay đọc danh sách bạn bè của bạn. Khi tiếp tục, bạn đồng ý với <a href="/chinh-sach/dieu-khoan-su-dung">Điều khoản sử dụng</a> và <a href="/chinh-sach/bao-mat">Chính sách bảo mật thông tin</a>.</p>
+      <p class="mt-6 text-xs leading-relaxed text-ink-mute">Xưởng chỉ nhận tên, email và mã định danh tài khoản từ nhà cung cấp, không đăng bài hay đọc danh sách bạn bè của bạn. Khi tiếp tục, bạn đồng ý với <a href="<?= page_url('dieu-khoan-su-dung') ?>">Điều khoản sử dụng</a> và <a href="<?= page_url('bao-mat') ?>">Chính sách bảo mật thông tin</a>.</p>
     <?php endif; ?>
   </div>
 </section>

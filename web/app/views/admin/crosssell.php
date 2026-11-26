@@ -5,7 +5,7 @@
     <tbody>
     <?php foreach ($rows as $r): ?>
       <tr>
-        <td><a href="/san-pham/<?= e($r['a_slug']) ?>" target="_blank" rel="noopener"><?= e($r['a_name']) ?></a></td>
+        <td><a href="<?= e(page_url($r['a_slug'])) ?>" target="_blank" rel="noopener"><?= e($r['a_name']) ?></a></td>
         <td class="font-semibold"><?= e($r['b_name']) ?></td>
         <td><?= $r['source'] === 'ai' ? 'AI' : 'Nhân viên' ?></td>
         <td class="text-right tabular-nums"><?= $r['score'] !== null ? number_format((float)$r['score'], 2) : '' ?></td>

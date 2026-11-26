@@ -14,7 +14,7 @@
     <?php foreach ($rows as $p): ?>
       <tr data-href="/admin/products/<?= (int)$p['id'] ?>">
         <td class="w-14"><img src="<?= e($p['image'] ?: '/assets/img/placeholder.svg') ?>" alt="" width="44" height="44" class="h-11 w-11 rounded object-cover"></td>
-        <td><a href="/admin/products/<?= $p['id'] ?>" class="font-semibold"><?= e($p['name']) ?></a><?= $p['is_featured'] ? ' <span class="badge bg-turmeric-light text-coffee">Nổi bật</span>' : '' ?><br><span class="text-xs text-ink-mute">/san-pham/<?= e($p['slug']) ?></span></td>
+        <td><a href="/admin/products/<?= $p['id'] ?>" class="font-semibold"><?= e($p['name']) ?></a><?= $p['is_featured'] ? ' <span class="badge bg-turmeric-light text-coffee">Nổi bật</span>' : '' ?><br><span class="text-xs text-ink-mute"><?= e(page_url($p['slug'])) ?></span></td>
         <td><?= e($p['cat']) ?></td>
         <td class="text-right tabular-nums"><?= $p['min_price'] ? money($p['min_price']) : '—' ?></td>
         <td class="text-right"><?= (int)$p['sku_count'] ?></td>

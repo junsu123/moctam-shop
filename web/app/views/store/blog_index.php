@@ -8,10 +8,10 @@
     <?php foreach ($result['items'] as $b): ?>
       <article class="rounded-xl bg-white p-6">
         <p class="text-sm text-ink-mute"><time datetime="<?= e($b['published_at']) ?>"><?= vn_time($b['published_at'], 'd/m/Y') ?></time></p>
-        <h2 class="mt-1 text-xl leading-snug"><a href="/blog/<?= e($b['slug']) ?>" class="text-ink no-underline hover:text-tea"><?= e($b['pub_title']) ?></a></h2>
+        <h2 class="mt-1 text-xl leading-snug"><a href="<?= e(page_url($b['slug'])) ?>" class="text-ink no-underline hover:text-tea"><?= e($b['pub_title']) ?></a></h2>
         <p class="mt-2 line-clamp-3 text-ink-soft"><?= e($b['pub_meta_description']) ?></p>
       </article>
     <?php endforeach; ?>
   </div>
-  <?= \App\Core\View::partial('store/_pager', ['page' => $result['page'], 'pages' => $result['pages'], 'base' => '/blog', 'query' => []]) ?>
+  <?= \App\Core\View::partial('store/_pager', ['page' => $result['page'], 'pages' => $result['pages'], 'base' => fixed_url('blog'), 'query' => []]) ?>
 </section>

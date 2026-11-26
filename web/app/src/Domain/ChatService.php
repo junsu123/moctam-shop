@@ -157,7 +157,7 @@ final class ChatService
         $skus = Db::all("SELECT s.id, s.variant_label, s.price, GREATEST(COALESCE(i.on_hand,0) - COALESCE(i.reserved,0),0) AS available FROM skus s LEFT JOIN inventory i ON i.sku_id = s.id WHERE s.product_id = :id AND s.status = 'active' ORDER BY s.sort_order, s.id", ['id' => $p['id']]);
         $flash = PricingService::activeFlashPrices(array_column($skus, 'id'));
         return [
-            'id' => (int)$p['id'], 'name' => $p['name'], 'url' => '/san-pham/' . $p['slug'],
+            'id' => (int)$p['id'], 'name' => $p['name'], 'url' => Urls::to($p['slug']),
             'skus' => array_map(fn($s) => ['sku_id' => (int)$s['id'], 'variant_label' => $s['variant_label'], 'price' => (int)$s['price'],
                 'sale_price' => isset($flash[$s['id']]) ? (int)$flash[$s['id']]['sale_price'] : null, 'available' => (int)$s['available']], $skus),
         ];
@@ -165,7 +165,7 @@ final class ChatService
 
     private static function crossSell(int $productId): array
     {
-        return array_map(fn($r) => ['name' => $r['name'], 'url' => '/san-pham/' . $r['slug']], Db::all(
+        return array_map(fn($r) => ['name' => $r['name'], 'url' => Urls::to($r['slug'])], Db::all(
             "SELECT p.name, p.slug FROM product_relations r JOIN products p ON p.id = r.related_product_id WHERE r.product_id = :id AND r.status = 'approved' AND p.status = 'active' ORDER BY r.sort_order LIMIT 3",
             ['id' => $productId]
         ));

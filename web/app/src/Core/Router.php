@@ -19,7 +19,10 @@ final class Router
 
     public function add(string $method, string $pattern, callable|array $handler): void
     {
-        $regex = '#^' . preg_replace('#\{(\w+)\}#', '(?P<$1>[^/]+)', rtrim($pattern, '/') ?: '/') . '/?$#u';
+        // Phần chữ cố định được thoát (VD dấu "." trong ".html"); {ten} → nhóm bắt một đoạn đường dẫn
+        $parts = preg_split('#(\{\w+\})#', rtrim($pattern, '/') ?: '/', -1, PREG_SPLIT_DELIM_CAPTURE);
+        $body = implode('', array_map(fn($p) => preg_match('#^\{(\w+)\}$#', $p, $m) ? '(?P<' . $m[1] . '>[^/]+)' : preg_quote($p, '#'), $parts));
+        $regex = '#^' . $body . '/?$#u';
         $this->routes[] = [$method, $regex, $handler];
     }
 

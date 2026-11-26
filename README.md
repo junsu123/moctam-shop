@@ -27,7 +27,7 @@ Trình cài đặt tự tìm PHP, kiểm tra kết nối CSDL, đặt mã nguồ
 
 1. `docs/THIET-KE.md`: kiến trúc, sơ đồ dữ liệu, luồng đặt hàng, trạng thái đơn, đối soát, đồng bộ, AI, bảng truy vết FR/NFR → mã nguồn.
 2. `docs/TRIEN-KHAI-HOSTINGER.md`: cài đặt từng bước, cron, cấu hình trước khi mở bán.
-3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (23/23 ca website + 15/15 kiểm thử Python đạt), đo tải.
+3. `docs/KET-QUA-NGHIEM-THU.md`: AT-01…AT-11 (24/24 ca website + 15/15 kiểm thử Python đạt), đo tải.
 4. `docs/API.md`, `docs/SAO-LUU-KHOI-PHUC.md`, `ai/README.md`.
 
 ## Chạy thử trên máy tính — một lệnh
@@ -63,7 +63,7 @@ cd ../ai && python -m pytest -v
 - **Vùng giao và biểu phí**: bản mẫu có 4 vùng phủ 34 tỉnh/thành, phí 20–35 nghìn đồng.
 - **Thời hạn**: báo giá 15 phút, giữ hàng VietQR 24 giờ, chờ xác nhận COD 48 giờ. Chỉnh theo lịch trực đối soát và tốc độ giao hàng.
 - **Thông tin nhãn sản phẩm**: thành phần, dị ứng, cách dùng, bảo quản. Dữ liệu mẫu chỉ để minh họa, phải thay bằng nhãn thật, vì chat trích nguyên văn các mục này.
-- **Thông tin pháp lý** (Quản trị → Cấu hình → Thông tin pháp lý): tên hộ kinh doanh hoặc doanh nghiệp, số ĐKKD/MST, ngày và nơi cấp, người đại diện, nơi đặt máy chủ. Các thông tin này hiện ở chân trang và được tự điền vào hai trang **Chính sách bảo mật thông tin** (`/chinh-sach/bao-mat`) và **Điều khoản sử dụng** (`/chinh-sach/dieu-khoan-su-dung`). Mục nào còn trống sẽ hiện "[chưa cập nhật: …]" trên trang, và trang Giám sát cảnh báo.
+- **Thông tin pháp lý** (Quản trị → Cấu hình → Thông tin pháp lý): tên hộ kinh doanh hoặc doanh nghiệp, số ĐKKD/MST, ngày và nơi cấp, người đại diện, nơi đặt máy chủ. Các thông tin này hiện ở chân trang và được tự điền vào hai trang **Chính sách bảo mật thông tin** (`/bao-mat.html`) và **Điều khoản sử dụng** (`/dieu-khoan-su-dung.html`). Mục nào còn trống sẽ hiện "[chưa cập nhật: …]" trên trang, và trang Giám sát cảnh báo.
 - **Hai trang pháp lý**: đã soạn đầy đủ theo Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15, Nghị định 356/2025/NĐ-CP và Luật Thương mại điện tử 122/2025/QH15. Nên nhờ luật sư rà soát trước khi mở bán. Các trang giao hàng, thanh toán, đổi trả vẫn là bản mẫu, cần xưởng chỉnh lại.
 - **Quản lý lô và hạn dùng**: chọn website hay sổ nghiệp vụ. Nếu chọn website, xem `docs/THIET-KE.md` §3 để bổ sung migration.
 - **Nhân sự đối soát**: phân quyền nhân sự theo từng vai trò.

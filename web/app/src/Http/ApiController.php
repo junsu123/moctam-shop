@@ -53,7 +53,7 @@ final class ApiController
         RateLimiter::hit('search', 120, 60);
         $res = CatalogService::search((string)($_GET['q'] ?? ''), isset($_GET['category']) ? (int)$_GET['category'] : null, (int)($_GET['page'] ?? 1), min(24, max(1, (int)($_GET['per_page'] ?? 8))));
         $res['items'] = array_map(fn($p) => [
-            'name' => $p['name'], 'url' => '/san-pham/' . $p['slug'], 'image' => $p['image'],
+            'name' => $p['name'], 'url' => \App\Domain\Urls::to($p['slug']), 'image' => $p['image'],
             'min_price' => (int)$p['min_price'], 'flash' => $p['flash'], 'available' => (int)$p['available'] > 0,
         ], $res['items']);
         Http::json($res);

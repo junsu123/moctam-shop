@@ -73,6 +73,6 @@ final class CustomerAccountController extends Base
         if ($err) throw ApiError::validation($err);
         Accounts::find((int)$id);
         $code = Accounts::delete((int)$id, 'admin', $reason);
-        $this->back("Đã xóa tài khoản. Mã xác nhận gửi cho khách: $code (tra cứu tại /tai-khoan/trang-thai-xoa).", '/admin/customer-accounts');
+        $this->back("Đã xóa tài khoản. Mã xác nhận gửi cho khách: $code (tra cứu tại " . \App\Domain\Urls::fixed('deletion') . ').', '/admin/customer-accounts');
     }
 }

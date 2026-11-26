@@ -124,7 +124,7 @@ Thay `https://tenmien.vn` bên dưới bằng `base_url` trong `app/config.php` 
 ### Google
 
 1. Vào Google Cloud Console → **Google Auth Platform** (tạo dự án mới nếu được hỏi, ví dụ "Website xưởng").
-2. **Branding**: tên ứng dụng (tên xưởng), email hỗ trợ; *Trang chủ* `https://tenmien.vn`, *Chính sách quyền riêng tư* `https://tenmien.vn/chinh-sach/bao-mat`, *Điều khoản* `https://tenmien.vn/chinh-sach/dieu-khoan-su-dung`; *Miền được ủy quyền* `tenmien.vn`. Không cần tải logo (tải logo sẽ phải chờ Google xác minh thương hiệu).
+2. **Branding**: tên ứng dụng (tên xưởng), email hỗ trợ; *Trang chủ* `https://tenmien.vn`, *Chính sách quyền riêng tư* `https://tenmien.vn/bao-mat.html`, *Điều khoản* `https://tenmien.vn/dieu-khoan-su-dung.html`; *Miền được ủy quyền* `tenmien.vn`. Không cần tải logo (tải logo sẽ phải chờ Google xác minh thương hiệu).
 3. **Audience**: chọn *External*, rồi bấm **Publish app** để chuyển sang *In production* (ở chế độ *Testing* chỉ những email được thêm làm người thử mới đăng nhập được).
 4. **Data Access**: chỉ cần `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile` (không thuộc nhóm nhạy cảm → không phải xét duyệt).
 5. **Clients → Create client** → loại *Web application* → *Authorized redirect URIs*: `https://tenmien.vn/auth/google/callback` → **Create**. Chép ngay **Client ID** và **Client secret** (secret chỉ hiện một lần).
@@ -137,8 +137,9 @@ Thay `https://tenmien.vn` bên dưới bằng `base_url` trong `app/config.php` 
    - *Valid OAuth Redirect URIs*: `https://tenmien.vn/auth/facebook/callback`
    - Bật *Enforce HTTPS* và *Use Strict Mode for redirect URIs*.
 4. **App settings → Basic**:
-   - *Privacy Policy URL*: `https://tenmien.vn/chinh-sach/bao-mat`
-   - *Terms of Service URL*: `https://tenmien.vn/chinh-sach/dieu-khoan-su-dung`
+   - *Privacy Policy URL*: `https://tenmien.vn/bao-mat.html`
+   - *Terms of Service URL*: `https://tenmien.vn/dieu-khoan-su-dung.html`
+   - Đã khai báo địa chỉ cũ `/chinh-sach/…` trước 11/2026 thì không cần sửa gấp: địa chỉ cũ tự chuyển hướng 301 sang địa chỉ mới. Nên cập nhật khi tiện.
    - *User data deletion* → chọn **Data deletion callback URL**: `https://tenmien.vn/auth/facebook/xoa-du-lieu`
    - *App icon* 1024×1024 và *Category* (Shopping).
    - Chép **App ID** và **App secret**.
@@ -160,7 +161,7 @@ Nếu tệp cấu hình cài từ phiên bản cũ chưa có mục này, thêm n
 ### Kiểm tra sau khi bật
 
 - Đăng nhập thử bằng cả hai cách, đặt một đơn → đơn hiện ở **Tài khoản của tôi** và trong trang quản trị (dòng *Tài khoản: …*).
-- Facebook: vào *Cài đặt Facebook → Ứng dụng và trang web* → gỡ website → chọn xóa hoạt động. Website ghi nhận và cấp mã tra cứu tại `/tai-khoan/trang-thai-xoa?ma=…`.
+- Facebook: vào *Cài đặt Facebook → Ứng dụng và trang web* → gỡ website → chọn xóa hoạt động. Website ghi nhận và cấp mã tra cứu tại `/trang-thai-xoa-du-lieu.html?ma=…`.
 
 ### Nguyên tắc đã cài sẵn
 

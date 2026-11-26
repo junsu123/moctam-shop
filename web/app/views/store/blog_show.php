@@ -1,5 +1,5 @@
 <article class="wrap py-10">
-  <nav class="text-sm"><a href="/blog" class="text-ink-mute">Blog</a></nav>
+  <nav class="text-sm"><a href="<?= fixed_url('blog') ?>" class="text-ink-mute">Blog</a></nav>
   <h1 class="mt-3 max-w-[22ch] text-3xl sm:text-4xl"><?= e($c['pub_title']) ?></h1>
   <p class="mt-3 text-sm text-ink-mute">Đăng ngày <time datetime="<?= e($c['published_at']) ?>"><?= vn_time($c['published_at'], 'd/m/Y') ?></time></p>
   <div class="prose-x mt-6 text-lg"><?= $c['pub_body'] /* đã lọc HTML khi lưu */ ?></div>

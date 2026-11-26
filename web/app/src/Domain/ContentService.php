@@ -147,6 +147,8 @@ final class ContentService
 
     private static function uniqueSlug(string $kind, string $slug, ?int $exceptId = null): string
     {
+        // Blog và trang có địa chỉ riêng /{slug}.html → duy nhất toàn site. FAQ chỉ cần duy nhất trong loại.
+        if ($kind === 'blog' || $kind === 'page') return Urls::unique($slug, $kind, $exceptId);
         $base = $slug;
         $i = 2;
         while (Db::val('SELECT 1 FROM contents WHERE kind = :k AND slug = :s AND id <> :id', ['k' => $kind, 's' => $slug, 'id' => $exceptId ?? 0])) {

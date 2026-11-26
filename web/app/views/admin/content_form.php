@@ -12,7 +12,7 @@ foreach ($refs as $r) {
 <a href="/admin/content?kind=<?= e($kind) ?>" class="text-sm">← <?= e(ContentService::KIND_LABELS[$kind]) ?></a>
 <?php if ($c): ?>
   <div class="mt-2 flex flex-wrap items-center gap-2 text-sm"><?= status_badge($c['status']) ?> <?= $c['source'] === 'ai' ? '<span class="badge bg-jade-200 text-tea-dark">AI soạn — cần kiểm tra số liệu, thành phần, giá</span>' : '' ?>
-    <?php if ($c['status'] === 'published' && $kind !== 'faq'): ?><a href="/<?= $kind === 'blog' ? 'blog' : 'chinh-sach' ?>/<?= e($c['slug']) ?>" target="_blank" rel="noopener">Xem bản công khai</a><?php endif; ?></div>
+    <?php if ($c['status'] === 'published' && $kind !== 'faq'): ?><a href="<?= e(page_url($c['slug'])) ?>" target="_blank" rel="noopener">Xem bản công khai</a><?php endif; ?></div>
 <?php endif; ?>
 <?php if ($outdated): ?><div class="mt-3 rounded-lg bg-alert-light p-3 text-sm text-alert" role="alert">Thông tin nhãn của <?= e(implode(', ', $outdated)) ?> đã thay đổi sau khi bản này được soạn. Kiểm tra lại trước khi xuất bản.</div><?php endif; ?>
 
@@ -26,7 +26,7 @@ foreach ($refs as $r) {
       <?php if (!$c || !$c['published_version_id']): ?>
         <?= a_field('slug', 'Đường dẫn', $old['slug'] ?? ($c['slug'] ?? ''), $errors, ['hint' => 'Để trống sẽ tạo từ tiêu đề. Cố định sau lần xuất bản đầu tiên.']) ?>
       <?php else: ?>
-        <p class="text-sm text-ink-mute">Đường dẫn cố định: /<?= $kind === 'blog' ? 'blog' : 'chinh-sach' ?>/<?= e($c['slug']) ?></p>
+        <p class="text-sm text-ink-mute">Đường dẫn cố định: <?= e(page_url($c['slug'])) ?></p>
       <?php endif; ?>
     <?php endif; ?>
     <?= a_field('body', $kind === 'faq' ? 'Câu trả lời (HTML cơ bản)' : 'Nội dung (HTML cơ bản: p, h2, h3, ul, ol, strong, a, img, table)', $val('body'), $errors, ['type' => 'textarea', 'rows' => 16, 'class' => 'font-mono text-sm']) ?>

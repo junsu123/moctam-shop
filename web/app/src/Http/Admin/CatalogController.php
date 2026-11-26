@@ -124,8 +124,7 @@ final class CatalogController extends Base
             Db::update('categories', $data, 'id = :id', ['id' => $id]);
             Audit::log('category.update', 'category', (string)$id, $before, $data);
         } else {
-            $slug = Text::slug($data['name']);
-            if (Db::val('SELECT 1 FROM categories WHERE slug = :s', ['s' => $slug])) $slug .= '-' . substr(bin2hex(random_bytes(2)), 0, 3);
+            $slug = \App\Domain\Urls::unique($data['name'], 'category'); // duy nhất toàn site: /{slug}.html
             $id = Db::insert('categories', $data + ['slug' => $slug]);
             Audit::log('category.create', 'category', (string)$id, null, $data);
         }

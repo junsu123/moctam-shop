@@ -29,7 +29,7 @@ $catOpts = ['' => '— Chọn —'] + array_column($cats, 'name', 'id');
     <?= a_check('is_featured', 'Hiện ở mục "Xưởng gợi ý" trên trang chủ', (bool)$v('is_featured', 0)) ?>
     <div class="flex flex-wrap items-center gap-3 border-t border-ink/10 pt-4">
       <button class="btn-primary"><?= $p ? 'Lưu sản phẩm' : 'Tạo sản phẩm' ?></button>
-      <?php if ($p && $p['status'] === 'active'): ?><a href="/san-pham/<?= e($p['slug']) ?>" target="_blank" rel="noopener" class="text-sm">Xem trên cửa hàng</a><?php endif; ?>
+      <?php if ($p && $p['status'] === 'active'): ?><a href="<?= e(page_url($p['slug'])) ?>" target="_blank" rel="noopener" class="text-sm">Xem trên cửa hàng</a><?php endif; ?>
       <?php if ($p): ?><span class="ml-auto text-xs text-ink-mute">Phiên bản thông tin nhãn: v<?= (int)$p['info_version'] ?></span><?php endif; ?>
     </div>
   </form>

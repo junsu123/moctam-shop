@@ -50,6 +50,18 @@ function url(string $path = '/', array $query = []): string
     return $path . $q;
 }
 
+/** Địa chỉ một cấp của danh mục / sản phẩm / bài viết / trang: /{slug}.html */
+function page_url(string $slug): string
+{
+    return \App\Domain\Urls::to($slug);
+}
+
+/** Trang cố định: cart, checkout, search, flash, blog, faq, account, login, deletion */
+function fixed_url(string $key, array $query = []): string
+{
+    return \App\Domain\Urls::fixed($key, $query);
+}
+
 function asset(string $path): string
 {
     $file = BASE_ROOT . '/public_html/assets/' . ltrim($path, '/');

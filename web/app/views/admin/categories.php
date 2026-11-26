@@ -2,7 +2,7 @@
   <div class="space-y-3">
     <?php foreach ($rows as $c): ?>
       <details class="a-card">
-        <summary class="flex cursor-pointer items-center gap-3"><span class="font-semibold"><?= e($c['name']) ?></span> <span class="text-sm text-ink-mute"><?= (int)$c['n'] ?> sản phẩm, /danh-muc/<?= e($c['slug']) ?></span> <?= $c['is_active'] ? '' : status_badge('discontinued', 'Ẩn') ?></summary>
+        <summary class="flex cursor-pointer items-center gap-3"><span class="font-semibold"><?= e($c['name']) ?></span> <span class="text-sm text-ink-mute"><?= (int)$c['n'] ?> sản phẩm, <?= e(page_url($c['slug'])) ?></span> <?= $c['is_active'] ? '' : status_badge('discontinued', 'Ẩn') ?></summary>
         <form method="post" action="/admin/categories/save" class="mt-4 grid gap-3 sm:grid-cols-2"><?= csrf_field() ?>
           <input type="hidden" name="id" value="<?= $c['id'] ?>">
           <?= a_field('name', 'Tên', $c['name'], []) ?>

@@ -461,7 +461,7 @@ check('EX-08', 'Đăng nhập tùy chọn Google/Facebook: xác thực state/non
         $GLOBALS['APP_CONFIG']['oauth']['facebook']['client_secret'] = 'sai';
         expect_error('OAUTH_TOKEN', fn() => $login('facebook', ['sub' => 'fb-1']));
         $GLOBALS['APP_CONFIG']['oauth']['facebook']['client_secret'] = 'fb-test-secret';
-        ok(\App\Auth\OAuth::safeNext('//evil.example/x') === '/tai-khoan' && \App\Auth\OAuth::safeNext('https://evil.example') === '/tai-khoan' && \App\Auth\OAuth::safeNext('/\\evil.example') === '/tai-khoan', 'chặn chuyển hướng mở ra ngoài');
+        ok(\App\Auth\OAuth::safeNext('//evil.example/x') === '/tai-khoan.html' && \App\Auth\OAuth::safeNext('https://evil.example') === '/tai-khoan.html' && \App\Auth\OAuth::safeNext('/\\evil.example') === '/tai-khoan.html', 'chặn chuyển hướng mở ra ngoài');
 
         // Facebook cùng email đã xác minh → gộp vào tài khoản Google; email chưa xác minh → tài khoản riêng
         $fb = $login('facebook', ['sub' => 'fb-200', 'email' => 'lan.nguyen@gmail.com', 'name' => 'Lan Nguyen']);
@@ -593,6 +593,43 @@ check('EX-09', 'Quản trị tài khoản khách: phân quyền, tìm kiếm, kh
     return 'quyền accounts.manage; khóa chặn cả nhà cung cấp mới cùng email; phiên cũ bị vô hiệu và không liên kết được; không gỡ cách đăng nhập cuối; xóa có mã + nhật ký';
 });
 
+check('EX-10', 'Địa chỉ một cấp .html: dựng/giải link, đường dẫn duy nhất toàn site, chuyển hướng link cũ, gỡ trùng khi nâng cấp', function () {
+    $U = \App\Domain\Urls::class;
+    $cat = Db::one('SELECT id, slug FROM categories ORDER BY id LIMIT 1');
+    $prod = Db::one("SELECT id, slug FROM products WHERE status = 'active' ORDER BY id LIMIT 1");
+    ok($U::to($cat['slug']) === '/' . $cat['slug'] . '.html' && $U::fixed('checkout') === '/dat-hang.html' && $U::order('TM1', 'a b') === '/don-hang-TM1.html?t=a%20b', 'dựng địa chỉ');
+    ok($U::resolve($cat['slug'])['type'] === 'category' && $U::resolve($prod['slug'])['type'] === 'product' && $U::resolve('khong-ton-tai') === null, 'giải /{slug}.html theo loại');
+
+    // Đường dẫn duy nhất toàn site + không trùng trang cố định
+    ok($U::isTaken($cat['slug']) && $U::isTaken('gio-hang') && $U::isTaken('don-hang-abc') && !$U::isTaken($cat['slug'], 'category', (int)$cat['id']), 'nhận diện trùng (bỏ qua chính nó)');
+    t_user('admin');
+    $pid = \App\Domain\CatalogService::saveProduct(null, ['name' => 'Trùng danh mục', 'slug' => $cat['slug'], 'category_id' => $cat['id'], 'status' => 'draft']);
+    ok(Db::val('SELECT slug FROM products WHERE id = :id', ['id' => $pid]) === $cat['slug'] . '-2', 'sản phẩm mới không chiếm đường dẫn của danh mục');
+    $cid = \App\Domain\ContentService::create('blog', ['title' => 'Giỏ hàng', 'slug' => 'gio-hang', 'body' => '<p>x</p>'], 'staff');
+    ok(Db::val('SELECT slug FROM contents WHERE id = :id', ['id' => $cid]) === 'gio-hang-2', 'bài viết không chiếm tên trang cố định');
+
+    // Trang hiển thị đúng; link trong trang đã là dạng mới
+    $html = (new \App\Http\StoreController())->resolve($cat['slug']);
+    ok(str_contains($html, 'href="' . $U::to($prod['slug']) . '"') && !preg_match('#href="/(san-pham|danh-muc|chinh-sach|blog)/#', $html), 'trang danh mục dẫn tới sản phẩm bằng địa chỉ mới, không còn link kiểu cũ');
+    ok(str_contains($html, '<link rel="canonical" href="') && str_contains($html, $U::to($cat['slug'])) === true, 'canonical');
+    expect_error('NOT_FOUND', fn() => (new \App\Http\StoreController())->resolve('khong-ton-tai'));
+    $xml = \App\Http\StoreController::sitemapXml();
+    ok(str_contains($xml, $U::to($prod['slug']) . '</loc>') && !str_contains($xml, '/san-pham/') && !str_contains($xml, '/danh-muc/'), 'sitemap chỉ có địa chỉ mới');
+    ok(str_contains(\App\Domain\OrderService::publicSummary((int)Db::val('SELECT id FROM orders ORDER BY id LIMIT 1'))['confirm_url'] ?? '', '/don-hang-'), 'liên kết xác nhận đơn dạng một cấp');
+
+    // Link cũ → đích mới
+    ok($U::legacyTarget('product', $prod['slug']) === $U::to($prod['slug']) && $U::legacyTarget('category', 'khong-co') === null, 'chuyển hướng link cũ');
+
+    // Nâng cấp: dữ liệu cũ đang trùng (sản phẩm cùng đường dẫn với danh mục) → đổi đường dẫn sản phẩm, link cũ vẫn tới đúng
+    Db::exec('UPDATE products SET slug = :s WHERE id = :id', ['s' => $cat['slug'], 'id' => $pid]);
+    ob_start(); require BASE_ROOT . '/migrations/009_flat_urls.php'; $out = ob_get_clean();
+    $newSlug = Db::val('SELECT slug FROM products WHERE id = :id', ['id' => $pid]);
+    ok($newSlug === $cat['slug'] . '-san-pham' && Db::val('SELECT slug FROM categories WHERE id = :id', ['id' => $cat['id']]) === $cat['slug'], 'migration giữ danh mục, đổi đường dẫn sản phẩm trùng: ' . $out);
+    ok($U::legacyTarget('product', $cat['slug']) === $U::to($newSlug) && $U::legacyTarget('category', $cat['slug']) === $U::to($cat['slug']), 'link cũ của sản phẩm bị đổi tên vẫn chuyển đúng chỗ');
+    ok((bool)Db::val("SELECT 1 FROM audit_logs WHERE action = 'url.slug_renamed' AND entity_id = :id", ['id' => (string)$pid]), 'ghi nhật ký đổi đường dẫn');
+    return 'một cấp .html; duy nhất toàn site; link cũ → 301 đúng đích (kể cả mục bị đổi đường dẫn khi nâng cấp)';
+});
+
 check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử dụng: có sẵn, chèn cấu hình an toàn, không ghi đè trang đã sửa', function () {
     ok((int)Db::val("SELECT COUNT(*) FROM schema_migrations WHERE version = '004_legal_pages'") === 1, 'migration PHP 004 đã chạy');
     foreach (['bao-mat' => 'Chính sách bảo mật thông tin', 'dieu-khoan-su-dung' => 'Điều khoản sử dụng'] as $slug => $title) {
@@ -607,9 +644,9 @@ check('EX-07', 'Trang Chính sách bảo mật thông tin & Điều khoản sử
     \App\Core\Settings::set('representative', '<script>alert(1)</script>Nguyễn Văn A');
     $html = $render('dieu-khoan-su-dung');
     ok(str_contains($html, '&lt;script&gt;alert(1)&lt;/script&gt;Nguyễn Văn A') && !str_contains($html, '<script>alert(1)'), 'giá trị cấu hình được mã hóa HTML (chống XSS)');
-    ok(str_contains($html, 'href="/chinh-sach/dieu-khoan-su-dung"') && str_contains($html, 'href="/chinh-sach/bao-mat"'), 'chân trang có liên kết hai trang');
+    ok(str_contains($html, 'href="/dieu-khoan-su-dung.html"') && str_contains($html, 'href="/bao-mat.html"'), 'chân trang có liên kết hai trang');
     ok(str_contains($render('bao-mat'), 'data-clear-local'), 'trang bảo mật có nút xóa thông tin lưu trên trình duyệt');
-    ok(str_contains(\App\Core\View::partial('store/checkout', ['provinces' => []]), '/chinh-sach/dieu-khoan-su-dung'), 'trang thanh toán dẫn tới Điều khoản sử dụng');
+    ok(str_contains(\App\Core\View::partial('store/checkout', ['provinces' => []]), '/dieu-khoan-su-dung.html'), 'trang thanh toán dẫn tới Điều khoản sử dụng');
     ok(\App\Domain\LegalPages::install() === ['bao-mat' => 'unchanged', 'dieu-khoan-su-dung' => 'unchanged'], 'chạy lại migration không tạo phiên bản thừa');
     // Xưởng tự sửa điều khoản → bản cập nhật kèm mã nguồn chỉ vào chờ duyệt
     t_user('content');

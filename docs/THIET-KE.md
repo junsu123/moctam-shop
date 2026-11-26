@@ -188,7 +188,7 @@ Bổ sung ngoài đặc tả v1.0 (đặc tả cho phép mua không cần tài k
 |---|---|
 | `Auth/OAuth` | Google: OpenID Connect mã ủy quyền + PKCE (S256) + nonce; kiểm tra `iss`, `aud`, `exp`, `nonce` của id_token nhận trực tiếp từ máy chủ token qua TLS. Facebook: mã ủy quyền, gọi `/me` kèm `appsecret_proof`. `state` lưu trong phiên, dùng một lần, hết hạn 10 phút; `next` chỉ nhận đường dẫn nội bộ. |
 | `Domain/CustomerAccountService` | Tìm theo (nhà cung cấp, mã định danh) → liên kết theo email **đã xác minh** → tạo mới. Đổi mã phiên khi đăng nhập/đăng xuất. Ghi nhớ địa chỉ của đơn gần nhất. Xóa tài khoản: xóa danh tính + hồ sơ, `orders.account_id` = NULL, ghi `account_deletions`. |
-| `Http/AccountController` | `/tai-khoan/dang-nhap`, `/auth/{google,facebook}`, `/auth/{…}/callback`, `/tai-khoan` (đơn, thông tin giao hàng, nhận tin, liên kết thêm, xóa), `/auth/facebook/xoa-du-lieu` (signed_request HMAC-SHA256), `/tai-khoan/trang-thai-xoa`. |
+| `Http/AccountController` | `/dang-nhap.html`, `/auth/{google,facebook}`, `/auth/{…}/callback`, `/tai-khoan.html` (đơn, thông tin giao hàng, nhận tin, liên kết thêm, xóa), `/auth/facebook/xoa-du-lieu` (signed_request HMAC-SHA256), `/trang-thai-xoa-du-lieu.html`. |
 | Bảng | `customer_accounts` (+ `locked_at`, `locked_reason`, `session_version` từ migration 007), `account_identities` (UNIQUE provider+uid, CASCADE), `account_deletions` (nguồn `self` / `facebook` / `admin`); `orders.account_id` (SET NULL). |
 
 Quyết định: không gộp đơn khách lẻ vào tài khoản theo SĐT (SĐT không xác minh). Đồng ý nhận tin vẫn nằm ở `customers` (theo SĐT); trang tài khoản bật/tắt cho các SĐT đã dùng trong đơn của tài khoản. Nhà cung cấp lỗi → chỉ báo lỗi trên trang đăng nhập, luồng bán hàng không phụ thuộc. Kiểm thử bằng nhà cung cấp giả lập `tests/fake_oauth.php` (ca EX-08).
@@ -204,7 +204,7 @@ Quyền riêng `accounts.manage` (mặc định chỉ Quản trị viên; cấp 
 | Buộc đăng xuất | `customer_accounts.session_version` + 1. Phiên lưu `acct_ver` lúc đăng nhập; `CustomerAccountService::current()` so khớp trên mỗi yêu cầu → phiên cũ trên mọi thiết bị mất hiệu lực, không cần lưu danh sách phiên. |
 | Khóa / mở khóa | `locked_at`, `locked_reason` (bắt buộc lý do). Khóa đồng thời tăng `session_version`. `loginWithProfile` kiểm tra khóa **trong giao dịch, sau bước liên kết** → đăng nhập bằng nhà cung cấp mới cùng email đã xác minh cũng bị chặn và danh tính vừa tạo bị hoàn tác. Khách vẫn mua hàng không cần đăng nhập. |
 | Gỡ liên kết | Gỡ một danh tính (VD khách mất tài khoản Facebook) và buộc đăng xuất. Không gỡ danh tính cuối cùng (`LAST_IDENTITY`) — dùng Khóa hoặc Xóa. |
-| Xóa thay khách | Dùng chung `CustomerAccountService::delete()` với nguồn `admin`; bắt buộc ghi kênh/thời điểm khách yêu cầu và xác nhận đã xác minh chủ tài khoản; cấp mã tra cứu `/tai-khoan/trang-thai-xoa`. |
+| Xóa thay khách | Dùng chung `CustomerAccountService::delete()` với nguồn `admin`; bắt buộc ghi kênh/thời điểm khách yêu cầu và xác nhận đã xác minh chủ tài khoản; cấp mã tra cứu `/trang-thai-xoa-du-lieu.html`. |
 
 Liên kết thêm nhà cung cấp chỉ dựa trên `current()` (không đọc thẳng `$_SESSION['acct_id']`), nên phiên đã bị buộc đăng xuất/khóa không thể gắn danh tính lạ vào tài khoản. Không lưu lịch sử IP/thiết bị đăng nhập của khách — Chính sách bảo mật chỉ công bố lưu thời điểm đăng nhập gần nhất. Điều khoản sử dụng bổ sung việc xưởng có thể đăng xuất/tạm khóa và xóa thay khách (migration 008; trang đã được xưởng sửa thì bản mới vào chờ duyệt). Ca kiểm thử EX-09.
 
@@ -214,7 +214,7 @@ Tài khoản nhân viên: trang Tài khoản nhân viên hiện số lần nhậ
 
 | Yêu cầu | Nơi hiện thực |
 |---|---|
-| FR-01 | `CatalogService::search`, `Text::fold`, `/tim-kiem`, `/api/products` |
+| FR-01 | `CatalogService::search`, `Text::fold`, `/tim-kiem.html`, `/api/products` |
 | FR-02 | `CatalogService::productBySlug`, `views/store/product.php`, `assets/js/app.js#initProduct` |
 | FR-03 | `PricingService::quote`, `/api/quote`, `views/store/cart.php` |
 | FR-04 | `OrderService::create`, `/api/orders`, `views/store/checkout.php` |
@@ -229,3 +229,23 @@ Tài khoản nhân viên: trang Tài khoản nhân viên hiện số lần nhậ
 | Đăng nhập Google/Facebook | `Auth/OAuth`, `CustomerAccountService`, `AccountController`, `views/store/{login,account,deletion_status}.php` — ca EX-08 |
 | Quản trị tài khoản khách | `CustomerAccountService::{adminSearch,lock,unlock,revokeSessions,unlinkIdentity,delete}`, `Admin/CustomerAccountController`, `views/admin/customer_account{s,_show}.php`, migration 007 — ca EX-09 |
 | AT-01…AT-11 | `web/tests/acceptance.php`, `ai/tests/test_sync.py` — kết quả ở `docs/KET-QUA-NGHIEM-THU.md` |
+
+## 13. Địa chỉ trang (URL) một cấp, đuôi .html
+
+Mọi trang khách xem có dạng `/{đường-dẫn}.html` (`App\Domain\Urls`, hàm view `page_url()` / `fixed_url()`):
+
+| Trang | Địa chỉ | Địa chỉ cũ (301) |
+|---|---|---|
+| Danh mục, sản phẩm, bài blog, trang chính sách | `/{slug}.html` | `/danh-muc/…`, `/san-pham/…`, `/blog/…`, `/chinh-sach/…` |
+| Giỏ hàng, đặt hàng, tìm kiếm, Flash Sale | `/gio-hang.html`, `/dat-hang.html`, `/tim-kiem.html`, `/flash-sale.html` | `/gio-hang`, `/thanh-toan`, `/tim-kiem`, `/flash-sale` |
+| Blog, hỏi đáp | `/blog.html`, `/hoi-dap.html` | `/blog`, `/hoi-dap` |
+| Tài khoản, đăng nhập, trạng thái xóa dữ liệu | `/tai-khoan.html`, `/dang-nhap.html`, `/trang-thai-xoa-du-lieu.html` | `/tai-khoan`, `/tai-khoan/dang-nhap`, `/tai-khoan/trang-thai-xoa` |
+| Xác nhận đơn | `/don-hang-{mã}.html?t=…` | `/don-hang/{mã}` |
+
+Giữ nguyên: `/admin/*`, `/api/*`, `/sitemap.xml`, `/auth/*` (đã khai báo với Google/Facebook) và các địa chỉ nhận biểu mẫu POST `/tai-khoan/…`. Trang đặt hàng là `/dat-hang.html` vì `/thanh-toan.html` thuộc trang "Chính sách thanh toán".
+
+- **Một không gian đường dẫn.** Danh mục, sản phẩm, bài blog, trang dùng chung `/{slug}.html`, nên `Urls::unique()` bảo đảm đường dẫn duy nhất giữa các loại và không trùng tên trang cố định (`gio-hang`, `dat-hang`, `blog`…, tiền tố `don-hang-`). Hỏi đáp không có trang riêng nên không tính.
+- **Giải địa chỉ** (`Urls::resolve`): danh mục → sản phẩm (gồm sản phẩm ngừng bán, để hiện thông báo) → blog → trang. Route cố định đăng ký trước route `/{slug}.html`. Router thoát phần chữ cố định trong mẫu (dấu `.` của `.html`).
+- **Link cũ** chuyển hướng 301, giữ nguyên tham số truy vấn (`?trang=2`, `?q=`, `?t=`, `?ma=`). Migration 009 đổi đường dẫn các mục đang trùng (giữ mục ưu tiên hơn: danh mục > sản phẩm > blog > trang; mục bị đổi thêm hậu tố `-san-pham`, `-bai-viet`…), lưu địa chỉ cũ vào `url_aliases` để link cũ vẫn tới đúng chỗ, và ghi nhật ký `url.slug_renamed`. Ca kiểm thử EX-10.
+- Nội dung đã xuất bản (blog, FAQ) có link kiểu cũ trong thân bài vẫn dùng được nhờ chuyển hướng; trang pháp lý được cập nhật link qua migration 009.
+

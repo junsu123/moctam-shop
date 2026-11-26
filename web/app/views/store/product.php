@@ -11,7 +11,7 @@ $info = [
 <div class="wrap py-8">
   <nav class="text-sm text-ink-mute" aria-label="Đường dẫn">
     <a href="/" class="text-ink-mute">Trang chủ</a> /
-    <a href="/danh-muc/<?= e($p['category_slug']) ?>" class="text-ink-mute"><?= e($p['category_name']) ?></a>
+    <a href="<?= e(page_url($p['category_slug'])) ?>" class="text-ink-mute"><?= e($p['category_name']) ?></a>
   </nav>
 
   <div class="mt-4 grid gap-8 lg:grid-cols-2 lg:gap-14">

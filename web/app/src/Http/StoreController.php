@@ -34,6 +34,19 @@ final class StoreController
         ]);
     }
 
+    /** /{slug}.html → danh mục, sản phẩm, bài blog hoặc trang chính sách (Urls::resolve). */
+    public function resolve(string $slug): string
+    {
+        $hit = \App\Domain\Urls::resolve($slug);
+        return match ($hit['type'] ?? null) {
+            'category' => $this->category($slug),
+            'product' => $this->product($slug),
+            'blog' => $this->blogShow($slug),
+            'page' => $this->page($slug),
+            default => throw ApiError::notFound('Không tìm thấy trang.'),
+        };
+    }
+
     public function category(string $slug): string
     {
         $cat = Db::one('SELECT * FROM categories WHERE slug = :s AND is_active = 1', ['s' => $slug]);
@@ -43,7 +56,7 @@ final class StoreController
         return $this->render('listing', [
             'title' => $cat['name'] . ' — ' . setting('store_name'), 'description' => $cat['description'],
             'heading' => $cat['name'], 'intro' => $cat['description'], 'result' => $res, 'sort' => $sort,
-            'baseUrl' => '/danh-muc/' . $cat['slug'], 'query' => [], 'activeCat' => (int)$cat['id'],
+            'baseUrl' => page_url($cat['slug']), 'query' => [], 'activeCat' => (int)$cat['id'],
         ]);
     }
 
@@ -55,7 +68,7 @@ final class StoreController
             'title' => 'Tìm "' . $q . '" — ' . setting('store_name'), 'description' => '', 'robots' => 'noindex',
             'heading' => $q === '' ? 'Tất cả sản phẩm' : 'Kết quả cho "' . $q . '"',
             'intro' => $res['total'] . ' sản phẩm', 'result' => $res, 'sort' => 'default',
-            'baseUrl' => '/tim-kiem', 'query' => ['q' => $q], 'q' => $q,
+            'baseUrl' => fixed_url('search'), 'query' => ['q' => $q], 'q' => $q,
         ]);
     }
 
@@ -130,15 +143,20 @@ final class StoreController
 
     public function sitemap(): void
     {
-        $base = rtrim((string)config('base_url'), '/');
-        $urls = ['/', '/blog', '/hoi-dap'];
-        foreach (Db::all('SELECT slug FROM categories WHERE is_active = 1') as $r) $urls[] = '/danh-muc/' . $r['slug'];
-        foreach (Db::all("SELECT slug FROM products WHERE status = 'active'") as $r) $urls[] = '/san-pham/' . $r['slug'];
-        foreach (Db::all("SELECT kind, slug FROM contents WHERE status = 'published' AND kind IN ('blog','page')") as $r) $urls[] = ($r['kind'] === 'blog' ? '/blog/' : '/chinh-sach/') . $r['slug'];
         header('Content-Type: application/xml; charset=utf-8');
-        echo '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-        foreach ($urls as $u) echo '<url><loc>' . e($base . $u) . '</loc></url>';
-        echo '</urlset>';
+        echo self::sitemapXml();
         exit;
+    }
+
+    public static function sitemapXml(): string
+    {
+        $base = rtrim((string)config('base_url'), '/');
+        $urls = ['/', fixed_url('blog'), fixed_url('faq'), fixed_url('flash')];
+        foreach (Db::all('SELECT slug FROM categories WHERE is_active = 1') as $r) $urls[] = page_url($r['slug']);
+        foreach (Db::all("SELECT slug FROM products WHERE status = 'active'") as $r) $urls[] = page_url($r['slug']);
+        foreach (Db::all("SELECT slug FROM contents WHERE status = 'published' AND kind IN ('blog','page')") as $r) $urls[] = page_url($r['slug']);
+        $x = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+        foreach ($urls as $u) $x .= '<url><loc>' . e($base . $u) . '</loc></url>';
+        return $x . '</urlset>';
     }
 }

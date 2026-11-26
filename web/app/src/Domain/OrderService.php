@@ -298,7 +298,7 @@ final class OrderService
             'shipping_fee' => (int)$o['shipping_fee'], 'total' => (int)$o['total'], 'expires_at' => $o['expires_at'],
             'created_at' => $o['created_at'], 'items' => $items,
             'ship' => ['name' => $o['ship_name'], 'phone' => $o['ship_phone'], 'province' => $o['ship_province'], 'address' => $o['ship_address']],
-            'confirm_url' => '/don-hang/' . $o['code'] . '?t=' . $o['access_token'],
+            'confirm_url' => Urls::order($o['code'], $o['access_token']),
         ];
         if ($o['payment_method'] === 'vietqr') {
             $out['vietqr'] = VietQr::instructions((int)$o['total'], $o['transfer_content']);

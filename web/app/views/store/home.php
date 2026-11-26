@@ -14,7 +14,7 @@ $shelfArt = [
 
   <div class="shelf mt-10 grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-4 sm:gap-x-6">
     <?php foreach ($categories as $c): ?>
-      <a href="/danh-muc/<?= e($c['slug']) ?>" class="group flex flex-col no-underline">
+      <a href="<?= e(page_url($c['slug'])) ?>" class="group flex flex-col no-underline">
         <span class="relative block overflow-hidden rounded-t-2xl bg-white">
           <img src="<?= e($shelfArt[$c['slug']] ?? '/assets/img/placeholder.svg') ?>" alt="" width="400" height="400" class="aspect-[4/4] w-full object-cover transition-transform duration-300 group-hover:-translate-y-1">
         </span>
@@ -35,11 +35,11 @@ $shelfArt = [
         <h2 id="fs-title" class="text-2xl"><?= e($flash['name']) ?></h2>
         <p class="mt-1 text-ink-soft">Kết thúc sau <strong class="tabular-nums text-ink" data-countdown="<?= e(\App\Core\Clock::toLocal($flash['ends_at'])->format(DATE_ATOM)) ?>">--:--:--</strong>. Giá áp dụng khi tạo đơn trước giờ kết thúc.</p>
       </div>
-      <a href="/flash-sale" class="btn-ghost">Xem tất cả</a>
+      <a href="<?= fixed_url('flash') ?>" class="btn-ghost">Xem tất cả</a>
     </div>
     <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
       <?php foreach (array_slice($flash['items'], 0, 4) as $it): ?>
-        <a href="/san-pham/<?= e($it['slug']) ?>" class="flex flex-col rounded-xl bg-white p-3 no-underline hover:ring-2 hover:ring-turmeric">
+        <a href="<?= e(page_url($it['slug'])) ?>" class="flex flex-col rounded-xl bg-white p-3 no-underline hover:ring-2 hover:ring-turmeric">
           <img src="<?= e($it['image']) ?>" alt="<?= e($it['name']) ?>" width="400" height="400" loading="lazy" class="aspect-square w-full rounded-lg object-cover">
           <span class="mt-2 font-semibold text-ink"><?= e($it['name']) ?></span>
           <span class="text-sm text-ink-mute"><?= e($it['variant_label']) ?></span>
@@ -71,11 +71,11 @@ $shelfArt = [
   <div class="lg:col-span-2">
     <div class="flex items-end justify-between">
       <h2 class="text-xl">Từ blog của xưởng</h2>
-      <a href="/blog" class="text-sm font-semibold">Tất cả bài viết</a>
+      <a href="<?= fixed_url('blog') ?>" class="text-sm font-semibold">Tất cả bài viết</a>
     </div>
     <div class="mt-4 grid gap-6 sm:grid-cols-2">
       <?php foreach (array_slice($posts, 0, 2) as $b): ?>
-        <a href="/blog/<?= e($b['slug']) ?>" class="block rounded-xl bg-white p-5 no-underline hover:ring-2 hover:ring-tea/30">
+        <a href="<?= e(page_url($b['slug'])) ?>" class="block rounded-xl bg-white p-5 no-underline hover:ring-2 hover:ring-tea/30">
           <h3 class="text-lg text-ink"><?= e($b['pub_title']) ?></h3>
           <p class="mt-2 line-clamp-3 text-sm text-ink-soft"><?= e($b['pub_meta_description']) ?></p>
         </a>

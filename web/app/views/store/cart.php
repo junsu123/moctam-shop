@@ -33,7 +33,7 @@
         <p class="mt-1 text-sm" data-voucher-msg></p>
       </form>
       <?= \App\Core\View::partial('store/_totals') ?>
-      <a href="/thanh-toan" class="btn-primary mt-5 w-full" data-to-checkout>Đặt hàng</a>
+      <a href="<?= fixed_url('checkout') ?>" class="btn-primary mt-5 w-full" data-to-checkout>Đặt hàng</a>
       <p class="mt-3 text-xs text-ink-mute">Giá và tồn kho được máy chủ xác nhận lại khi đặt hàng.</p>
     </aside>
   </div>

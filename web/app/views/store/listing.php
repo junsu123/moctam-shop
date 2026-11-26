@@ -4,7 +4,7 @@
   <?php if (!empty($intro)): ?><p class="mt-2 max-w-[60ch] text-ink-soft"><?= e($intro) ?></p><?php endif; ?>
 
   <?php if (isset($q)): ?>
-    <form action="/tim-kiem" class="mt-5 flex max-w-xl gap-2 md:hidden" role="search">
+    <form action="<?= fixed_url('search') ?>" class="mt-5 flex max-w-xl gap-2 md:hidden" role="search">
       <label for="q-page" class="sr-only">Tìm sản phẩm</label>
       <input id="q-page" name="q" value="<?= e($q) ?>" class="field" placeholder="Tên sản phẩm, mã SKU…">
       <button class="btn-primary">Tìm</button>

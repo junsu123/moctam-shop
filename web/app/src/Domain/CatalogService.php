@@ -164,14 +164,10 @@ final class CatalogService
         });
     }
 
+    /** Đường dẫn sản phẩm duy nhất toàn site (chung không gian với danh mục, bài viết, trang). */
     public static function uniqueSlug(string $slug): string
     {
-        $base = $slug;
-        $i = 2;
-        while (Db::val('SELECT 1 FROM products WHERE slug = :s', ['s' => $slug])) {
-            $slug = $base . '-' . $i++;
-        }
-        return $slug;
+        return Urls::unique($slug, 'product');
     }
 
     public static function refreshSearchText(int $productId): void

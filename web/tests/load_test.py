@@ -5,11 +5,11 @@ B='http://127.0.0.1:8080'
 def p95(xs): xs=sorted(xs); return xs[int(len(xs)*0.95)-1]
 def read_worker(res, n):
     for i in range(n):
-        for u in ['/', '/danh-muc/tra-tui-loc', '/tim-kiem?q=tra+gung', '/san-pham/bot-ngu-coc-25-loai-hat']:
+        for u in ['/', '/tra-tui-loc.html', '/tim-kiem.html?q=tra+gung', '/bot-ngu-coc-25-loai-hat.html']:
             t=time.perf_counter(); urllib.request.urlopen(B+u).read(); res.append((time.perf_counter()-t)*1000)
 def order_worker(res, idx, n):
     cj=http.cookiejar.CookieJar(); op=urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
-    html=op.open(B+'/thanh-toan').read().decode(); tok=re.search(r'name="csrf-token" content="([^"]+)"',html).group(1)
+    html=op.open(B+'/dat-hang.html').read().decode(); tok=re.search(r'name="csrf-token" content="([^"]+)"',html).group(1)
     for i in range(n):
         items=[{"sku_id":2,"qty":1},{"sku_id":5,"qty":1}]
         q=json.loads(op.open(urllib.request.Request(B+'/api/quote',data=json.dumps({"items":items,"province":"Hà Nội"}).encode(),headers={"Content-Type":"application/json"})).read())['quote']

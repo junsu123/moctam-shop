@@ -9,9 +9,9 @@
 
   <?php $acct = \App\Domain\CustomerAccountService::current(); $logins = \App\Auth\OAuth::enabledProviders(); ?>
   <?php if ($acct): ?>
-    <p class="mt-4 text-sm text-ink-soft">Đang đăng nhập: <strong><?= e($acct['display_name']) ?></strong>. Đơn sẽ được lưu trong <a href="/tai-khoan">tài khoản của bạn</a>.</p>
+    <p class="mt-4 text-sm text-ink-soft">Đang đăng nhập: <strong><?= e($acct['display_name']) ?></strong>. Đơn sẽ được lưu trong <a href="<?= fixed_url('account') ?>">tài khoản của bạn</a>.</p>
   <?php elseif ($logins): ?>
-    <p class="mt-4 text-sm text-ink-soft"><a href="/tai-khoan/dang-nhap?next=/thanh-toan">Đăng nhập</a> để lưu đơn vào tài khoản và điền sẵn địa chỉ (không bắt buộc).</p>
+    <p class="mt-4 text-sm text-ink-soft"><a href="<?= e(fixed_url('login', ['next' => fixed_url('checkout')])) ?>">Đăng nhập</a> để lưu đơn vào tài khoản và điền sẵn địa chỉ (không bắt buộc).</p>
   <?php endif; ?>
 
   <form class="mt-8 grid gap-8 lg:grid-cols-[1fr_400px]" novalidate data-checkout-form data-cart-body<?= $acct ? " data-account='" . e(json_enc(['name' => $acct['ship_name'] ?: $acct['display_name'], 'phone' => $acct['ship_phone'], 'province' => $acct['ship_province'], 'address' => $acct['ship_address']])) . "'" : '' ?>>
@@ -81,7 +81,7 @@
       <?= \App\Core\View::partial('store/_totals') ?>
       <div class="mt-4 hidden rounded-lg border border-alert/30 bg-alert-light p-3 text-sm text-alert" role="alert" data-form-error></div>
       <button class="btn-primary mt-5 w-full py-3 text-lg" data-place-order>Đặt hàng</button>
-      <p class="mt-3 text-xs text-ink-mute">Bấm "Đặt hàng" là bạn đồng ý với <a href="/chinh-sach/dieu-khoan-su-dung">Điều khoản sử dụng</a>, <a href="/chinh-sach/doi-tra">Chính sách đổi trả</a> và <a href="/chinh-sach/bao-mat">Chính sách bảo mật thông tin</a>.</p>
+      <p class="mt-3 text-xs text-ink-mute">Bấm "Đặt hàng" là bạn đồng ý với <a href="<?= page_url('dieu-khoan-su-dung') ?>">Điều khoản sử dụng</a>, <a href="<?= page_url('doi-tra') ?>">Chính sách đổi trả</a> và <a href="<?= page_url('bao-mat') ?>">Chính sách bảo mật thông tin</a>.</p>
     </aside>
   </form>
 
@@ -91,7 +91,7 @@
       <p class="mt-2 text-ink-soft" data-qd-msg>Giá hoặc ưu đãi vừa cập nhật. Vui lòng xem lại tổng tiền mới.</p>
       <dl class="mt-4 space-y-1 rounded-lg bg-jade-50 p-4 text-sm" data-qd-body></dl>
       <div class="mt-6 flex flex-wrap justify-end gap-2">
-        <a href="/gio-hang" class="btn-ghost">Sửa giỏ hàng</a>
+        <a href="<?= fixed_url('cart') ?>" class="btn-ghost">Sửa giỏ hàng</a>
         <button type="button" class="btn-primary" data-qd-confirm>Đồng ý giá mới và đặt hàng</button>
       </div>
     </div>

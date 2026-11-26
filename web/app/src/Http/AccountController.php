@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Domain\Urls;
+
 use App\Auth\OAuth;
 use App\Core\ApiError;
 use App\Core\Csrf;
@@ -29,14 +31,14 @@ final class AccountController
 
     public function loginForm(): string
     {
-        if (Accounts::current()) Http::redirect(OAuth::safeNext((string)($_GET['next'] ?? '/tai-khoan')));
-        return $this->render('login', ['title' => 'Đăng nhập', 'providers' => OAuth::enabledProviders(), 'next' => OAuth::safeNext((string)($_GET['next'] ?? '/tai-khoan'))]);
+        if (Accounts::current()) Http::redirect(OAuth::safeNext((string)($_GET['next'] ?? Urls::fixed('account'))));
+        return $this->render('login', ['title' => 'Đăng nhập', 'providers' => OAuth::enabledProviders(), 'next' => OAuth::safeNext((string)($_GET['next'] ?? Urls::fixed('account')))]);
     }
 
     public function start(string $provider): void
     {
         RateLimiter::hit('oauth', 30, 600);
-        Http::redirect(OAuth::start($provider, (string)($_GET['next'] ?? '/tai-khoan')), 302);
+        Http::redirect(OAuth::start($provider, (string)($_GET['next'] ?? Urls::fixed('account'))), 302);
     }
 
     public function callback(string $provider): void
@@ -46,14 +48,14 @@ final class AccountController
             $p = OAuth::finish($provider, $_GET);
         } catch (ApiError $e) {
             Session::flash('error', $e->getMessage());
-            Http::redirect('/tai-khoan/dang-nhap' . (isset($e->data['next']) ? '?next=' . rawurlencode($e->data['next']) : ''));
+            Http::redirect(Urls::fixed('login', isset($e->data['next']) ? ['next' => $e->data['next']] : []));
         }
         try {
             $id = Accounts::loginWithProfile($p);
         } catch (ApiError $e) {
             if ($e->errorCode !== 'ACCOUNT_LOCKED') throw $e;
             Session::flash('error', $e->getMessage());
-            Http::redirect('/tai-khoan/dang-nhap');
+            Http::redirect(Urls::fixed('login'));
         }
         Accounts::startSession($id);
         Session::flash('ok', 'Đã đăng nhập bằng ' . OAuth::LABELS[$provider] . '.');
@@ -71,7 +73,7 @@ final class AccountController
     private function requireAccount(): array
     {
         $a = Accounts::current();
-        if (!$a) Http::redirect('/tai-khoan/dang-nhap?next=' . rawurlencode($_SERVER['REQUEST_URI'] ?? '/tai-khoan'));
+        if (!$a) Http::redirect(Urls::fixed('login', ['next' => $_SERVER['REQUEST_URI'] ?? Urls::fixed('account')]));
         return $a;
     }
 
@@ -101,7 +103,7 @@ final class AccountController
             $_SESSION['_acct_errors'] = $e->data['fields'] ?? [];
             Session::flash('error', $e->getMessage());
         }
-        Http::redirect('/tai-khoan#thong-tin');
+        Http::redirect(Urls::fixed('account') . '#thong-tin');
     }
 
     public function consent(): void
@@ -111,7 +113,7 @@ final class AccountController
         $on = ($_POST['consent'] ?? '') === '1';
         Accounts::setMarketingConsent((int)$a['id'], $on);
         Session::flash('ok', $on ? 'Bạn sẽ nhận tin nhắc mua lại và ưu đãi.' : 'Đã ngừng gửi tin nhắc mua lại và ưu đãi.');
-        Http::redirect('/tai-khoan#nhan-tin');
+        Http::redirect(Urls::fixed('account') . '#nhan-tin');
     }
 
     public function delete(): void
@@ -120,11 +122,11 @@ final class AccountController
         $a = $this->requireAccount();
         if (($_POST['confirm'] ?? '') !== '1') {
             Session::flash('error', 'Vui lòng đánh dấu ô xác nhận trước khi xóa tài khoản.');
-            Http::redirect('/tai-khoan#xoa');
+            Http::redirect(Urls::fixed('account') . '#xoa');
         }
         $code = Accounts::delete((int)$a['id']);
         Accounts::logout();
-        Http::redirect('/tai-khoan/trang-thai-xoa?ma=' . $code);
+        Http::redirect(Urls::fixed('deletion', ['ma' => $code]));
     }
 
     /** Callback xóa dữ liệu của Facebook (POST signed_request, không có cookie/CSRF). */
@@ -135,7 +137,7 @@ final class AccountController
             Http::json(['error' => ['code' => 'INVALID_SIGNED_REQUEST', 'message' => 'Yêu cầu không hợp lệ.']], 400);
         }
         $code = Accounts::deleteByFacebook((string)$data['user_id']);
-        Http::json(['url' => rtrim((string)config('base_url'), '/') . '/tai-khoan/trang-thai-xoa?ma=' . $code, 'confirmation_code' => $code]);
+        Http::json(['url' => rtrim((string)config('base_url'), '/') . Urls::fixed('deletion', ['ma' => $code]), 'confirmation_code' => $code]);
     }
 
     public function deletionStatus(): string

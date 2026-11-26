@@ -171,7 +171,7 @@ final class OAuth
 
     public static function safeNext(string $next): string
     {
-        return (str_starts_with($next, '/') && !str_starts_with($next, '//') && !str_contains($next, '\\')) ? $next : '/tai-khoan';
+        return (str_starts_with($next, '/') && !str_starts_with($next, '//') && !str_contains($next, '\\')) ? $next : \App\Domain\Urls::fixed('account');
     }
 
     /** Gọi HTTP tới nhà cung cấp (cURL, dự phòng stream). */

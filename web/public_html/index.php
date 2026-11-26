@@ -32,28 +32,46 @@ Http::securityHeaders();
 
 $r = new Router();
 
-// ---------------- Cửa hàng
+// ---------------- Cửa hàng — địa chỉ một cấp, đuôi .html (App\Domain\Urls)
+use App\Domain\Urls;
+$F = Urls::FIXED;
 $r->get('/', [StoreController::class, 'home']);
-$r->get('/danh-muc/{slug}', [StoreController::class, 'category']);
-$r->get('/tim-kiem', [StoreController::class, 'search']);
-$r->get('/san-pham/{slug}', [StoreController::class, 'product']);
-$r->get('/flash-sale', [StoreController::class, 'flashSale']);
-$r->get('/gio-hang', [StoreController::class, 'cart']);
-$r->get('/thanh-toan', [StoreController::class, 'checkout']);
-$r->get('/don-hang/{code}', [StoreController::class, 'orderConfirm']);
-$r->get('/blog', [StoreController::class, 'blogIndex']);
-$r->get('/blog/{slug}', [StoreController::class, 'blogShow']);
-$r->get('/hoi-dap', [StoreController::class, 'faq']);
-$r->get('/chinh-sach/{slug}', [StoreController::class, 'page']);
+$r->get('/' . $F['search'] . '.html', [StoreController::class, 'search']);
+$r->get('/' . $F['flash'] . '.html', [StoreController::class, 'flashSale']);
+$r->get('/' . $F['cart'] . '.html', [StoreController::class, 'cart']);
+$r->get('/' . $F['checkout'] . '.html', [StoreController::class, 'checkout']);
+$r->get('/' . $F['blog'] . '.html', [StoreController::class, 'blogIndex']);
+$r->get('/' . $F['faq'] . '.html', [StoreController::class, 'faq']);
+$r->get('/' . $F['account'] . '.html', [AccountController::class, 'show']);
+$r->get('/' . $F['login'] . '.html', [AccountController::class, 'loginForm']);
+$r->get('/' . $F['deletion'] . '.html', [AccountController::class, 'deletionStatus']);
+$r->get('/' . Urls::ORDER_PREFIX . '{code}.html', [StoreController::class, 'orderConfirm']);
 $r->get('/sitemap.xml', [StoreController::class, 'sitemap']);
+$r->get('/{slug}.html', [StoreController::class, 'resolve']); // danh mục / sản phẩm / bài viết / trang — đặt SAU các trang cố định
+
+// Địa chỉ cũ (trước 11/2026) → 301 sang địa chỉ mới, giữ nguyên tham số truy vấn
+$moved = function (string $to): void {
+    $qs = (string)parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_QUERY);
+    Http::redirect($to . ($qs !== '' ? (str_contains($to, '?') ? '&' : '?') . $qs : ''), 301);
+};
+foreach (['/tim-kiem' => 'search', '/flash-sale' => 'flash', '/gio-hang' => 'cart', '/thanh-toan' => 'checkout', '/blog' => 'blog',
+          '/hoi-dap' => 'faq', '/tai-khoan' => 'account', '/tai-khoan/dang-nhap' => 'login', '/tai-khoan/trang-thai-xoa' => 'deletion'] as $old => $key) {
+    $r->get($old, fn() => $moved(Urls::fixed($key)));
+}
+$r->get('/don-hang/{code}', fn(string $code) => $moved(Urls::order($code)));
+foreach (Urls::LEGACY_PREFIX as $type => $prefix) {
+    $r->get($prefix . '{slug}', function (string $slug) use ($type, $moved) {
+        $to = Urls::legacyTarget($type, $slug); // Router đã giải mã %xx
+        if ($to === null) throw ApiError::notFound('Trang này không còn tồn tại.');
+        $moved($to);
+    });
+}
 
 // ---------------- Tài khoản khách (đăng nhập tùy chọn bằng Google / Facebook)
-$r->get('/tai-khoan/dang-nhap', [AccountController::class, 'loginForm']);
+// Địa chỉ /auth/* đã khai báo với Google/Facebook nên giữ nguyên; các POST là đích của biểu mẫu, không phải trang.
 $r->get('/auth/{provider}', [AccountController::class, 'start']);
 $r->get('/auth/{provider}/callback', [AccountController::class, 'callback']);
 $r->post('/auth/facebook/xoa-du-lieu', [AccountController::class, 'facebookDeletion']);
-$r->get('/tai-khoan/trang-thai-xoa', [AccountController::class, 'deletionStatus']);
-$r->get('/tai-khoan', [AccountController::class, 'show']);
 $r->post('/tai-khoan/thong-tin', [AccountController::class, 'saveProfile']);
 $r->post('/tai-khoan/nhan-tin', [AccountController::class, 'consent']);
 $r->post('/tai-khoan/xoa', [AccountController::class, 'delete']);

@@ -32,22 +32,22 @@ $canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_U
       <svg width="34" height="34" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="9" fill="#2F5D46"/><path d="M20 8c7 4 9 12 2 22-1 1-3 1-4 0C11 20 13 12 20 8z" fill="#E9EFE6"/><path d="M20 12v18" stroke="#2F5D46" stroke-width="2"/></svg>
       <span class="text-lg font-extrabold tracking-tight text-ink"><?= e($store) ?></span>
     </a>
-    <form action="/tim-kiem" method="get" role="search" class="relative hidden flex-1 md:block">
+    <form action="<?= fixed_url('search') ?>" method="get" role="search" class="relative hidden flex-1 md:block">
       <label for="q-top" class="sr-only">Tìm sản phẩm</label>
       <input id="q-top" name="q" value="<?= e($q ?? '') ?>" class="field pr-10" placeholder="Tìm trà gừng, matcha, CF-ROB…" autocomplete="off" data-autocomplete>
       <button class="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-ink-soft hover:text-tea" aria-label="Tìm"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
       <div class="absolute left-0 right-0 top-full z-40 mt-1 hidden rounded-lg border border-ink/10 bg-white shadow-lg" data-autocomplete-list></div>
     </form>
     <nav class="ml-auto flex items-center gap-1" aria-label="Tài khoản và giỏ hàng">
-      <a href="/tim-kiem" class="rounded-lg p-2 text-ink md:hidden" aria-label="Tìm kiếm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
+      <a href="<?= fixed_url('search') ?>" class="rounded-lg p-2 text-ink md:hidden" aria-label="Tìm kiếm"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>
       <?php $acct = \App\Domain\CustomerAccountService::current(); $canLogin = $acct || \App\Auth\OAuth::enabledProviders(); ?>
       <?php if ($canLogin): ?>
-        <a href="<?= $acct ? '/tai-khoan' : '/tai-khoan/dang-nhap' ?>" class="flex items-center gap-2 rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-white/70" aria-label="<?= $acct ? 'Tài khoản của tôi' : 'Đăng nhập' ?>">
+        <a href="<?= $acct ? fixed_url('account') : fixed_url('login') ?>" class="flex items-center gap-2 rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-white/70" aria-label="<?= $acct ? 'Tài khoản của tôi' : 'Đăng nhập' ?>">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
           <span class="hidden max-w-[9rem] truncate sm:inline"><?= $acct ? e($acct['display_name']) : 'Đăng nhập' ?></span>
         </a>
       <?php endif; ?>
-      <a href="/gio-hang" class="relative flex items-center gap-2 rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-white/70">
+      <a href="<?= fixed_url('cart') ?>" class="relative flex items-center gap-2 rounded-lg px-3 py-2 font-semibold text-ink no-underline hover:bg-white/70">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 7h14l-1.5 10.5a2 2 0 0 1-2 1.5h-7a2 2 0 0 1-2-1.5L5 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>
         <span class="hidden sm:inline">Giỏ hàng</span>
         <span class="min-w-[1.4rem] rounded-full bg-tea px-1.5 text-center text-xs font-bold leading-6 text-white" data-cart-count aria-label="Số sản phẩm trong giỏ">0</span>
@@ -56,11 +56,11 @@ $canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_U
   </div>
   <nav class="wrap flex gap-1 overflow-x-auto pb-2 text-sm" aria-label="Danh mục">
     <?php foreach ($categories as $c): ?>
-      <a href="/danh-muc/<?= e($c['slug']) ?>" class="whitespace-nowrap rounded-md px-3 py-1.5 font-medium no-underline <?= ($activeCat ?? 0) === (int)$c['id'] ? 'bg-tea text-white' : 'text-ink-soft hover:bg-white/70 hover:text-ink' ?>"><?= e($c['name']) ?></a>
+      <a href="<?= e(page_url($c['slug'])) ?>" class="whitespace-nowrap rounded-md px-3 py-1.5 font-medium no-underline <?= ($activeCat ?? 0) === (int)$c['id'] ? 'bg-tea text-white' : 'text-ink-soft hover:bg-white/70 hover:text-ink' ?>"><?= e($c['name']) ?></a>
     <?php endforeach; ?>
-    <a href="/flash-sale" class="whitespace-nowrap rounded-md px-3 py-1.5 font-semibold text-turmeric-dark no-underline hover:bg-turmeric-light">Flash Sale</a>
-    <a href="/blog" class="whitespace-nowrap rounded-md px-3 py-1.5 font-medium text-ink-soft no-underline hover:bg-white/70">Blog</a>
-    <a href="/hoi-dap" class="whitespace-nowrap rounded-md px-3 py-1.5 font-medium text-ink-soft no-underline hover:bg-white/70">Hỏi đáp</a>
+    <a href="<?= fixed_url('flash') ?>" class="whitespace-nowrap rounded-md px-3 py-1.5 font-semibold text-turmeric-dark no-underline hover:bg-turmeric-light">Flash Sale</a>
+    <a href="<?= fixed_url('blog') ?>" class="whitespace-nowrap rounded-md px-3 py-1.5 font-medium text-ink-soft no-underline hover:bg-white/70">Blog</a>
+    <a href="<?= fixed_url('faq') ?>" class="whitespace-nowrap rounded-md px-3 py-1.5 font-medium text-ink-soft no-underline hover:bg-white/70">Hỏi đáp</a>
   </nav>
 </header>
 
@@ -84,12 +84,12 @@ $canonical = rtrim((string)config('base_url'), '/') . strtok($_SERVER['REQUEST_U
     <div>
       <p class="font-semibold text-white">Chính sách</p>
       <ul class="mt-2 space-y-1 text-sm">
-        <li><a class="text-jade-100" href="/chinh-sach/giao-hang">Giao hàng</a></li>
-        <li><a class="text-jade-100" href="/chinh-sach/thanh-toan">Thanh toán</a></li>
-        <li><a class="text-jade-100" href="/chinh-sach/doi-tra">Đổi trả</a></li>
-        <li><a class="text-jade-100" href="/chinh-sach/bao-mat">Bảo mật thông tin</a></li>
-        <li><a class="text-jade-100" href="/chinh-sach/dieu-khoan-su-dung">Điều khoản sử dụng</a></li>
-        <li><a class="text-jade-100" href="/chinh-sach/lien-he">Liên hệ</a></li>
+        <li><a class="text-jade-100" href="<?= page_url('giao-hang') ?>">Giao hàng</a></li>
+        <li><a class="text-jade-100" href="<?= page_url('thanh-toan') ?>">Thanh toán</a></li>
+        <li><a class="text-jade-100" href="<?= page_url('doi-tra') ?>">Đổi trả</a></li>
+        <li><a class="text-jade-100" href="<?= page_url('bao-mat') ?>">Bảo mật thông tin</a></li>
+        <li><a class="text-jade-100" href="<?= page_url('dieu-khoan-su-dung') ?>">Điều khoản sử dụng</a></li>
+        <li><a class="text-jade-100" href="<?= page_url('lien-he') ?>">Liên hệ</a></li>
       </ul>
     </div>
     <div>
