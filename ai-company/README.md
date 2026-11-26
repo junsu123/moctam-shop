@@ -19,7 +19,7 @@ Nền tảng nhiều agent AI vận hành như một công ty marketing cho xư�
 | [docs/BRAIN_SPEC.md](docs/BRAIN_SPEC.md) | **Agent Brain Blueprint**: bộ não riêng, 4 loại trí nhớ, truy hồi, phân quyền trí nhớ, Learning Engine, thang bằng chứng, đánh giá độc lập, phiên bản bộ não |
 | [docs/AGENT_DESIGN.md](docs/AGENT_DESIGN.md) | 15 agent: nhiệm vụ, model, công cụ, KPI, luật cứng, mức khả dụng; giao tiếp; giải quyết bất đồng |
 | [docs/DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md) | Lược đồ PostgreSQL + pgvector, RLS, audit chuỗi băm |
-| [docs/SECURITY_PLAN.md](docs/SECURITY_PLAN.md) | Mô hình đe dọa, quyền 4 cấp, phê duyệt, chống prompt injection, pháp lý, sao lưu |
+| [docs/SECURITY_PLAN.md](docs/SECURITY_PLAN.md) | Mô hình đe dọa, quyền 4 cấp, phê duyệt, chống prompt injection, Content Gate, sao lưu |
 | [docs/TEST_PLAN.md](docs/TEST_PLAN.md) | Kiểm thử theo tầng; ánh xạ đủ 25 tiêu chí nghiệm thu |
 | [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | Lộ trình 10 Sprint, đề xuất công nghệ và phụ thuộc, kế hoạch chuyển từ dịch vụ AI hiện tại |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | **Sổ quyết định của Owner** và hệ quả kỹ thuật của từng quyết định |

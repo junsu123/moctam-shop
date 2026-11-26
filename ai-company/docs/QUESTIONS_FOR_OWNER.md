@@ -83,31 +83,18 @@ Owner đánh dấu những tài khoản **đang có** và tích hợp **muốn b
 | Q-I5 | Zalo OA | Có Official Account chưa? Dùng để chăm sóc khách hay chỉ thông báo? |
 | Q-I6 | Tạo ảnh/video | Dùng dịch vụ nào (đám mây hay chạy trên GPU nhà)? Ngân sách? |
 
-## F. Pháp lý (cần luật sư; xem SECURITY_PLAN §6)
+## F. Pháp lý: ✅ Owner bỏ qua (26/11/2026)
 
-**✅ Q-L1. Phạm vi dữ liệu khách mà nền tảng được xử lý.**  
-→ *Owner: đồng ý mặc định.*
-- *Mặc định đề xuất:* chỉ dùng mã ẩn danh như hiện nay. Customer Agent chỉ soạn câu trả lời; nhân viên gửi từ kênh của xưởng. Không gửi dữ liệu cá nhân cho LLM ở nước ngoài.
-- Nếu Owner muốn AI trực tiếp trò chuyện với khách, cần luật sư tư vấn trước về chuyển dữ liệu ra nước ngoài và về sự đồng ý của khách.
+Owner quyết định **bỏ qua phần pháp lý**. Các câu Q-L2…Q-L6 đã đóng; mặc định kỹ thuật được áp dụng (`DECISIONS.md`).
 
-**🟡 (Sprint 7) Q-L2. Lập hồ sơ đánh giá tác động xử lý dữ liệu cá nhân.**
-Ai lập, có thuê luật sư không? Website đã có trang Chính sách bảo mật theo Luật 91/2025; nền tảng AI cần được bổ sung vào đó.
+**✅ Q-L1. Phạm vi dữ liệu khách mà nền tảng được xử lý.**
+→ *Owner: đồng ý mặc định.* Chỉ dùng mã ẩn danh như hiện nay; Customer Agent chỉ soạn câu trả lời, nhân viên gửi từ kênh của xưởng; không gửi dữ liệu cá nhân cho LLM.
 
-**🟡 (Sprint 7) Q-L3. Chính sách tìm lead và KOC.**
-Đồng ý với giới hạn ở SECURITY_PLAN §6.2 không? Gồm:
-- chỉ nguồn công khai, đúng điều khoản nền tảng;
-- không scrape mạng xã hội;
-- liên hệ lần đầu cần duyệt;
-- xóa lead không dùng sau 180 ngày.
-
-**🟡 (Sprint 9) Q-L4. Thời gian lưu nhật ký kiểm toán và log.**
-- *Mặc định:* audit ≥ 2 năm; log vận hành 13 tháng.
-
-**🟡 (Sprint 5) Q-L5. Phân loại sản phẩm và quy định quảng cáo.**
-Sản phẩm là thực phẩm thông thường, hay có sản phẩm thuộc nhóm phải xác nhận nội dung quảng cáo? Có danh sách công dụng **được phép** nói (đã có căn cứ, giấy tờ) không? Danh sách này là nền của Compliance Gate.
-
-**🟡 (Sprint 6) Q-L6. Có ghi chú công khai "hình ảnh/video do AI tạo" không?**
-- *Mặc định:* có gắn nhãn nội bộ; Owner quyết định việc ghi chú công khai.
+**✅ Q-L2…Q-L6.** → *Owner: bỏ qua.* Không lập hồ sơ pháp lý, không thuê rà soát. Mặc định áp dụng:
+- lead/KOC chỉ lấy từ nguồn công khai, không scrape, liên hệ lần đầu cần duyệt, tự xóa sau 180 ngày;
+- audit giữ ≥ 2 năm, log vận hành 13 tháng;
+- Content Gate dùng từ điển cụm rủi ro chung (không cần danh sách công dụng được phép);
+- ảnh/video AI chỉ gắn nhãn nội bộ.
 
 ## G. Câu hỏi mới (phát sinh từ câu trả lời ngày 26/11/2026)
 
@@ -120,7 +107,7 @@ i5-11400F không có đồ họa tích hợp nên chắc chắn có card rời. 
 - *Mặc định:* không chạy LLM cục bộ.
 
 **🔴 Q-A1a. AI được tự xuất bản những gì, bao nhiêu, lúc nào?**
-- *Mặc định:* FAQ và blog; tối đa 1 blog + 3 FAQ mỗi ngày; chỉ 8:00–21:00. Chủ đề sức khỏe, dị ứng, giá, khuyến mãi, pháp lý luôn chờ Owner bấm duyệt trên Telegram.
+- *Mặc định:* FAQ và blog; tối đa 1 blog + 3 FAQ mỗi ngày; chỉ 8:00–21:00. Chủ đề sức khỏe, dị ứng, giá, khuyến mãi luôn chờ Owner bấm duyệt trên Telegram.
 - Lý do giới hạn: Google có chính sách chống nội dung hàng loạt kém chất lượng, nên đăng quá nhiều bài AI một lúc có thể làm hại SEO.
 
 **🔴 Q-TG1. Telegram.**

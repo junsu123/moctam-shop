@@ -53,7 +53,7 @@
 | IT-LG-03 | Job đối soát: task `IN_PROGRESS` không có worker → đưa lại vào hàng đợi; checkpoint mồ côi → báo |
 | IT-PUB-01 | Bài đạt đủ 5 lớp → `publish` lên website **thật** (PHP + MariaDB) → Telegram nhận link đúng |
 | IT-PUB-02 | Vượt hạn mức ngày: phía máy bị lỗi cố gửi thêm → **website** từ chối |
-| IT-PUB-03 | Bài trượt Compliance Gate → không xuất bản, thành bản nháp + thông báo lý do |
+| IT-PUB-03 | Bài trượt Content Gate → không xuất bản, thành bản nháp + thông báo lý do |
 | IT-PUB-04 | Chủ đề chỉ-người-duyệt → `interrupt()`, không tự xuất bản; quá hạn không trả lời → hủy |
 | IT-PUB-05 | Bấm Gỡ bài → `unpublish` → bài biến mất khỏi website, `retracted` vào kênh học |
 | IT-TG-01…04 | Chat ID lạ bị bỏ qua; nút hết hạn hoặc dùng lần hai bị từ chối; chữ ký sai bị từ chối; tin nhắn đi ra không chứa SĐT/email/giá vốn (quét tự động) |

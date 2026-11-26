@@ -141,10 +141,10 @@ Nguyên tắc: dữ liệu bán hàng là **bản sao chỉ đọc** từ websit
 |---|---|---|
 | `products` | `catalog` của website | Theo mẫu SRS §10 (`product_id`, `name`, `category`, `selling_price`, `stock_quantity`, `description`, `ingredients`, `images`, `compliance_documents`, `status`) cộng `info_version` |
 | ➕ `product_costs` | Nhập tay hoặc `finance:read` | Tách riêng để **phân quyền giá vốn** (SRS §10). Chỉ `owner_only` và Data Analyst (`finance.read`) đọc được |
-| `customers` | `customer_key` (mã băm) + phân khúc + đồng ý tiếp thị | **Không có tên/SĐT/địa chỉ** theo mặc định (P6). Muốn thêm phải qua Q-L1 |
+| `customers` | `customer_key` (mã băm) + phân khúc + đồng ý tiếp thị | **Không có tên/SĐT/địa chỉ** theo mặc định (P6, Owner đồng ý ở Q-L1) |
 | `orders` | `events`/`snapshot` | Dạng tối thiểu như dịch vụ hiện tại |
 | `campaigns` | Ads Agent (nháp) + API quảng cáo | `status`: `draft/proposed/approved/live/ended`; chỉ người chuyển sang `live` |
-| `leads` | Sales Intelligence | Mỗi dòng có `source_url`, `collected_at`, `lawful_basis`, `contact_allowed bool`; tự xóa nếu không dùng sau N ngày (Q-L3) |
+| `leads` | Sales Intelligence | Mỗi dòng có `source_url`, `collected_at`, `contact_allowed bool`; tự xóa nếu không dùng sau 180 ngày |
 | `affiliates` | Affiliate Agent | Tương tự `leads` + `commission_policy`, mã giới thiệu |
 | `content_assets` | Content/Creative | `object_key`, `kind`, `ai_generated bool`, `brand_check jsonb`, `published_url`, `metrics jsonb` |
 | `marketing_reports` | Data Analyst, CEO | `period`, `body`, `data_refs` |
@@ -176,7 +176,7 @@ Nguyên tắc: dữ liệu bán hàng là **bản sao chỉ đọc** từ websit
 | `task_logs`, `model_usage`, `memory_access_log` | 13 tháng (phân vùng; xóa theo phân vùng) | Vài triệu dòng |
 | Episodic | 12 tháng nguyên bản → tóm tắt | Vài chục nghìn |
 | Semantic/procedural | Theo phiên bản, không xóa (chỉ `retired`) | Vài nghìn |
-| `leads`/`affiliates` chưa dùng | Theo Q-L3 (đề xuất 180 ngày) | |
-| `audit_logs` | ≥ 2 năm (Q-L4) | |
+| `leads`/`affiliates` chưa dùng | 180 ngày | |
+| `audit_logs` | ≥ 2 năm | |
 
 Tổng dung lượng dự kiến năm đầu: dưới 20 GB, chưa tính tệp media (media nằm trong object storage).

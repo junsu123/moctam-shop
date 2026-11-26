@@ -1,6 +1,6 @@
 # SECURITY_PLAN: bảo mật, quyền hạn, tuân thủ
 
-> Trạng thái: v0.2 (26/11/2026, theo `DECISIONS.md`), chờ Owner duyệt. Các nội dung pháp lý dưới đây là **phân tích kỹ thuật**, không phải tư vấn pháp luật. Mục §6 cần luật sư rà soát (Q-L*).
+> Trạng thái: v0.2 (26/11/2026, theo `DECISIONS.md`), chờ Owner duyệt. Owner quyết định bỏ qua phần pháp lý; §6 chỉ còn các biện pháp kỹ thuật và vận hành.
 
 ## 1. Mô hình đe dọa
 
@@ -9,7 +9,7 @@
 | Khóa API (LLM, quảng cáo, website, Zalo) | Lộ khóa → bị tiêu tiền, bị chiếm tài khoản | Lộ trong log hoặc prompt, repo, máy bị xâm nhập |
 | Ngân sách (LLM, quảng cáo) | Agent chạy vòng lặp hoặc bị dẫn dụ chi tiêu | Lỗi logic, prompt injection |
 | Dữ liệu khách, lead | Lộ, dùng sai mục đích, chuyển ra nước ngoài trái luật | Gửi lên LLM, xuất file, agent bị dẫn dụ |
-| Danh tiếng, pháp lý | Nội dung sai sự thật, quảng cáo công dụng chữa bệnh, spam | LLM bịa, kiến thức web sai |
+| Danh tiếng | Nội dung sai sự thật, nói công dụng chữa bệnh, spam | LLM bịa, kiến thức web sai |
 | Tính toàn vẹn của bộ não | Kiến thức độc hại cài vào trí nhớ chung, agent tự nới quyền | Nội dung web, tài liệu tải lên, agent khác |
 | Audit | Xóa dấu vết | Agent hoặc người dùng có quyền cao |
 
@@ -62,7 +62,7 @@ Không phụ thuộc cấp tự chủ: kể cả L4 cũng không bỏ qua đư�
 | Xóa dữ liệu | Chỉ người dùng |
 | Gửi chiến dịch hàng loạt | Email, Zalo, tin nhắn tới ≥ N người |
 | Thay đổi chính sách | |
-| Xuất bản nội dung có rủi ro pháp lý | Do **cửa tuân thủ** (§6.3) phân loại. FAQ/blog *không* rủi ro được tự xuất bản theo §3.3 |
+| Xuất bản nội dung có rủi ro (SRS) | Do **Content Gate** (§6.3) phân loại. FAQ/blog *không* rủi ro được tự xuất bản theo §3.3 |
 | Thay đổi quyền hạn agent | |
 | ➕ Liên hệ lần đầu với lead hoặc KOC | Rủi ro spam và dữ liệu cá nhân |
 | ➕ Gửi bất kỳ tin nào trực tiếp cho khách | Ở v1, Customer Agent chỉ soạn nháp |
@@ -85,7 +85,7 @@ Owner không trả lời **không** được coi là đồng ý: việc chờ du
 | Kiểm soát | Chi tiết |
 |---|---|
 | Khóa riêng | `content:publish`: khác khóa đọc và khóa gửi bản nháp; chỉ áp cho nội dung `source='ai'`; thu hồi được ngay trên website |
-| Năm lớp chặn | Compliance Gate → review của Marketing Director → chủ đề chỉ-người-duyệt → hạn mức ngày và khung giờ → website kiểm tra lần cuối (hạn mức đếm ở phía website) |
+| Năm lớp chặn | Content Gate → review của Marketing Director → chủ đề chỉ-người-duyệt → hạn mức ngày và khung giờ → website kiểm tra lần cuối (hạn mức đếm ở phía website) |
 | Gỡ ngay | Nút **Gỡ bài** trên Telegram và dashboard gọi `unpublish`; bản gỡ được lưu lại |
 | Công tắc tắt | `/tamdung xuatban` trên Telegram, hoặc thu hồi khóa trên website, là dừng toàn bộ việc tự xuất bản |
 | Nới dần | Hạn mức chỉ tăng khi Owner đồng ý, dựa trên tỉ lệ bài không bị gỡ trong 30 ngày |
@@ -116,33 +116,31 @@ Phòng thủ nhiều lớp. Không có lớp nào đủ một mình:
 - `system_logs` và `task_logs` không lưu prompt đầy đủ theo mặc định, chỉ lưu digest + metadata. Chế độ debug lưu prompt (đã che) có hạn 7 ngày và cần Owner bật.
 - Không ghi log nội dung "suy nghĩ nội bộ" do nhà cung cấp model trả về nếu điều khoản nhà cung cấp hạn chế (SRS §12.3).
 
-## 6. Tuân thủ pháp lý (cần luật sư xác nhận)
+## 6. An toàn nội dung và dữ liệu
 
-### 6.1. Dữ liệu cá nhân (Luật 91/2025/QH15, NĐ 356/2025/NĐ-CP)
-- **Tối thiểu hóa:** nền tảng mặc định chỉ nhận `customer_key` (như dịch vụ AI hiện tại). Tên, SĐT, địa chỉ nằm lại ở website.
-- **Chuyển dữ liệu ra nước ngoài:** gửi nội dung có dữ liệu cá nhân cho LLM đặt máy chủ ở nước ngoài có thể phát sinh nghĩa vụ hồ sơ và thông báo. Mặc định `provider_registry.data_policy.may_receive_pii=false`: Model Gateway che SĐT, email, tên trước khi gửi, và **chặn** nếu phát hiện dữ liệu cá nhân sót lại. Cần luật sư xác nhận nghĩa vụ cụ thể (Q-L1).
-- **Hồ sơ đánh giá tác động:** khả năng cao cần lập hồ sơ cho hoạt động xử lý dữ liệu khách bằng AI (Q-L2).
-- **Quyền của chủ thể dữ liệu:** website đã có luồng xóa tài khoản. Nền tảng cần nghe sự kiện `customer.deleted` để xóa hoặc ẩn danh `customer_key` tương ứng trong trí nhớ (thêm sự kiện phía website ở Sprint 8).
+> v0.2: Owner quyết định **bỏ qua phần pháp lý** (26/11/2026): không có bước rà soát luật sư, không có câu hỏi pháp lý chặn Sprint. Các biện pháp dưới đây được giữ lại vì lý do **kỹ thuật và vận hành**: chống bịa nội dung, chống bị khóa tài khoản nền tảng, bảo mật dữ liệu. Không phải vì nghĩa vụ pháp lý.
+
+### 6.1. Dữ liệu khách
+- **Tối thiểu hóa** (Owner đồng ý ở Q-L1): nền tảng chỉ nhận `customer_key`. Tên, SĐT, địa chỉ nằm lại ở website. Lộ máy cá nhân thì cũng không lộ danh sách khách.
+- Model Gateway che SĐT, email, tên trước khi gửi cho LLM, và **chặn** nếu phát hiện dữ liệu cá nhân sót lại (`provider_registry.data_policy.may_receive_pii=false`).
+- Khi khách xóa tài khoản trên website (luồng đã có), nền tảng nghe sự kiện `customer.deleted` và xóa `customer_key` tương ứng trong trí nhớ (thêm sự kiện phía website ở Sprint 8).
 
 ### 6.2. Thu thập lead, KOC, đối tác
-- Thông tin công khai trên mạng xã hội **vẫn là dữ liệu cá nhân**, và điều khoản của Facebook, TikTok, Shopee thường **cấm thu thập tự động**.
-- Thiết kế v1:
+- Facebook, TikTok, Shopee thường chặn hoặc khóa tài khoản khi phát hiện thu thập tự động. Thiết kế v1:
   - chỉ dùng tìm kiếm web và trang công khai của *doanh nghiệp* (quán, đại lý, cửa hàng);
   - với cá nhân (KOC), chỉ dùng API chính thức hoặc danh sách Owner nhập tay;
-  - lưu `lawful_basis`, `source_url`;
-  - có hạn tự xóa;
-  - liên hệ lần đầu bắt buộc người duyệt.
-- Không xây công cụ vượt đăng nhập, vượt captcha hay scrape trái ToS.
+  - mỗi dòng lưu `source_url`;
+  - lead không dùng tự xóa sau 180 ngày, để danh sách gọn và mới;
+  - liên hệ lần đầu bắt buộc người duyệt, để tránh bị đánh dấu spam.
+- Không xây công cụ vượt đăng nhập hay vượt captcha.
 
-### 6.3. Nội dung quảng cáo thực phẩm
-- Sản phẩm là trà, bột ngũ cốc, bột thiên nhiên, cà phê. Quảng cáo thực phẩm **không được khẳng định công dụng phòng hay chữa bệnh**, và có thể phải tuân theo thủ tục riêng tùy loại sản phẩm (Q-L5).
-- **Cửa tuân thủ** (Compliance Gate) là bước bắt buộc trước khi bất kỳ nội dung nào rời hệ thống:
-  1. Từ điển cụm cấm/cụm rủi ro tiếng Việt (vd "chữa", "trị", "đặc trị", "thay thuốc", "giảm cân cấp tốc"…), kiểm tra tất định.
-  2. Bộ phân loại rủi ro (model rẻ) phân loại nội dung.
-  3. Rủi ro trung bình hoặc cao thì `RequireApproval`, kèm giải thích.
+### 6.3. Cửa kiểm tra nội dung (Content Gate)
+Đây là bước bắt buộc trước khi nội dung rời hệ thống, nhất là khi **AI tự xuất bản** (ADR-16). Mục đích: không đăng thông tin sai về sản phẩm. Ngoài ra, nền tảng quảng cáo (Meta, Google, TikTok) cũng hay từ chối nội dung nói công dụng chữa bệnh.
+1. **Từ điển cụm rủi ro** tiếng Việt (vd "chữa", "trị", "đặc trị", "thay thuốc", "giảm cân cấp tốc", "cam kết 100%"…), kiểm tra tất định. Từ điển là `shared_knowledge` loại `policy`, chỉ Owner sửa.
+2. **Đối chiếu với dữ liệu website**: giá, thành phần, quy cách, khuyến mãi nêu trong bài phải khớp `catalog`; không khớp thì chặn.
+3. **Bộ phân loại rủi ro** (model rẻ) đánh giá phần còn lại. Rủi ro trung bình hoặc cao thì `RequireApproval` qua Telegram, kèm giải thích.
 
-  Từ điển cụm cấm là `shared_knowledge` loại `policy`, chỉ Owner sửa.
-- Tài nguyên hình ảnh/video do AI tạo được gắn cờ `ai_generated`. Owner quyết định có ghi chú công khai hay không (Q-L6).
+Tài nguyên ảnh/video do AI tạo được gắn cờ nội bộ `ai_generated`. Mặc định không ghi chú công khai.
 
 ### 6.4. Tài khoản quảng cáo và nền tảng
 - Ở v1, mọi thao tác *ghi* lên tài khoản quảng cáo đều là nháp hoặc đề xuất. Chuyển sang L3 cần Owner duyệt từng công cụ và đặt trần chi tiêu.

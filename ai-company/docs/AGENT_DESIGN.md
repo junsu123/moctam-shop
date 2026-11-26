@@ -61,7 +61,7 @@ Cột "Khả dụng" cho biết agent làm được gì **khi chưa có tích h�
 | Model | R-hi; dự phòng R-mid | R-mid | R-mid | R-hi |
 | Công cụ chính | `task.*`, `report.compose`, `signals.read`, `analytics.overview` | `task.*`, `review.*`, `content_calendar.*` | `task.*`, `review.*`, `crm.read` | `experiment.*`, `analytics.*`, `task.*` |
 | KPI (đo độc lập) | % mục tiêu Owner đạt đúng hạn; % kế hoạch được Owner duyệt không sửa; chi phí trên mục tiêu | Tỉ lệ duyệt đầu ra của phòng; thời gian từ task đến bản duyệt; tăng trưởng organic (GSC) | Lead đủ tiêu chuẩn / tuần; tỉ lệ khách quay lại | Số thí nghiệm hoàn tất và có kết luận; mức tăng chuyển đổi đã kiểm chứng |
-| Bắt buộc người duyệt | Mọi thay đổi giá, ngân sách lớn, chính sách (SRS §3.1) | Xuất bản nội dung có rủi ro pháp lý | Liên hệ khách/lead hàng loạt | Chạy thí nghiệm trên trang thật (thay đổi giao diện website) |
+| Bắt buộc người duyệt | Mọi thay đổi giá, ngân sách lớn, chính sách (SRS §3.1) | Xuất bản nội dung bị Content Gate đánh giá rủi ro | Liên hệ khách/lead hàng loạt | Chạy thí nghiệm trên trang thật (thay đổi giao diện website) |
 | Khả dụng | ✅ | ✅ | ◐ (chưa có CRM) | ◐ (cần GA4 để đo) |
 
 ### 4.2. Phòng Marketing
@@ -72,7 +72,7 @@ Cột "Khả dụng" cho biết agent làm được gì **khi chưa có tích h�
 | Model | R-mid, W-vi | W-vi; dự phòng L | R-mid, C | R-mid | W-vi (prompt), công cụ tạo ảnh/video qua Tool Gateway |
 | Công cụ | `web.search`, `web.fetch` (cách ly), `gsc.read`, `site.crawl` (chỉ site mình), `site.catalog`, `site.draft(blog/faq)` | `site.catalog`, `doc.write`, `content_calendar.*`, `image.generate` (nháp), `site.draft` | `social.read_metrics`, `trend.research`, `content_calendar.*` | `ads.read_metrics`, `ads.create_draft_campaign` | `image.generate`, `image.edit`, `video.generate`, `brand.assets.read`, `asset.store` |
 | KPI | Tỉ lệ duyệt bản nháp; click/hiển thị GSC của trang đã tối ưu (so với trước, cửa sổ 28 ngày); số lỗi kỹ thuật đã sửa | Tỉ lệ duyệt nguyên văn; hiệu suất bài đã đăng (đo bởi Data Analyst) | Tương tác/lượt tiếp cận các bài đã duyệt; độ chính xác dự báo xu hướng | ROAS/CPA của đề xuất *được áp dụng* so với trước; tỉ lệ đề xuất được duyệt | Tỉ lệ duyệt; tỉ lệ vi phạm brand guideline (kiểm tất định: màu, logo, font) |
-| Luật cứng | Không bịa số liệu tìm kiếm khi chưa có nguồn dữ liệu; tự xuất bản chỉ trong hạn mức (ADR-16) | Không khẳng định công dụng chữa bệnh; giá lấy từ website lúc hiển thị; tự xuất bản chỉ khi Director đã review và qua Compliance Gate | Không tự đăng bài | **Không tự tăng ngân sách vượt hạn mức** (SRS); không bật chiến dịch | Không dùng hình người thật hoặc thương hiệu khác; mọi tài nguyên phải gắn nhãn "AI tạo" trong kho |
+| Luật cứng | Không bịa số liệu tìm kiếm khi chưa có nguồn dữ liệu; tự xuất bản chỉ trong hạn mức (ADR-16) | Không khẳng định công dụng chữa bệnh; giá lấy từ website lúc hiển thị; tự xuất bản chỉ khi Director đã review và qua Content Gate | Không tự đăng bài | **Không tự tăng ngân sách vượt hạn mức** (SRS); không bật chiến dịch | Không dùng hình người thật hoặc thương hiệu khác; mọi tài nguyên phải gắn nhãn "AI tạo" trong kho |
 | Khả dụng | ◐ (đủ khi có GSC) | ✅ | ⛔ cần API nền tảng | ⛔ cần API quảng cáo | ◐ (cần dịch vụ tạo ảnh/video, Q-I6) |
 
 ### 4.3. Phòng Kinh doanh
@@ -83,8 +83,8 @@ Cột "Khả dụng" cho biết agent làm được gì **khi chưa có tích h�
 | Model | W-vi, C | R-mid | R-mid, C |
 | Công cụ | `site.catalog` (**chỉ thông tin đã xác thực**), `site.faq`, `support.inbox.read` (đã che dữ liệu), `support.reply_draft`, `site.care_list` | `web.search`, `social.public_profile.read` (qua API chính thức), `partner.*` | `web.search`, `web.fetch`, `lead.*` |
 | KPI | % câu trả lời được nhân viên gửi không cần sửa; thời gian phản hồi; khiếu nại đóng | Đối tác ký mới; doanh thu gắn mã đối tác | Lead đạt chuẩn / lead đề xuất; tỉ lệ chuyển thành đơn sỉ |
-| Luật cứng | Chỉ dùng thông tin sản phẩm đã xác thực (SRS); câu hỏi sức khỏe/dị ứng chuyển người; **không tự gửi tin cho khách** (L2) | **Chỉ dữ liệu công khai qua kênh hợp pháp**, không scrape trái ToS; liên hệ đối tác cần Owner duyệt | Như Affiliate; mỗi dòng lead phải có nguồn; không thu thập dữ liệu cá nhân nhạy cảm |
-| Khả dụng | ◐ (cần kênh hỗ trợ: Zalo OA/email) | ◐ | ✅ (nghiên cứu web; lưu ý Q-L3) |
+| Luật cứng | Chỉ dùng thông tin sản phẩm đã xác thực (SRS); câu hỏi sức khỏe/dị ứng chuyển người; **không tự gửi tin cho khách** (L2) | **Chỉ dữ liệu công khai**, không scrape trái điều khoản nền tảng (tránh bị khóa); liên hệ đối tác cần Owner duyệt | Như Affiliate; mỗi dòng lead phải có nguồn; không thu thập dữ liệu cá nhân nhạy cảm |
+| Khả dụng | ◐ (cần kênh hỗ trợ: Zalo OA/email) | ◐ | ✅ (nghiên cứu web) |
 
 ### 4.4. Phòng Công nghệ & Dữ liệu
 
@@ -144,7 +144,7 @@ Khi có thể đo được, Growth Director được quyền đề xuất **ch�
 3. Creative Agent tạo ảnh minh họa theo brand guideline. Ảnh được đánh dấu "AI tạo".
 4. Web CRO Agent đánh giá trang đích (tốc độ, CTA, liên kết sang trang sản phẩm).
 5. SEO Agent kiểm tra tất định: title ≤ 60, meta ≤ 155, có liên kết nội bộ, không trùng bài cũ.
-6. Marketing Director review theo rubric. Nếu bài qua Compliance Gate và không thuộc chủ đề chỉ-người-duyệt thì gọi `site.publish` (trong hạn mức), và Telegram gửi Owner link + nút **Gỡ bài / Góp ý**. Ngược lại, bài chờ Owner bấm Duyệt trên Telegram.
+6. Marketing Director review theo rubric. Nếu bài qua Content Gate và không thuộc chủ đề chỉ-người-duyệt thì gọi `site.publish` (trong hạn mức), và Telegram gửi Owner link + nút **Gỡ bài / Góp ý**. Ngược lại, bài chờ Owner bấm Duyệt trên Telegram.
 7. Phản hồi của Owner (gỡ, góp ý) hoặc của nhân viên trên website quay về kênh học: Evaluation chấm, kinh nghiệm được ghi.
 8. Sau 28 ngày, Data Analyst gắn số liệu GSC của trang vào `experience_record` để học ở mức L1/L2.
 

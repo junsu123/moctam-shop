@@ -193,8 +193,7 @@ Các quy tắc của runtime:
 
 Những thứ **không bao giờ** được tự động duyệt:
 - thay đổi quy tắc cốt lõi, quyền, chính sách bảo mật, cấu hình hệ thống (SRS §5.5);
-- khẳng định về công dụng sức khỏe của sản phẩm;
-- thông tin pháp lý.
+- khẳng định về công dụng sức khỏe của sản phẩm.
 
 ### 7.3. Học từ kết quả: thang bằng chứng (SRS §5.4)
 

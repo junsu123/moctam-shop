@@ -22,7 +22,7 @@ SRS mô tả nền tảng ở dạng tổng quát. Phần thiết kế này gắ
 | Owner muốn AI **tự xuất bản** và **báo qua Telegram** | Website thêm API xuất bản/gỡ bài dùng khóa riêng (ADR-16). Telegram là kênh điều hành chính của Owner (ADR-15) |
 | Đã có dịch vụ AI cục bộ `ai/` và bộ não "Trưởng văn phòng" (PR #5). Hai thứ này đã chứng minh được: học từ duyệt/sửa/từ chối, nội quy, chỉ cho phép bản nháp, không nhận dữ liệu cá nhân | Đây là **thiết kế tham chiếu** được đưa sang nền tảng mới (BRAIN_SPEC §10). Dịch vụ cũ vẫn chạy cho tới khi nền tảng mới qua nghiệm thu |
 | Quy mô kinh doanh nhỏ; trần LLM **50 USD** (đang hiểu là mỗi tháng, chờ xác nhận Q-B1a) | Chi phí LLM là chi phí vận hành lớn nhất. Phải có ngân sách theo agent, theo ngày, theo nhiệm vụ ngay từ Sprint 1, và định tuyến phần lớn việc sang model rẻ (§8) |
-| Pháp lý Việt Nam: Luật BVDLCN 91/2025/QH15, NĐ 356/2025/NĐ-CP, Luật TMĐT 122/2025/QH15 (repo đã áp dụng); quy định quảng cáo thực phẩm | Dữ liệu khách được **ẩn danh hóa mặc định**. Có một cửa kiểm tra tuân thủ cho nội dung quảng cáo. Thu thập lead/KOC phải đúng điều khoản nền tảng (SECURITY_PLAN §6) |
+| Owner quyết định **bỏ qua phần pháp lý** (26/11/2026) | Không có bước rà soát pháp lý trong kế hoạch. Vẫn giữ: dữ liệu khách **ẩn danh mặc định**; **Content Gate** chống đăng thông tin sai về sản phẩm; không thu thập dữ liệu tự động trái điều khoản nền tảng (để tránh bị khóa tài khoản) (SECURITY_PLAN §6) |
 
 ## 2. Nguyên tắc kiến trúc
 
@@ -338,9 +338,9 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 ### ADR-16 (v0.2). AI tự xuất bản FAQ/blog, có 5 lớp chặn và gỡ được ngay
 - **Lý do:** Owner quyết định (Q-A1). Thay đổi này mở quyền cho AI tác động thẳng lên website công khai, nên phải có nhiều lớp chặn.
 - **Năm lớp chặn trước khi một bài lên website:**
-  1. **Compliance Gate** (SECURITY_PLAN §6.3): trượt kiểm tra tất định (công dụng chữa bệnh, giá, khuyến mãi, so sánh đối thủ…) thì *không bao giờ* tự xuất bản.
+  1. **Content Gate** (SECURITY_PLAN §6.3): trượt kiểm tra tất định (công dụng chữa bệnh, giá, khuyến mãi, so sánh đối thủ…) thì *không bao giờ* tự xuất bản.
   2. **Review của Marketing Director** theo rubric. Đây là review của agent khác, không phải agent viết bài tự chấm.
-  3. **Chủ đề chỉ người duyệt** (sức khỏe, dị ứng, giá, khuyến mãi, pháp lý; cấu hình được) thì thành `interrupt()` chờ Owner bấm Duyệt trên Telegram.
+  3. **Chủ đề chỉ người duyệt** (sức khỏe, dị ứng, giá, khuyến mãi; cấu hình được) thì thành `interrupt()` chờ Owner bấm Duyệt trên Telegram.
   4. **Hạn mức**: mặc định tối đa 1 blog + 3 FAQ/ngày, chỉ trong 8:00–21:00 (Q-A1a). Cách này cũng tránh vi phạm chính sách chống nội dung hàng loạt của Google.
   5. **Website kiểm tra lần cuối** ở phía máy chủ: khóa `content:publish`, chỉ áp cho nội dung AI tạo, bộ lọc HTML danh sách trắng (đã có), `info_version` còn đúng, và hạn mức ngày đếm ở website (máy cá nhân có lỗi cũng không vượt được).
 - **Sau khi xuất bản:** Telegram gửi link + nút **Gỡ bài** (gọi `unpublish` ngay; bản đã gỡ vẫn lưu để xem lại). Mọi lần xuất bản và gỡ đều ghi audit ở cả hai phía.
@@ -422,7 +422,7 @@ Các cách giảm chi phí đã có sẵn trong thiết kế:
 | R1 | Chi phí LLM vượt kế hoạch | Cao | Ngân sách nhiều tầng, cầu dao chi phí, đo thật từ Sprint 4 |
 | R2 | API nền tảng (TikTok, Shopee, Meta, Zalo) đòi duyệt ứng dụng hoặc giới hạn tính năng | Cao | Kiểm tra điều kiện từng tích hợp trước Sprint 8 (Q-I*). Tích hợp chưa có thì hiển thị "chưa kết nối", **không giả lập** |
 | R3 | Prompt injection từ nội dung web/khách | Cao | Đọc cách ly, công cụ rủi ro cao luôn cần người duyệt, kiểm thử tấn công (TEST_PLAN ST-*) |
-| R4 | Vi phạm pháp lý dữ liệu cá nhân hoặc quảng cáo thực phẩm | Cao | Ẩn danh mặc định, cửa kiểm tra tuân thủ, luật sư rà soát (Q-L*) |
+| R4 | Đăng thông tin sai về sản phẩm; nền tảng quảng cáo từ chối nội dung; bị khóa tài khoản vì thu thập tự động | Cao | Content Gate, đối chiếu dữ liệu website, ẩn danh mặc định, không scrape. Owner đã chọn bỏ qua rà soát pháp lý |
 | R5 | Agent "học sai" từ tương quan giả | Trung bình | Thang bằng chứng, holdout/A-B, Owner duyệt bài học quy trình (BRAIN_SPEC §7) |
 | R6 | Chất lượng model cục bộ kém với tiếng Việt marketing | Trung bình | Model cục bộ chỉ dùng cho việc phụ (embedding, phân loại). Đánh giá trên bộ test tiếng Việt trước khi giao việc viết |
 | R7 | Phạm vi SRS rất lớn so với nguồn lực | Cao | Vertical slice sớm (IMPLEMENTATION_PLAN), mỗi Sprint có tiêu chí thoát đo được |
