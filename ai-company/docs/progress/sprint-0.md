@@ -11,13 +11,13 @@ Thời gian: 26/11/2026. Kiến trúc v0.2 được Owner duyệt lúc 22:43. Ow
 | Migration | Alembic `0001_baseline`: extension `vector`, `pg_trgm`, `unaccent`; schema `langgraph`; bảng `system_meta`. Lên/xuống/lên đều đạt | `test_migration_up_down_up` (IT-DB-01) |
 | Trang quản trị | Next.js 16 + TypeScript, tiếng Việt, sáng/tối, màu "trà" chung với màn hình diễn biến; trang *Trung tâm điều hành* hiện tình trạng hệ thống (tự cập nhật 5 giây); gọi backend qua cùng nguồn (rewrite) | `npm run typecheck`, `npm run build` đạt; chạy thật cùng backend + Postgres + Redis: 3 dòng "Sẵn sàng"; chụp màn hình sáng/tối/điện thoại, không lỗi console |
 | Docker | Dockerfile backend (non-root, healthcheck) và frontend (standalone, non-root); `docker-compose.yml` với `db` (pgvector), `queue` (Valkey), `migrate` (chạy một lần), `backend`, `frontend`; **giới hạn RAM tổng ~2,7 GB** (trong ngân sách 6 GB); mọi cổng chỉ mở ở 127.0.0.1; thiếu biến bí mật thì báo lỗi rõ | `docker compose config` hợp lệ |
-| CI | `.github/workflows/ai-company.yml`: backend (ruff, format, mypy, pytest với Postgres pgvector + Valkey), frontend (typecheck, build), compose (config + build image), quét secret (gitleaks) | Chạy trên GitHub khi mở PR |
+| CI | `.github/workflows/ai-company.yml`: backend (ruff, format, mypy, pytest với Postgres pgvector + Valkey), frontend (typecheck, build), compose (config + build image), quét secret (gitleaks) | **PR #8: cả 4 job đạt trên GitHub**, gồm build thật image backend và frontend |
 | Mẫu PR | `.github/pull_request_template.md` có đủ checklist Definition of Done | — |
 | Hướng dẫn Windows | `docs/CAI-DAT-WINDOWS.md` + 5 script PowerShell: kiểm tra máy, giới hạn WSL2 6 GB, tạo `.env` ngẫu nhiên, khởi động và mở trang, sao lưu (giữ 14 bản + chép ra ngoài). Script lưu UTF-8 có BOM + CRLF để Windows PowerShell 5.1 hiển thị đúng tiếng Việt | Xem mục "Chưa kiểm chứng" |
 
 ## Chưa kiểm chứng được trong môi trường phát triển (cần làm trên máy Owner hoặc CI)
 
-1. **`docker compose up` thật**: môi trường phát triển bị chặn tải image từ Docker Hub, nên chưa build và chạy container được. Thay vào đó, toàn bộ thành phần đã chạy trực tiếp (backend, Next.js, Postgres 16 + pgvector, Redis) và trả kết quả đúng. Job `compose` trong CI sẽ build image thật. **Tiêu chí thoát Sprint 0 "docker compose up chạy được trên máy Owner" chờ Owner chạy `khoi-dong.ps1`.**
+1. **`docker compose up` thật**: môi trường phát triển bị chặn tải image từ Docker Hub. Bù lại: (a) toàn bộ thành phần đã chạy trực tiếp (backend, Next.js, Postgres 16 + pgvector, Redis) và trả kết quả đúng; (b) CI trên GitHub **đã build thành công** image backend và frontend. Còn thiếu bước chạy container. **Tiêu chí thoát Sprint 0 "docker compose up chạy được trên máy Owner" chờ Owner chạy `khoi-dong.ps1`.**
 2. **Script PowerShell**: chưa chạy được trên Windows thật, vì môi trường không cho tải và chạy PowerShell. Script chỉ dùng lệnh có sẵn trong Windows PowerShell 5.1. Owner chạy `kiem-tra-may.ps1` đầu tiên; script này chỉ đọc, không thay đổi gì.
 
 ## Việc chuyển sang Sprint 1 (đã ghi, chưa làm)
