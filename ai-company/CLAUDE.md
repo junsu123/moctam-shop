@@ -4,7 +4,7 @@ Hướng dẫn cho Claude Code khi làm việc trong thư mục này. Đọc h�
 
 ## Trạng thái dự án
 
-**ĐÃ DUYỆT KIẾN TRÚC (26/11/2026 22:43) · ĐANG LÀM: SPRINT 0.**
+**ĐÃ DUYỆT KIẾN TRÚC (26/11/2026 22:43) · ĐÃ XONG: SPRINT 1 (Control Center v1) · TIẾP THEO: SPRINT 2 (Agent Core).**
 
 Owner ưu tiên **trang quản trị trọn gói** (Control Center) có sớm. Thứ tự Sprint ghi trong `docs/IMPLEMENTATION_PLAN.md` §3.
 - Chỉ làm việc của Sprint hiện tại. Việc của Sprint sau thì ghi vào `docs/progress/` thay vì làm luôn.
@@ -61,4 +61,5 @@ Lệnh kiểm tra:
 - Máy chạy là **Windows 11 + Docker Desktop (WSL2)**. Mọi dịch vụ chạy trong container Linux. Script cài đặt hoặc vận hành cho Owner viết bằng PowerShell; script trong container viết bằng bash. Đường dẫn trong mã không được giả định dấu phân cách của Windows.
 - Máy Owner: i5-11400F, RX 560, **16 GB RAM**. Cả hệ thống phải chạy trong **6 GB** (WSL2): 2 worker, không LLM cục bộ, dashboard chạy bản build production. Thêm dịch vụ mới thì phải ghi rõ RAM nó dùng.
 - Telegram là kênh của Owner, cấu hình trong dashboard (token mã hóa, không để trong `.env`). Không gửi dữ liệu cá nhân khách, giá vốn hay secret qua Telegram.
-- Lệnh (sẽ có từ Sprint 0): `make test`, `make lint`, `docker compose up` (trên Windows: `docker compose up` trong PowerShell).
+- Lệnh: `make test`, `make lint`, `docker compose up` (trên Windows: `docker compose up` trong PowerShell). E2E: `AICO_E2E_DATABASE_URL=… e2e/run.sh`.
+- Ghi sổ chi phí, bộ đếm đăng nhập sai và cảnh báo bằng **kết nối riêng commit ngay**: lỗi trả về sẽ rollback giao dịch của request. Không gọi Model Gateway trong giao dịch đã ghi audit (khóa advisory của audit).

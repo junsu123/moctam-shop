@@ -10,6 +10,7 @@ from typing import Any, Literal
 
 import psycopg
 from fastapi import APIRouter, Depends, Request, Response
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -316,7 +317,7 @@ async def stream(request: Request) -> StreamingResponse:
                 msg = json.loads(n.payload)
                 ev = await _event_by_id(msg["source"], int(msg["id"]))
                 if ev:
-                    yield "data: " + json.dumps(ev, ensure_ascii=False, default=str) + "\n\n"
+                    yield "data: " + json.dumps(jsonable_encoder(ev), ensure_ascii=False) + "\n\n"  # thời gian ISO 8601 như /events
         finally:
             await aconn.close()
 

@@ -44,6 +44,16 @@
 |---|---|---|
 | "**duyệt kiến trúc** trang quản trị trọn gói" | Kiến trúc v0.2 **được duyệt**; bắt đầu Sprint 0. **Trang quản trị trọn gói (Control Center) đưa lên sớm:** Sprint 1 đã có trang dùng được (đăng nhập + 2FA, Cài đặt → Telegram, ngân sách, danh sách agent với tạm dừng/chạy lại, màn hình diễn biến). Mỗi Sprint sau bổ sung màn hình cho phần vừa làm, thay vì dồn hết dashboard vào Sprint 8 | CLAUDE.md, PLAN §3 |
 
+### Ghi chú kỹ thuật Sprint 1 (không cần Owner quyết)
+
+| Điểm | Quyết định | Lý do |
+|---|---|---|
+| Thư viện Telegram | httpx gọi thẳng Bot API thay cho aiogram | Chỉ cần `getMe`, `sendMessage`, `getUpdates`. Ít phụ thuộc, ít RAM (~60 MB), dễ giả lập khi test |
+| OpenTelemetry | Chuyển sang Sprint 2 | Log JSON có request-id và sổ `model_usage` đã đủ cho Sprint 1. OTel cần khi có worker agent |
+| Nhật ký không sửa được (IT-DB-03) | Trigger chặn UPDATE/DELETE/TRUNCATE + chuỗi băm SHA-256, `python -m app.cli verify-audit` | Chặn được cả tài khoản quản trị CSDL; nếu ai tắt trigger để sửa thì chuỗi băm vẫn lộ |
+| Ghi sổ ngoài giao dịch request | Chi phí LLM, cảnh báo ngân sách, bộ đếm đăng nhập sai | Lỗi trả về rollback giao dịch chính, nhưng tiền đã tiêu và lần đăng nhập sai vẫn phải được ghi |
+| TypeScript | Ghim 6.0 | `typescript-eslint` chưa hỗ trợ TS 7 |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |

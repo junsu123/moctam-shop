@@ -45,8 +45,48 @@ jobs:
         with: { node-version: "22", cache: npm, cache-dependency-path: ai-company/frontend/package-lock.json }
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm run build
         env: { NEXT_TELEMETRY_DISABLED: "1" }
+
+  e2e:
+    # Đi hết luồng Owner trên trình duyệt thật: thiết lập 2FA → agent → diễn biến trực tiếp → Telegram (bot giả) → cài đặt
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env: { POSTGRES_USER: aico, POSTGRES_PASSWORD: aico, POSTGRES_DB: aico_e2e }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U aico" --health-interval 5s --health-timeout 5s --health-retries 20
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+    env:
+      AICO_E2E_DATABASE_URL: postgresql+psycopg://aico:aico@127.0.0.1:5432/aico_e2e
+      AICO_E2E_REDIS_URL: redis://127.0.0.1:6379/0
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: ai-company/frontend/package-lock.json }
+      - run: pip install "uv==0.11.*" "pytest==9.*" "playwright==1.*" "pyotp==2.*"
+      - run: python -m playwright install --with-deps chromium
+      - run: uv sync --frozen
+        working-directory: ai-company/backend
+      - run: npm ci --no-audit --no-fund
+        working-directory: ai-company/frontend
+      - run: ./ai-company/e2e/run.sh
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots-logs
+          path: |
+            ai-company/e2e/screenshots/
+            ai-company/e2e/logs/
+          if-no-files-found: ignore
 
   compose:
     runs-on: ubuntu-latest

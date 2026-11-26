@@ -89,3 +89,12 @@ async def test_settings_defaults_and_secret_store(conn) -> None:  # type: ignore
     assert b"sk-ant" not in bytes(raw)
     assert await store.get_secret(conn, "provider.anthropic.api_key") == "sk-ant-api03-abcdefgh1234"
     assert (await store.secret_info(conn, "provider.anthropic.api_key"))["last4"] == "1234"  # type: ignore[index]
+
+
+def test_cli_setup_token_and_verify_audit(env: None, capsys: pytest.CaptureFixture[str]) -> None:
+    from app import cli
+
+    assert cli.main(["setup-token"]) == 0
+    assert "Mã thiết lập:" in capsys.readouterr().out
+    assert cli.main(["verify-audit"]) == 0
+    assert "nguyên vẹn" in capsys.readouterr().out

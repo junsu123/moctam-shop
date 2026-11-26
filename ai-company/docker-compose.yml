@@ -56,7 +56,22 @@ services:
       migrate: { condition: service_completed_successfully }
       queue: { condition: service_healthy }
     ports: ["127.0.0.1:8000:8000"]
-    mem_limit: 768m         # API; worker và scheduler thêm ở Sprint 2–4
+    mem_limit: 768m         # API; worker agent và scheduler thêm ở Sprint 2–4
+    restart: unless-stopped
+
+  telegram:                 # worker Telegram: nhận /ketnoi, gửi báo cáo/cảnh báo theo giờ yên lặng
+    build: ./backend
+    command: ["python", "-m", "app.workers.telegram"]
+    environment:
+      AICO_ENV: prod
+      AICO_DATABASE_URL: *db_url
+      AICO_REDIS_URL: redis://queue:6379/0
+      AICO_MASTER_KEY: ${AICO_MASTER_KEY:?Thiếu AICO_MASTER_KEY trong .env}
+      AICO_LOG_LEVEL: INFO
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck: { disable: true }  # không mở cổng HTTP
+    mem_limit: 128m         # ~60 MB
     restart: unless-stopped
 
   frontend:

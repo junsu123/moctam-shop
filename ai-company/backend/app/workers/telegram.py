@@ -1,7 +1,7 @@
 """Worker Telegram: `python -m app.workers.telegram`.
 
 Vòng lặp: long-poll getUpdates (25 giây) → xử lý lệnh/mã kết nối → gửi thông báo đang chờ.
-Chưa có token thì ngủ 30 giây rồi kiểm lại (Owner nhập token trong trang quản trị, không cần khởi động lại).
+Chưa có token thì 5 giây kiểm lại một lần (Owner nhập token trong trang quản trị, không cần khởi động lại).
 Lỗi mạng không làm worker chết: chờ lùi dần tối đa 5 phút. RAM khoảng 60 MB.
 """
 
@@ -55,7 +55,7 @@ async def main() -> None:
         try:
             token = await _token()
             if not token:
-                await asyncio.wait_for(stop.wait(), timeout=30)
+                await asyncio.wait_for(stop.wait(), timeout=5)
                 continue
             await tick(token, seen)
             backoff = 1.0

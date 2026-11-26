@@ -147,3 +147,4 @@ async def test_sse_stream_pushes_new_audit_event(owner: OwnerSession) -> None:
     await owner.api.post("/api/v1/agents/content_agent/pause", json={"reason": "SSE"}, headers=owner.h)
     await asyncio.wait_for(task, timeout=10)
     assert got and got[0]["action"] == "agent.pause" and got[0]["resource"] == "agent:content_agent"
+    assert "T" in str(got[0]["at"])  # cùng định dạng ISO với /events để giao diện sắp xếp đúng
