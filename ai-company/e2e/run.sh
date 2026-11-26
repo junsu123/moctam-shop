@@ -30,4 +30,8 @@ for url in http://127.0.0.1:8000/api/v1/health/live http://127.0.0.1:3000/dang-n
 done
 
 cd "$HERE"
-AICO_E2E_BACKEND_DIR="$ROOT/backend" python3 -m pytest -q -p no:cacheprovider test_control_center.py "$@"
+if ! AICO_E2E_BACKEND_DIR="$ROOT/backend" python3 -m pytest -q -p no:cacheprovider test_control_center.py "$@"; then
+  # In log ra luôn để đọc được ngay trong log CI
+  for f in "$LOGS"/*.log; do echo "===== $f"; tail -n 60 "$f"; done
+  exit 1
+fi

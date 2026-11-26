@@ -86,7 +86,10 @@ def test_control_center_first_run(page: Page) -> None:
     secret = page.locator(".secret").inner_text().strip()
     totp = pyotp.TOTP(secret)
     page.get_by_label("Mã 6 số").fill(totp.now())
-    page.get_by_role("button", name="Hoàn tất").click()
+    with page.expect_response(lambda r: r.url.endswith("/auth/setup/confirm")) as confirm:
+        page.get_by_role("button", name="Hoàn tất").click()
+    assert confirm.value.ok, confirm.value.text()
+    print("set-cookie:", confirm.value.headers.get("set-cookie", "(không có)")[:80], "cookies:", [c["name"] for c in page.context.cookies()])
 
     # 2. Tổng quan: chỉ ra các bước còn thiếu bằng dữ liệu thật
     expect(page.get_by_role("heading", name="Tổng quan")).to_be_visible()
