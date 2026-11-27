@@ -335,8 +335,9 @@ async def test_itvec01_hnsw_recall_and_index_use(mem: AsyncConnection) -> None:
         recalls.append(len(set(got) & set(exact)) / 10)
     assert sum(recalls) / len(recalls) >= 0.9, recalls
     lit = "[" + ",".join("0" for _ in range(DIMS)) + "]"
-    # 3.000 dòng thì quét tuần tự cũng rẻ (planner của pg17 chọn vậy); ở đây chỉ kiểm chỉ mục HNSW một phần DÙNG ĐƯỢC cho truy vấn này
-    await mem.exec_driver_sql("SET LOCAL enable_seqscan = off")
+    # 3.000 dòng thì quét rồi sắp xếp cũng rẻ (planner pg17 + pgvector 0.8 chọn vậy); ở đây chỉ kiểm chỉ mục HNSW một phần DÙNG ĐƯỢC
+    for knob in ("enable_seqscan", "enable_bitmapscan", "enable_sort"):
+        await mem.exec_driver_sql(f"SET LOCAL {knob} = off")
     plan = "\n".join(
         r[0]
         for r in (
