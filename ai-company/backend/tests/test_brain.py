@@ -69,8 +69,13 @@ def test_ag02_missing_and_unknown_fields_give_clear_errors(tmp_brains: Path) -> 
 
 
 def test_ag02_permission_checked_against_registry_and_constitution(tmp_brains: Path) -> None:
-    edit(tmp_brains, "ads_agent/tools/tool_permissions.yaml",
-         lambda d: d["permissions"].extend([{"tool": "ads", "action": "change_budget", "level": 2}, {"tool": "khong_co", "action": "x", "level": 1}]))
+    edit(
+        tmp_brains,
+        "ads_agent/tools/tool_permissions.yaml",
+        lambda d: d["permissions"].extend(
+            [{"tool": "ads", "action": "change_budget", "level": 2}, {"tool": "khong_co", "action": "x", "level": 1}]
+        ),
+    )
     with pytest.raises(BrainError) as e:
         load_agent(tmp_brains, "ads_agent")
     joined = " | ".join(e.value.problems)
@@ -154,9 +159,15 @@ async def test_brain02_core_hash_not_pinned_is_refused(synced: object, conn: Asy
     assert ok.state == "active" and ok.deliverable
     # Ai đó sửa thẳng CSDL: thêm quyền tăng ngân sách và tính lại bundle_hash cho "khớp"
     data = dict(ok.loaded.data)
-    data["tool_permissions"] = [*data["tool_permissions"], {"tool": "ads", "action": "change_budget", "level": 4, "limits": {"per_day": None, "max_usd": None}, "requires_approval": False}]
-    await db.execute(conn, "UPDATE agent_brains SET bundle = CAST(:b AS jsonb), bundle_hash = :h WHERE id = CAST(:i AS uuid)",
-                     {"b": _json(data), "h": digest(data), "i": ok.brain_id})
+    data["tool_permissions"] = [
+        *data["tool_permissions"],
+        {"tool": "ads", "action": "change_budget", "level": 4, "limits": {"per_day": None, "max_usd": None}, "requires_approval": False},
+    ]
+    await db.execute(
+        conn,
+        "UPDATE agent_brains SET bundle = CAST(:b AS jsonb), bundle_hash = :h WHERE id = CAST(:i AS uuid)",
+        {"b": _json(data), "h": digest(data), "i": ok.brain_id},
+    )
     with pytest.raises(BrainError) as e:
         await registry.resolve(conn, "ads_agent")
     assert e.value.code == "CORE_HASH_MISMATCH" and digest(core_rules(data)) != ok.loaded.core_rules_hash
@@ -181,8 +192,12 @@ async def test_brain03_04_pin_compare_promote_rollback(synced: object, tmp_brain
 
     async with db.engine().connect() as c:
         v1 = await registry.resolve(c, "content_agent")
-    item = await _propose(tmp_brains, "content_agent", "1.1.0",
-                          lambda r: edit(r, "content_agent/identity/personality.yaml", lambda d: d.update(verbosity=0.3)))
+    item = await _propose(
+        tmp_brains,
+        "content_agent",
+        "1.1.0",
+        lambda r: edit(r, "content_agent/identity/personality.yaml", lambda d: d.update(verbosity=0.3)),
+    )
     assert item.status == "proposed" and "chờ Owner duyệt" in item.detail
     async with db.engine().begin() as c:
         appr = await db.one(c, "SELECT * FROM approvals WHERE subject_type = 'brain' AND status = 'pending'")
@@ -219,7 +234,9 @@ async def test_brain06_shadow_is_not_deliverable_and_reject(synced: object, tmp_
     from app.core import db
     from app.domain import approvals
 
-    item = await _propose(tmp_brains, "seo_agent", "1.0.1", lambda r: edit(r, "seo_agent/identity/personality.yaml", lambda d: d.update(verbosity=0.3)))
+    item = await _propose(
+        tmp_brains, "seo_agent", "1.0.1", lambda r: edit(r, "seo_agent/identity/personality.yaml", lambda d: d.update(verbosity=0.3))
+    )
     async with db.engine().begin() as c:
         await registry.set_shadow(c, str(item.brain_id), "user:o")
         shadow = await registry.resolve(c, "seo_agent", item.brain_id)
@@ -234,8 +251,12 @@ async def test_brain07_core_change_flagged_and_pinned_on_approval(synced: object
     from app.core import db
     from app.domain import approvals
 
-    item = await _propose(tmp_brains, "seo_agent", "1.1.0",
-                          lambda r: edit(r, "seo_agent/identity/role.yaml", lambda d: d["hard_rules"].append("Không viết quá 2.000 chữ")))
+    item = await _propose(
+        tmp_brains,
+        "seo_agent",
+        "1.1.0",
+        lambda r: edit(r, "seo_agent/identity/role.yaml", lambda d: d["hard_rules"].append("Không viết quá 2.000 chữ")),
+    )
     assert "đổi quy tắc cốt lõi" in item.detail
     async with db.engine().begin() as c:
         appr = await db.one(c, "SELECT * FROM approvals WHERE subject_id = :s", {"s": item.brain_id})

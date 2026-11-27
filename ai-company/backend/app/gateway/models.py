@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.core import db
 from app.core.errors import AppError
 from app.core.logging import redact
+from app.core.telemetry import tracer
 from app.domain import notify, store
 
 log = logging.getLogger("aico.gateway")
@@ -243,7 +244,7 @@ def _parse_json(text: str) -> Any:
     return json.loads(t[start:] if start > 0 else t)
 
 
-async def complete(
+async def _complete(
     conn: AsyncConnection,
     profile: str,
     system: str,
@@ -326,6 +327,24 @@ async def complete(
         await _maybe_alert(conn)
         return res
     raise AppError("LLM_FAILED", "Không gọi được model nào: " + "; ".join(errors), 502)
+
+
+async def complete(conn: AsyncConnection, profile: str, system: str, prompt: str, **kw: Any) -> LlmResult:
+    """Gọi model theo hồ sơ (xem `_complete`), trong một span OpenTelemetry (không ghi nội dung prompt vào trace)."""
+    with tracer.start_as_current_span(
+        "llm.complete", attributes={"aico.profile": profile, "aico.agent": kw.get("agent_key") or ""}
+    ) as span:
+        r = await _complete(conn, profile, system, prompt, **kw)
+        span.set_attributes(
+            {
+                "aico.model": r.model_id,
+                "aico.tokens_in": r.tokens_in,
+                "aico.tokens_out": r.tokens_out,
+                "aico.cost_usd": r.cost_usd,
+                "aico.fallback": r.fallback_used,
+            }
+        )
+        return r
 
 
 async def ping_provider(conn: AsyncConnection, pid: str) -> dict[str, Any]:

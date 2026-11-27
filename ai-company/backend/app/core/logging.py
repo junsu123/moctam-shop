@@ -13,6 +13,8 @@ import sys
 from datetime import UTC, datetime
 from typing import Any
 
+from opentelemetry import trace
+
 PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b\d{6,12}:[A-Za-z0-9_-]{30,}\b"), "[token-telegram]"),
     (re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b"), "[jwt]"),
@@ -46,6 +48,10 @@ class JsonFormatter(logging.Formatter):
         for key in ("request_id", "agent_id", "task_id"):
             if hasattr(record, key):
                 out[key] = getattr(record, key)
+        span = trace.get_current_span().get_span_context()
+        if span.is_valid:  # nối log với trace (OpenTelemetry)
+            out["trace_id"] = format(span.trace_id, "032x")
+            out["span_id"] = format(span.span_id, "016x")
         if record.exc_info:
             out["exc"] = redact(self.formatException(record.exc_info))
         return json.dumps(out, ensure_ascii=False)

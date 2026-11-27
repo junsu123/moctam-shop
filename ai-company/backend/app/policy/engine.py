@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.brain import registry as brains
 from app.brain.loader import BrainError
 from app.core import db
+from app.core.telemetry import tracer
 from app.domain.lifecycle import BLOCKED, STATE_TEXT
 from app.tools import spec as tools
 
@@ -151,7 +152,10 @@ async def _decide(conn: AsyncConnection, agent: str, tool_id: str, action: str, 
 
 async def authorize(conn: AsyncConnection, agent: str, tool_id: str, action: str, ctx: PolicyCtx | None = None) -> Decision:
     ctx = ctx or PolicyCtx()
-    d = await _decide(conn, agent, tool_id, action, ctx)
+    with tracer.start_as_current_span("policy.authorize", attributes={"aico.agent": agent, "aico.tool": f"{tool_id}.{action}"}) as span:
+        d = await _decide(conn, agent, tool_id, action, ctx)
+        span.set_attribute("aico.policy.decision", d.kind)
+        span.set_attribute("aico.policy.rule", d.rule)
     async with db.engine().begin() as c:
         from app.domain.approvals import _json
 

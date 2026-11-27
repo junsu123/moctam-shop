@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.core import audit, db
 from app.core.errors import AppError
 from app.core.ids import uuid7
+from app.core.telemetry import tracer
 from app.domain import approvals
 from app.policy.engine import Decision, PolicyCtx, authorize
 from app.tools import spec as tools
@@ -77,7 +78,7 @@ async def _audit(actor: str, action: str, resource: str, data: dict[str, Any]) -
         await audit.record(c, actor, action, resource, data)
 
 
-async def invoke(
+async def _invoke(
     conn: AsyncConnection,
     *,
     agent_key: str,
@@ -203,6 +204,20 @@ async def invoke(
     )
     await _audit(actor, "tool.failed", resource, {"code": code, "attempts": attempts})
     return InvokeResult("failed", inv_id, decision=decision, error_code=code, error=err, attempts=attempts)
+
+
+async def invoke(conn: AsyncConnection, **kw: Any) -> InvokeResult:
+    """Gọi công cụ qua gateway (xem `_invoke`), trong một span OpenTelemetry."""
+    with tracer.start_as_current_span(
+        "tool.invoke",
+        attributes={"aico.agent": kw["agent_key"], "aico.tool": f"{kw['tool_id']}.{kw['action']}", "aico.task_id": kw.get("task_id") or ""},
+    ) as span:
+        r = await _invoke(conn, **kw)
+        span.set_attribute("aico.tool.status", r.status)
+        span.set_attribute("aico.tool.attempts", r.attempts)
+        if r.error_code:
+            span.set_attribute("aico.tool.error_code", r.error_code)
+        return r
 
 
 async def sync_registry(conn: AsyncConnection) -> int:

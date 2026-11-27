@@ -22,8 +22,17 @@ async def grant(conn: AsyncConnection, agent: str, tool: str, action: str, level
         conn,
         "INSERT INTO agent_permissions(agent_key, tool_id, action, autonomy_level, limits, requires_approval, granted_by, expires_at) "
         "VALUES (:a, :t, :ac, :l, CAST(:lim AS jsonb), :ra, 'test', :e) ON CONFLICT (agent_key, tool_id, action) DO UPDATE "
-        "SET autonomy_level = EXCLUDED.autonomy_level, limits = EXCLUDED.limits, requires_approval = EXCLUDED.requires_approval, expires_at = EXCLUDED.expires_at",
-        {"a": agent, "t": tool, "ac": action, "l": level, "lim": _json(kw.get("limits", {})), "ra": kw.get("requires_approval", False), "e": kw.get("expires_at")},
+        "SET autonomy_level = EXCLUDED.autonomy_level, limits = EXCLUDED.limits, "
+        "requires_approval = EXCLUDED.requires_approval, expires_at = EXCLUDED.expires_at",
+        {
+            "a": agent,
+            "t": tool,
+            "ac": action,
+            "l": level,
+            "lim": _json(kw.get("limits", {})),
+            "ra": kw.get("requires_approval", False),
+            "e": kw.get("expires_at"),
+        },
     )
 
 
@@ -93,7 +102,9 @@ async def test_pol07_taint_external_needs_approval(conn: AsyncConnection) -> Non
 
 async def test_pol08_paused_or_degraded_agent_denied(conn: AsyncConnection) -> None:
     for st in ("paused", "degraded", "disabled"):
-        await db.execute(conn, "UPDATE agent_status s SET state = :s FROM agents a WHERE a.id = s.agent_id AND a.agent_key = 'data_analyst'", {"s": st})
+        await db.execute(
+            conn, "UPDATE agent_status s SET state = :s FROM agents a WHERE a.id = s.agent_id AND a.agent_key = 'data_analyst'", {"s": st}
+        )
         assert (await authorize(conn, "data_analyst", "signals", "read")).rule == "agent_state"
 
 
@@ -107,8 +118,11 @@ async def test_pol10_expired_permission_and_usd_limits(conn: AsyncConnection) ->
     assert (await authorize(conn, "web_cro_agent", "site", "page_audit")).rule == "permission_expired"
     await grant(conn, "creative_agent", "image", "generate", 2, limits={"max_usd": 0.05})
     assert (await authorize(conn, "creative_agent", "image", "generate", PolicyCtx(estimated_usd=0.2))).rule == "usd_limit"
-    await db.execute(conn, "INSERT INTO model_usage(model_id, agent_key, purpose, tokens_in, tokens_out, cost_usd, latency_ms, ok) "
-                           "VALUES ('claude-haiku-5-5', 'creative_agent', 't', 1, 1, 0.049, 1, true)")
+    await db.execute(
+        conn,
+        "INSERT INTO model_usage(model_id, agent_key, purpose, tokens_in, tokens_out, cost_usd, latency_ms, ok) "
+        "VALUES ('claude-haiku-5-5', 'creative_agent', 't', 1, 1, 0.049, 1, true)",
+    )
     d = await authorize(conn, "creative_agent", "image", "generate", PolicyCtx(estimated_usd=0.02))
     assert d.rule == "agent_budget" and "0.05" in d.reason  # trần riêng 0,05 USD/ngày của Thiết kế
 
@@ -129,8 +143,16 @@ async def test_pol12_approval_expired_or_digest_mismatch(conn: AsyncConnection) 
     from app.domain import approvals
 
     payload = {"agent": "ads_agent", "tool": "ads", "action": "change_budget", "input": {"campaign": "c1", "usd": 5}}
-    a = await approvals.create(conn, subject_type="tool_call", subject_id="k1", action="ads.change_budget", title="t", payload=payload,
-                               risk="high", requested_by="agent:ads_agent")
+    a = await approvals.create(
+        conn,
+        subject_type="tool_call",
+        subject_id="k1",
+        action="ads.change_budget",
+        title="t",
+        payload=payload,
+        risk="high",
+        requested_by="agent:ads_agent",
+    )
     assert (await approvals.usable(conn, str(a["id"]), "tool_call", "k1", payload)) == (False, "phê duyệt đang ở trạng thái chờ duyệt")
     await approvals.decide(conn, str(a["id"]), True, "user:o")
     assert (await approvals.usable(conn, str(a["id"]), "tool_call", "k1", payload))[0]
@@ -140,7 +162,9 @@ async def test_pol12_approval_expired_or_digest_mismatch(conn: AsyncConnection) 
     await db.execute(conn, "UPDATE approvals SET expires_at = now() - interval '1 second' WHERE id = :i", {"i": a["id"]})
     assert (await approvals.usable(conn, str(a["id"]), "tool_call", "k1", payload)) == (False, "phê duyệt đã hết hạn")
     # Yêu cầu chờ duyệt quá hạn tự chuyển "hết hạn" (im lặng không phải đồng ý)
-    b = await approvals.create(conn, subject_type="tool_call", subject_id="k3", action="x", title="t", payload=payload, risk="low", requested_by="x")
+    b = await approvals.create(
+        conn, subject_type="tool_call", subject_id="k3", action="x", title="t", payload=payload, risk="low", requested_by="x"
+    )
     await db.execute(conn, "UPDATE approvals SET expires_at = now() - interval '1 second' WHERE id = :i", {"i": b["id"]})
     assert await approvals.expire_due(conn) == 1
     from app.core.errors import AppError

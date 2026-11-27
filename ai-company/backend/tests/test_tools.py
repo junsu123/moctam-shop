@@ -63,18 +63,42 @@ async def _effect(ctx: tools.ToolCtx, inp: EchoIn) -> EchoOut:
 
 
 def _a(name: str, handler: Any, level: int = 1, side: Any = "internal", tags: tuple[str, ...] = ()) -> tools.ActionSpec:
-    return tools.ActionSpec(name=name, description=name, min_level=level, side_effects=side, tags=tags, input_model=EchoIn, output_model=EchoOut, handler=handler)
+    return tools.ActionSpec(
+        name=name,
+        description=name,
+        min_level=level,
+        side_effects=side,
+        tags=tags,
+        input_model=EchoIn,
+        output_model=EchoOut,
+        handler=handler,
+    )
 
 
 @pytest.fixture(autouse=True)
 def testkit() -> Iterator[None]:
     CALLS.clear()
-    tools.register(tools.ToolSpec(
-        id="testkit", description="chỉ dùng trong test", risk="low", timeout_s=0.2,
-        retry=tools.RetryPolicy(max_attempts=3, backoff_s=0.01, retry_on=("TIMEOUT", "TRANSIENT")),
-        actions={a.name: a for a in (_a("echo", _echo), _a("flaky", _flaky), _a("broken", _broken), _a("slow", _slow), _a("badout", _badout),
-                                     _a("effect", _effect, 2), _a("bulk", _effect, 3, "external", ("bulk_send",)))},
-    ))
+    tools.register(
+        tools.ToolSpec(
+            id="testkit",
+            description="chỉ dùng trong test",
+            risk="low",
+            timeout_s=0.2,
+            retry=tools.RetryPolicy(max_attempts=3, backoff_s=0.01, retry_on=("TIMEOUT", "TRANSIENT")),
+            actions={
+                a.name: a
+                for a in (
+                    _a("echo", _echo),
+                    _a("flaky", _flaky),
+                    _a("broken", _broken),
+                    _a("slow", _slow),
+                    _a("badout", _badout),
+                    _a("effect", _effect, 2),
+                    _a("bulk", _effect, 3, "external", ("bulk_send",)),
+                )
+            },
+        )
+    )
     yield
     tools.REGISTRY.pop("testkit", None)
 
@@ -82,8 +106,11 @@ def testkit() -> Iterator[None]:
 @pytest.fixture
 async def granted(conn: AsyncConnection) -> AsyncConnection:
     for action in ("echo", "flaky", "broken", "slow", "badout", "effect", "bulk"):
-        await db.execute(conn, "INSERT INTO agent_permissions(agent_key, tool_id, action, autonomy_level, granted_by) VALUES (:a, 'testkit', :ac, 3, 'test')",
-                         {"a": AGENT, "ac": action})
+        await db.execute(
+            conn,
+            "INSERT INTO agent_permissions(agent_key, tool_id, action, autonomy_level, granted_by) VALUES (:a, 'testkit', :ac, 3, 'test')",
+            {"a": AGENT, "ac": action},
+        )
     return conn
 
 
@@ -98,7 +125,9 @@ async def test_tool01_input_and_output_schema(granted: AsyncConnection) -> None:
     from app.core.errors import AppError
 
     with pytest.raises(AppError) as e:
-        await invoke(granted, agent_key=AGENT, tool_id="testkit", action="echo", input={"text": "quá dài hơn mười ký tự"}, idempotency_key="k1")
+        await invoke(
+            granted, agent_key=AGENT, tool_id="testkit", action="echo", input={"text": "quá dài hơn mười ký tự"}, idempotency_key="k1"
+        )
     assert e.value.code == "TOOL_INPUT_INVALID"
     r = await invoke(granted, agent_key=AGENT, tool_id="testkit", action="badout", input={"text": "a"}, idempotency_key="k2")
     assert r.status == "failed" and r.error_code == "TOOL_OUTPUT_INVALID" and r.attempts == 1
@@ -153,17 +182,38 @@ async def test_tool06_approval_flow_and_digest(granted: AsyncConnection) -> None
     assert r.status == "waiting_approval" and r.approval_id and r.decision and r.decision.risk == "high"
     assert CALLS.get("effect", 0) == 0 and (await _inv("bulk-1"))["status"] == "waiting_approval"
     # Gọi lại khi chưa duyệt: không tạo yêu cầu thứ hai
-    r2 = await invoke(granted, agent_key=AGENT, tool_id="testkit", action="bulk", input={"text": "khuyến mãi"}, idempotency_key="bulk-1",
-                      approval_id=r.approval_id)
+    r2 = await invoke(
+        granted,
+        agent_key=AGENT,
+        tool_id="testkit",
+        action="bulk",
+        input={"text": "khuyến mãi"},
+        idempotency_key="bulk-1",
+        approval_id=r.approval_id,
+    )
     assert r2.status == "waiting_approval" and r2.approval_id == r.approval_id
     async with db.engine().begin() as c:
         await approvals.decide(c, r.approval_id, True, "user:o")
-    done = await invoke(granted, agent_key=AGENT, tool_id="testkit", action="bulk", input={"text": "khuyến mãi"}, idempotency_key="bulk-1",
-                        approval_id=r.approval_id)
+    done = await invoke(
+        granted,
+        agent_key=AGENT,
+        tool_id="testkit",
+        action="bulk",
+        input={"text": "khuyến mãi"},
+        idempotency_key="bulk-1",
+        approval_id=r.approval_id,
+    )
     assert done.status == "succeeded"
     # Phê duyệt của nội dung này không dùng cho nội dung khác
-    other = await invoke(granted, agent_key=AGENT, tool_id="testkit", action="bulk", input={"text": "giảm giá"}, idempotency_key="bulk-2",
-                         approval_id=r.approval_id)
+    other = await invoke(
+        granted,
+        agent_key=AGENT,
+        tool_id="testkit",
+        action="bulk",
+        input={"text": "giảm giá"},
+        idempotency_key="bulk-2",
+        approval_id=r.approval_id,
+    )
     assert other.status == "waiting_approval" and other.approval_id != r.approval_id
 
 
@@ -172,8 +222,12 @@ async def test_unconfigured_tool_and_real_tools(conn: AsyncConnection) -> None:
     assert r.status == "failed" and r.error_code == "NOT_CONFIGURED" and "chưa được kết nối" in str(r.error)
     s = await invoke(conn, agent_key="data_analyst", tool_id="signals", action="read", input={}, idempotency_key="s-1")
     assert s.status == "succeeded" and s.output and s.output["agents"] == {"active": 15} and s.output["approvals_pending"] == 0
-    n1 = await invoke(conn, agent_key="data_analyst", tool_id="notify", action="owner", input={"text": "Báo cáo tuần"}, idempotency_key="rep-1")
-    n2 = await invoke(conn, agent_key="data_analyst", tool_id="notify", action="owner", input={"text": "Báo cáo tuần"}, idempotency_key="rep-1")
+    n1 = await invoke(
+        conn, agent_key="data_analyst", tool_id="notify", action="owner", input={"text": "Báo cáo tuần"}, idempotency_key="rep-1"
+    )
+    n2 = await invoke(
+        conn, agent_key="data_analyst", tool_id="notify", action="owner", input={"text": "Báo cáo tuần"}, idempotency_key="rep-1"
+    )
     assert n1.status == "succeeded" and n2.replayed
     async with db.engine().connect() as c:
         rows = await db.all_(c, "SELECT kind, text FROM notifications")
