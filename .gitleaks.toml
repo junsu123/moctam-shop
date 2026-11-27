@@ -2,8 +2,7 @@
 [extend]
 useDefault = true
 
-[[allowlists]]
-description = "Mã định danh snake_case (KPI, kỹ năng) trong bộ não agent: không phải secret"
-condition = "AND"
-paths = ['''^ai-company/brains/.*\.ya?ml$''']
-regexes = ['''^[a-z][a-z0-9_]*$''']
+[allowlist]
+description = "Dòng 'key: <định_danh_snake_case>' (KPI, kỹ năng trong bộ não agent): không phải secret"
+regexTarget = "line"
+regexes = ['''^\s*-?\s*key:\s*[a-z][a-z0-9_]*\s*$''']
