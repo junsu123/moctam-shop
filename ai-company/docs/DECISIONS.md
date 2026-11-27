@@ -64,10 +64,25 @@
 | Thứ tự Policy Engine | Danh sách bắt buộc duyệt xét **sau** quyền và hạn mức | Agent không có quyền thì bị chặn hẳn, không biến thành "xin duyệt"; có quyền (kể cả L4) thì vẫn phải duyệt |
 | Công cụ chưa có tích hợp | Khai báo đủ 30 công cụ, chưa kết nối thì trả `NOT_CONFIGURED` | Quyền và chính sách kiểm được ngay; không có dữ liệu giả (CLAUDE.md quy tắc 5) |
 
+### Ghi chú kỹ thuật Sprint 3 (không cần Owner quyết)
+
+| Điểm | Quyết định | Lý do |
+|---|---|---|
+| Số chiều vector | OpenAI `text-embedding-3-small` rút còn **512 chiều** (`dimensions=512`), giá 0,02 USD/1 triệu token | 1 triệu vector 512 chiều ≈ 2 GB thay vì 6 GB ở 1536 chiều; chất lượng giảm rất ít với văn bản ngắn. Vừa máy 6 GB |
+| Lưu vector | Một bảng `memory_embeddings`, mỗi model một **chỉ mục HNSW một phần** (`WHERE model_id = …`) trên biểu thức `embedding::vector(N)` | Thay cho "mỗi model một bảng con" ở DATABASE_SCHEMA: đổi model chỉ cần thêm chỉ mục, nhúng lại, xóa vector cũ (IT-VEC-02) |
+| Tìm kiếm dưới RLS | Tìm id qua 2 hàm `SECURITY DEFINER` (`aico_mem_keyword`, `aico_mem_vector`) tự lọc theo phạm vi của phiên; nội dung vẫn đọc dưới RLS | Dưới RLS, Postgres **không dùng chỉ mục** cho toán tử không "leakproof" (`@@`, `<%`), và policy của bảng vector tính lại cả phạm vi mỗi lượt: 1,3–2 giây/lượt ở 200 nghìn mục. Sau khi đổi: p95 115 ms. Hàm không nhận phạm vi qua tham số, không cấp cho PUBLIC, chỉ trả id (IT-DB-02) |
+| Chi phí tìm từ khóa có trần | Hai tầng (đủ các từ → một trong các từ/gần đúng), mỗi tầng chấm điểm tối đa 1.000 ứng viên mới nhất | Từ rất phổ biến ("trà") khớp gần hết kho; không có trần thì thời gian tăng theo kích thước kho |
+| Vector sau lọc phạm vi | Lấy dư 400 ứng viên (`hnsw.ef_search = 400`) rồi lọc; pgvector ≥ 0.8 bật thêm `hnsw.iterative_scan` | pgvector 0.6 lọc sau khi lấy láng giềng, agent chỉ thấy khoảng 1/5 kho nên lấy 50 sẽ thiếu. Ảnh Docker `pgvector/pgvector:pg17` có bản mới |
+| Vai trò Postgres | `aico_agent`, `aico_learning` (NOLOGIN); downgrade chỉ thu quyền, không xóa vai trò | Vai trò là của cả cụm Postgres, xóa sẽ hỏng các CSDL khác (test, e2e) dùng chung |
+| Kiến thức Owner thêm | Vào thẳng trạng thái `active`, độ tin cậy `owner` (1,0) | Owner là nguồn đáng tin nhất; Learning Engine (Sprint 5) mới cần hàng chờ duyệt kiến thức |
+| `experience_records` | Chưa tạo | Cần Task Engine (Sprint 4) và Evaluation (Sprint 5). Sprint 3 ghi trải nghiệm vào episodic memory |
+| Worker trí nhớ | Dịch vụ `memory` riêng, mỗi phút nhúng tối đa 256 mục; RAM đo được ~90 MB (giới hạn 128 MB) | Lỗi nhúng (hết hạn mức, mất mạng) không ảnh hưởng API; chưa có khóa thì chờ, vẫn tìm được theo từ khóa |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |
 |---|---|---|
 | Q-A2b | Giữ mã trong repo `moctam-shop` hay tạo repo riêng? | Giữ trong `moctam-shop/ai-company/` |
+| Q-PT03 | PT-03 đòi 1 triệu mục trí nhớ, p95 < 150 ms. Trên ngân sách 6 GB chỉ đạt ở 200 nghìn mục (1 triệu: 283 ms). Đổi mục tiêu thành "200 nghìn mục đang dùng, p95 < 150 ms" và giữ kho gọn bằng gộp/nghỉ hưu (Sprint 5)? | Đổi như đề xuất; xét lại khi nâng máy lên 32 GB RAM |
 | Q-W1 | Máy bật những giờ nào? Có UPS (bộ lưu điện) không? | 7:00–22:00 (bao trùm các giờ đăng bài), không có UPS |
 | Q-B2, Q-T4, Q-I1…I6 | Như `QUESTIONS_FOR_OWNER.md` | Như mặc định đã ghi ở đó |

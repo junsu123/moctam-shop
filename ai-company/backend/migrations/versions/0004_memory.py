@@ -22,6 +22,7 @@ EMBED_MODEL = "openai-te3s-512"
 def upgrade() -> None:
     op.execute(
         """
+        CREATE EXTENSION IF NOT EXISTS btree_gin;
         DO $$ BEGIN
           IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aico_agent') THEN CREATE ROLE aico_agent NOLOGIN; END IF;
           IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'aico_learning') THEN CREATE ROLE aico_learning NOLOGIN; END IF;
@@ -65,8 +66,9 @@ def upgrade() -> None:
           version int NOT NULL DEFAULT 1,
           UNIQUE (owner_scope, content_hash)
         );
-        CREATE INDEX agent_memories_tsv ON agent_memories USING gin (tsv);
-        CREATE INDEX agent_memories_trgm ON agent_memories USING gin (search_text gin_trgm_ops);
+        -- GIN nhiều cột (owner_scope + từ khóa): lọc phạm vi và khớp từ trong cùng một lần quét chỉ mục (cần btree_gin)
+        CREATE INDEX agent_memories_tsv ON agent_memories USING gin (owner_scope, tsv);
+        CREATE INDEX agent_memories_trgm ON agent_memories USING gin (owner_scope, search_text gin_trgm_ops);
         CREATE INDEX agent_memories_scope ON agent_memories(owner_scope, type, verification_status);
         CREATE INDEX agent_memories_meta ON agent_memories USING gin (metadata jsonb_path_ops);
         CREATE INDEX agent_memories_created ON agent_memories(created_at DESC);
@@ -179,6 +181,65 @@ def upgrade() -> None:
         GRANT EXECUTE ON FUNCTION aico_scopes() TO aico_agent, aico_learning;
         """
     )
+    # Hàm tìm kiếm SECURITY DEFINER. Lý do: dưới RLS, Postgres không dùng chỉ mục cho toán tử không "leakproof" (@@ của
+    # tsvector, <% của trigram), còn policy EXISTS của memory_embeddings tính lại cả phạm vi cho mỗi truy vấn vector. Đo trên
+    # 200k mục: 1,3–2 giây/lượt. Hai hàm này chạy với quyền chủ bảng nên dùng được chỉ mục, NHƯNG tự lọc theo phạm vi của phiên
+    # (aico_scopes(), do acting_as đặt; không nhận phạm vi qua tham số) và chỉ trả id. Nội dung vẫn đọc dưới RLS.
+    op.execute(
+        r"""
+        CREATE FUNCTION aico_mem_filters(p_types text[], p_meta jsonb, p_since timestamptz) RETURNS text
+          LANGUAGE sql IMMUTABLE AS $f$
+          SELECT 'm.owner_scope = ANY ($1) AND m.verification_status IN (''verified'',''active'') AND m.valid_from <= now() '
+            || 'AND (m.valid_to IS NULL OR m.valid_to > now())'
+            || CASE WHEN p_types IS NOT NULL THEN ' AND m.type = ANY ($4)' ELSE '' END
+            || CASE WHEN p_meta IS NOT NULL THEN ' AND m.metadata @> $5' ELSE '' END
+            || CASE WHEN p_since IS NOT NULL THEN ' AND m.created_at >= $6' ELSE '' END
+        $f$;
+
+        -- Từ khóa: chỉ chấm điểm tối đa p_cap ứng viên mới nhất (chi phí có trần dù kho lớn)
+        CREATE FUNCTION aico_mem_keyword(p_tsq text, p_folded text, p_fuzzy boolean, p_types text[], p_meta jsonb,
+                                         p_since timestamptz, p_exclude uuid[], p_cap int, p_lim int)
+          RETURNS TABLE (id uuid) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $f$
+        DECLARE
+          sc text[] := array_remove(aico_scopes(), '');
+          w text := aico_mem_filters(p_types, p_meta, p_since);
+        BEGIN
+          IF cardinality(sc) = 0 THEN RETURN; END IF;
+          w := w || CASE WHEN p_fuzzy THEN ' AND (m.tsv @@ to_tsquery(''simple'', $2) OR $3 <% m.search_text)'
+                         ELSE ' AND m.tsv @@ to_tsquery(''simple'', $2)' END;
+          IF cardinality(p_exclude) > 0 THEN w := w || ' AND NOT (m.id = ANY ($7))'; END IF;
+          RETURN QUERY EXECUTE
+            'WITH cand AS MATERIALIZED (SELECT m.id, m.tsv, m.search_text, m.created_at FROM agent_memories m WHERE ' || w
+            || ' ORDER BY m.created_at DESC LIMIT $8) SELECT cand.id FROM cand ORDER BY ts_rank_cd(cand.tsv, to_tsquery(''simple'', $2))'
+            || ' + word_similarity($3, cand.search_text) DESC, cand.created_at DESC LIMIT $9'
+            USING sc, p_tsq, p_folded, p_types, p_meta, p_since, p_exclude, p_cap, p_lim;
+        END $f$;
+
+        -- Vector: lấy dư p_fetch ứng viên gần nhất từ chỉ mục HNSW riêng của model rồi mới lọc phạm vi
+        CREATE FUNCTION aico_mem_vector(p_model text, p_dims int, p_qv text, p_types text[], p_meta jsonb, p_since timestamptz,
+                                        p_fetch int, p_lim int)
+          RETURNS TABLE (id uuid) LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $f$
+        DECLARE
+          sc text[] := array_remove(aico_scopes(), '');
+        BEGIN
+          IF cardinality(sc) = 0 THEN RETURN; END IF;
+          IF p_model !~ '^[a-z0-9_-]{1,60}$' OR p_dims NOT BETWEEN 64 AND 2000 THEN
+            RAISE EXCEPTION 'EMBED_MODEL_INVALID';
+          END IF;
+          RETURN QUERY EXECUTE format(
+            'WITH near AS MATERIALIZED (SELECT e.memory_id, e.embedding::vector(%s) <=> CAST($2 AS vector(%s)) AS d '
+            || 'FROM memory_embeddings e WHERE e.model_id = %L ORDER BY d LIMIT $7) '
+            || 'SELECT m.id FROM near JOIN agent_memories m ON m.id = near.memory_id WHERE %s ORDER BY near.d LIMIT $8',
+            p_dims, p_dims, p_model, aico_mem_filters(p_types, p_meta, p_since))
+            USING sc, p_qv, NULL::text, p_types, p_meta, p_since, p_fetch, p_lim;
+        END $f$;
+
+        REVOKE ALL ON FUNCTION aico_mem_keyword(text, text, boolean, text[], jsonb, timestamptz, uuid[], int, int) FROM PUBLIC;
+        REVOKE ALL ON FUNCTION aico_mem_vector(text, int, text, text[], jsonb, timestamptz, int, int) FROM PUBLIC;
+        GRANT EXECUTE ON FUNCTION aico_mem_keyword(text, text, boolean, text[], jsonb, timestamptz, uuid[], int, int) TO aico_agent, aico_learning;
+        GRANT EXECUTE ON FUNCTION aico_mem_vector(text, int, text, text[], jsonb, timestamptz, int, int) TO aico_agent, aico_learning;
+        """
+    )
 
 
 def downgrade() -> None:
@@ -187,6 +248,9 @@ def downgrade() -> None:
         DROP VIEW IF EXISTS shared_knowledge;
         DROP TABLE IF EXISTS memory_access_log, memory_embeddings, procedural_memories, semantic_memories, episodic_memories,
           agent_memories, embedding_models CASCADE;
+        DROP FUNCTION IF EXISTS aico_mem_keyword(text, text, boolean, text[], jsonb, timestamptz, uuid[], int, int);
+        DROP FUNCTION IF EXISTS aico_mem_vector(text, int, text, text[], jsonb, timestamptz, int, int);
+        DROP FUNCTION IF EXISTS aico_mem_filters(text[], jsonb, timestamptz);
         DROP FUNCTION IF EXISTS aico_scopes();
         DELETE FROM model_registry WHERE id = 'text-embedding-3-small';
         -- Vai trò là của cả cụm Postgres (dùng chung cho các CSDL khác), nên chỉ thu quyền, không xóa vai trò

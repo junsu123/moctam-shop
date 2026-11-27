@@ -182,7 +182,7 @@ Owner chọn chạy toàn bộ trên máy cá nhân (Q-A2, Q-A3). Đây cũng l�
 | WSL2 (đặt trong `.wslconfig`: `memory=6GB`, `swap=4GB`) | **6 GB** cho cả hệ thống |
 | ↳ Postgres + pgvector (`shared_buffers=512MB`) | ~1 GB |
 | ↳ Redis/Valkey | ~150 MB |
-| ↳ API + 2 worker + scheduler + Telegram (Python, LangGraph) | ~2 GB |
+| ↳ API + 2 worker + scheduler + Telegram + worker trí nhớ (Python, LangGraph) | ~2 GB (worker trí nhớ đo được ~90 MB, Sprint 3) |
 | ↳ Dashboard Next.js (bản build production, không chạy dev server) | ~400 MB |
 | ↳ Dự phòng | ~2 GB |
 

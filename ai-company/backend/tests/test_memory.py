@@ -274,6 +274,33 @@ async def test_itdb02_rls_blocks_other_agents_even_with_raw_sql(mem: AsyncConnec
             assert await db.scalar(c, "SELECT count(*) FROM agent_memories") == 1
 
 
+async def test_itdb02_search_functions_stay_in_session_scope(mem: AsyncConnection) -> None:
+    """Hàm tìm kiếm SECURITY DEFINER (để dùng được chỉ mục) vẫn chỉ trả mục trong phạm vi của phiên, không nhận phạm vi qua tham số."""
+    ads = await ep(mem, "ads_agent", "Bí mật Ads", "CPA mục tiêu 25.000đ cho trà sen")
+    seo = await ep(mem, "seo_agent", "Ghi chú SEO", "CPA không phải việc của SEO, trà sen lên top")
+    lit = "[" + ",".join("0.1" for _ in range(DIMS)) + "]"
+    for mid in (ads, seo):
+        await db.execute(
+            mem,
+            "INSERT INTO memory_embeddings(memory_id, model_id, embedding) VALUES (CAST(:m AS uuid), 'openai-te3s-512', CAST(:v AS vector))",
+            {"m": mid, "v": lit},
+        )
+    kw = "SELECT id FROM aico_mem_keyword('cpa', 'cpa', true, NULL, NULL, NULL, '{}', 100, 100)"
+    vec = f"SELECT id FROM aico_mem_vector('openai-te3s-512', 512, '{lit}', NULL, NULL, NULL, 100, 100)"
+    async with mem.begin_nested():
+        async with store.acting_as(mem, "aico_agent", "agent:seo_agent", ["agent:seo_agent", "dept:marketing", "company"]) as c:
+            assert [str(x["id"]) for x in await db.all_(c, kw)] == [seo]
+            assert [str(x["id"]) for x in await db.all_(c, vec)] == [seo]
+    async with mem.begin_nested():
+        async with store.acting_as(mem, "aico_agent", "agent:seo_agent", []) as c:  # phiên không có phạm vi: không thấy gì
+            assert await db.all_(c, kw) == [] and await db.all_(c, vec) == []
+    for fn in ("aico_mem_keyword", "aico_mem_vector"):  # không cấp cho PUBLIC
+        acl = await db.scalar(
+            mem, "SELECT count(*) FROM pg_proc p, aclexplode(p.proacl) a WHERE p.proname = :f AND a.grantee = 0", {"f": fn}
+        )
+        assert acl == 0
+
+
 # ------------------------------------------------------------------ IT-VEC-01: HNSW đúng láng giềng gần
 async def test_itvec01_hnsw_recall_and_index_use(mem: AsyncConnection) -> None:
     rnd = random.Random(7)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, FastAPI
 
 from app import __version__
-from app.api.v1 import agents, auth, control, health, telegram
+from app.api.v1 import agents, auth, control, health, memory, telegram
 from app.core import errors, telemetry
 from app.core.config import get_settings
 from app.core.logging import setup_logging
@@ -28,6 +28,7 @@ def create_app() -> FastAPI:
     v1.include_router(control.router)
     v1.include_router(telegram.router)
     v1.include_router(agents.router)
+    v1.include_router(memory.router)
     app.include_router(v1)
     telemetry.instrument(app)
     return app

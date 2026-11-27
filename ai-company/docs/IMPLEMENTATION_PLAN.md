@@ -1,6 +1,6 @@
 # IMPLEMENTATION_PLAN: kế hoạch triển khai
 
-> Trạng thái: **v0.2 đã duyệt** (26/11/2026 22:43). **Sprint 0, 1, 2 xong** (báo cáo ở `progress/`); tiếp theo Sprint 3. Owner ưu tiên trang quản trị trọn gói, nên Control Center có từ Sprint 1 và lớn dần theo từng Sprint (§3).
+> Trạng thái: **v0.2 đã duyệt** (26/11/2026 22:43). **Sprint 0, 1, 2, 3 xong** (báo cáo ở `progress/`); tiếp theo Sprint 4. Owner ưu tiên trang quản trị trọn gói, nên Control Center có từ Sprint 1 và lớn dần theo từng Sprint (§3).
 
 ## 1. Tóm tắt cho Owner
 

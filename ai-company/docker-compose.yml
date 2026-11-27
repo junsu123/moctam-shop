@@ -82,6 +82,21 @@ services:
     mem_limit: 128m         # ~60 MB
     restart: unless-stopped
 
+  memory:                   # worker trí nhớ: nhúng (embedding) các mục mới mỗi phút qua Model Gateway
+    build: ./backend
+    command: ["python", "-m", "app.workers.memory"]
+    environment:
+      AICO_ENV: prod
+      AICO_DATABASE_URL: *db_url
+      AICO_REDIS_URL: redis://queue:6379/0
+      AICO_MASTER_KEY: ${AICO_MASTER_KEY:?Thiếu AICO_MASTER_KEY trong .env}
+      AICO_LOG_LEVEL: INFO
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    healthcheck: { disable: true }  # không mở cổng HTTP
+    mem_limit: 128m         # đo được ~90 MB
+    restart: unless-stopped
+
   frontend:
     build:
       context: ./frontend

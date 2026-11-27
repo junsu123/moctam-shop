@@ -67,13 +67,14 @@ erDiagram
 | Bảng | Cột chính | Ghi chú |
 |---|---|---|
 | `agent_memories` | `id`, `owner_scope` (`agent:<key>` / `dept:<key>` / `company` / `owner_only`), `type`, `title`, `content`, `search_text` (bỏ dấu), `tsv tsvector` (tạo từ `search_text`, cấu hình `simple`), `metadata jsonb`, `source_ref`, `source_trust`, `confidence numeric(3,2)`, `verification_status`, `valid_from`, `valid_to`, `usefulness`, `content_hash`, `supersedes_id`, `created_by_principal` | Bảng gốc cho mọi loại trí nhớ. Chỉ mục GIN trên `tsv`, trigram trên `search_text`, B-tree `(owner_scope, type, verification_status)`, GIN trên `metadata` |
-| `memory_embeddings` | `memory_id`, `embedding_model_id`, `dims`, `embedding vector` | Chỉ mục HNSW `vector_cosine_ops` **cho từng model**. Mỗi model một bảng con, vì số chiều vector khác nhau |
+| ➕ `embedding_models` | `id` (vd `openai-te3s-512`), `model_id` → `model_registry`, `dims`, `active` (chỉ một model bật) | Model embedding đang dùng. Đổi model: bật model mới, nhúng lại, xóa vector cũ khi đã nhúng đủ (IT-VEC-02) |
+| `memory_embeddings` | `memory_id`, `model_id` → `embedding_models`, `embedding vector` (không cố định số chiều), PK `(memory_id, model_id)` | **Đã đổi (Sprint 3):** một bảng, mỗi model một **chỉ mục HNSW một phần** trên biểu thức `(embedding::vector(N)) vector_cosine_ops WHERE model_id = '…'`, thay vì mỗi model một bảng con. Truy vấn ghi thẳng `model_id` để Postgres chọn đúng chỉ mục |
 | `episodic_memories` | `memory_id`, `task_id`, `task_type`, `outcome` (`success/failure/partial`), `cost_usd`, `occurred_at` | |
 | `semantic_memories` | `memory_id`, `claim`, `evidence jsonb` (danh sách nguồn + vị trí), `evidence_level` (`L1..L3`), `topic` | |
 | `procedural_memories` | `memory_id`, `procedure_key`, `version`, `steps jsonb`, `checklist jsonb`, `applies_to_task_types text[]` | `UNIQUE(procedure_key, version)` |
 | `shared_knowledge` | `memory_id`, `category` (`product/brand/goal/strategy/policy`), `approved_by`, `effective_from` | View trên `agent_memories` với `owner_scope='company'` cộng metadata duyệt |
 | `experience_records` | `id`, `agent_id`, `task_id`, `brain_id`, `task_type`, `inputs_digest`, `output_ref`, `human_verdict`, `business_metrics jsonb`, `observed_window`, `score`, `score_breakdown jsonb` | Nguồn của bài học. Điểm do Evaluation Service ghi |
-| ➕ `memory_access_log` | `memory_id`, `principal`, `task_id`, `purpose`, `used_in_output bool`, `at` | Audit truy hồi + tính `usefulness` (BRAIN_SPEC §5.7). Phân vùng theo tháng |
+| ➕ `memory_access_log` | `memory_id`, `principal`, `task_id`, `purpose`, `rank`, `score`, `used_in_output bool`, `at` | Audit truy hồi + tính `usefulness` (BRAIN_SPEC §5.7). Một câu `INSERT` cho cả lượt truy hồi. Phân vùng theo tháng: khi bảng vượt vài triệu dòng (chưa cần ở Sprint 3) |
 
 ### 4.1. Row-Level Security (ví dụ)
 
@@ -86,6 +87,13 @@ CREATE POLICY mem_write_episodic ON agent_memories FOR INSERT
   WITH CHECK (type IN ('episodic','working') AND owner_scope = current_setting('app.principal', true));
 -- semantic/procedural/company chỉ ghi được bằng vai trò learning_engine (policy riêng).
 ```
+
+**Cách chạy thật (Sprint 3, `0004_memory`).** Hai vai trò Postgres không đăng nhập được: `aico_agent` (đọc trong phạm vi, ghi episodic/working của chính mình, ghi `memory_access_log`) và `aico_learning` (ghi semantic/procedural vào phạm vi được giao). Mã gọi `store.acting_as(conn, role, principal, scopes)`:
+- trong giao dịch đang mở: `SET LOCAL ROLE …` và `set_config('app.scopes' | 'app.principal', …, true)`;
+- kiểm `current_user` đúng vai trò, sai thì dừng với `RLS_NOT_ACTIVE` (ví dụ lỡ chạy ngoài giao dịch, nơi `SET LOCAL` không có tác dụng);
+- truy vấn vẫn lọc phạm vi ở tầng ứng dụng (hai lớp).
+
+`memory_embeddings` có policy đọc `EXISTS (agent_memories …)` nên vector của mục ngoài phạm vi cũng không đọc được. Downgrade thu hồi quyền nhưng không xóa hai vai trò (vai trò dùng chung cả cụm Postgres).
 
 ## 5. Học tập
 

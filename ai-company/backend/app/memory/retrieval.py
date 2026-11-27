@@ -28,6 +28,8 @@ RRF_K = 60
 HALF_LIFE_DAYS = {"episodic": 60.0}
 TRUST_W = {"owner": 1.0, "internal": 0.9, "verified_external": 0.8, "unverified_external": 0.5}
 CATEGORIES = ("procedural", "experience", "semantic", "shared")
+CANDIDATES = 1000  # trần số ứng viên được chấm điểm ở mỗi tầng tìm từ khóa
+VEC_OVERFETCH = 400  # số ứng viên lấy từ HNSW trước khi lọc phạm vi
 DEFAULT_SHARE = {"procedural": 0.2, "experience": 0.25, "semantic": 0.35, "shared": 0.2}
 MMR_LAMBDA = 0.7
 NEAR_DUP = 0.85
@@ -90,21 +92,10 @@ def jaccard(a: set[str], b: set[str]) -> float:
     return len(a & b) / len(a | b) if a and b else 0.0
 
 
-def _filters(types: list[str] | None, metadata: dict[str, Any] | None, since: datetime | None) -> tuple[str, dict[str, Any]]:
+def _filters(types: list[str] | None, metadata: dict[str, Any] | None, since: datetime | None) -> dict[str, Any]:
     from app.domain.approvals import _json
 
-    sql = " AND m.verification_status IN ('verified','active') AND m.valid_from <= now() AND (m.valid_to IS NULL OR m.valid_to > now())"
-    p: dict[str, Any] = {}
-    if types:
-        sql += " AND m.type = ANY(:types)"
-        p["types"] = types
-    if metadata:
-        sql += " AND m.metadata @> CAST(:meta AS jsonb)"
-        p["meta"] = _json(metadata)
-    if since:
-        sql += " AND m.created_at >= :since"
-        p["since"] = since
-    return sql, p
+    return {"types": types or None, "meta": _json(metadata) if metadata else None, "since": since}
 
 
 async def retrieve(
@@ -136,10 +127,7 @@ async def retrieve(
         except Exception:  # noqa: BLE001 — chưa có bộ não: dùng mặc định
             budget_tokens = budget_tokens or 4000
             share_ratio = share_ratio or DEFAULT_SHARE
-    flt, fp = _filters(types, metadata, since)
-    # Lớp 1 (ứng dụng) lọc phạm vi; lớp 2 (RLS của Postgres) lọc lại dù lớp 1 có lỗi
-    flt += " AND m.owner_scope = ANY(:scopes)"
-    fp["scopes"] = scopes
+    fp = _filters(types, metadata, since)
 
     # ---- vector của câu hỏi (nếu có model embedding và khóa API)
     vec_state = "skipped"
@@ -165,36 +153,17 @@ async def retrieve(
     vec_ids: list[str] = []
     async with acting_as(conn, "aico_agent", principal, scopes) as c:
         if qterms:
-            tsq = " | ".join(qterms)
-            rows = await db.all_(
-                c,
-                "SELECT m.id, ts_rank_cd(m.tsv, q) + word_similarity(CAST(:f AS text), m.search_text) AS s "  # noqa: S608
-                "FROM agent_memories m, to_tsquery('simple', :tsq) q "
-                f"WHERE (m.tsv @@ q OR CAST(:f AS text) <% m.search_text) {flt} ORDER BY s DESC, m.created_at DESC LIMIT :lim",
-                {"tsq": tsq, "f": folded, "lim": limit_each, **fp},
-            )
-            kw_ids = [str(r["id"]) for r in rows]
+            kw_ids = await _keyword(c, qterms, folded, fp, limit_each)
         if vec_state == "used" and em is not None and query_vector is not None:
-            dims = int(em.dims)
-            if not re.fullmatch(r"[a-z0-9_-]{1,60}", em.id):
-                raise AppError("EMBED_MODEL_INVALID", "Tên model embedding không hợp lệ.", 500)
-            lit = "[" + ",".join(f"{x:.7f}" for x in query_vector) + "]"
-            # model_id ghi thẳng (đã kiểm định dạng) để Postgres chọn đúng chỉ mục HNSW riêng của model (chỉ mục một phần)
-            await db.execute(c, "SET LOCAL hnsw.ef_search = 100")
-            rows = await db.all_(
-                c,
-                f"SELECT e.memory_id AS id FROM memory_embeddings e JOIN agent_memories m ON m.id = e.memory_id "  # noqa: S608
-                f"WHERE e.model_id = '{em.id}' {flt} ORDER BY e.embedding::vector({dims}) <=> CAST(:qv AS vector({dims})) LIMIT :lim",
-                {"qv": lit, "lim": limit_each, **fp},
-            )
-            vec_ids = [str(r["id"]) for r in rows]
+            vec_ids = await _vector(c, em.id, int(em.dims), query_vector, fp, limit_each)
         ids = list(dict.fromkeys(kw_ids + vec_ids))
         details = (
             await db.all_(
                 c,
                 "SELECT id, type, owner_scope, title, content, source_ref, source_trust, confidence, created_at, search_text "
-                "FROM agent_memories WHERE id = ANY(CAST(:ids AS uuid[]))",
-                {"ids": ids},
+                # Ba lớp: hàm tìm kiếm lọc theo phạm vi của phiên; câu này lọc lại ở tầng ứng dụng; RLS của Postgres lọc lần nữa
+                "FROM agent_memories WHERE id = ANY(CAST(:ids AS uuid[])) AND owner_scope = ANY(:scopes)",
+                {"ids": ids, "scopes": scopes},
             )
             if ids
             else []
@@ -232,49 +201,113 @@ async def retrieve(
         items.sort(key=lambda x: -x.score)
 
         chosen = pack(items, budget_tokens, share_ratio)
-        if log and chosen:
-            for rank, it in enumerate(chosen, 1):
-                await db.execute(
-                    c,
-                    "INSERT INTO memory_access_log(memory_id, principal, task_id, purpose, rank, score) VALUES (CAST(:m AS uuid), :p, :t, :pu, :r, :s)",
-                    {"m": it.memory_id, "p": principal, "t": task_id, "pu": purpose[:60], "r": rank, "s": it.score},
-                )
+        if log and chosen:  # một câu lệnh cho cả lượt truy hồi
+            await db.execute(
+                c,
+                "INSERT INTO memory_access_log(memory_id, principal, task_id, purpose, rank, score) "
+                "SELECT m, :p, :t, :pu, r, s FROM unnest(CAST(:ms AS uuid[]), CAST(:rs AS int[]), CAST(:ss AS float8[])) AS x(m, r, s)",
+                {
+                    "ms": [i.memory_id for i in chosen],
+                    "rs": list(range(1, len(chosen) + 1)),
+                    "ss": [i.score for i in chosen],
+                    "p": principal,
+                    "t": task_id,
+                    "pu": purpose[:60],
+                },
+            )
     return Result(chosen, len(items), sum(i.tokens for i in chosen), budget_tokens, vec_state, scopes)
 
 
+async def _keyword(c: AsyncConnection, qterms: list[str], folded: str, fp: dict[str, Any], lim: int) -> list[str]:
+    """Tìm theo từ khóa hai tầng, chi phí có trần dù kho trí nhớ lớn tới đâu (hàm `aico_mem_keyword`, migration 0004).
+
+    Tầng 1: mục chứa ĐỦ các từ (AND). Tầng 2, chỉ khi tầng 1 chưa đủ: chứa MỘT trong các từ hoặc gần giống chữ (trigram, bắt lỗi gõ).
+    Mỗi tầng chỉ chấm điểm tối đa CANDIDATES ứng viên mới nhất: với từ rất phổ biến ("trà") không phải tính hạng cho hàng chục nghìn dòng.
+    """
+    out: list[str] = []
+    for tsq, fuzzy in ((" & ".join(qterms), False), (" | ".join(qterms), True)):
+        if len(out) >= lim:
+            break
+        rows = await db.all_(
+            c,
+            "SELECT t.id FROM aico_mem_keyword(CAST(:tsq AS text), CAST(:f AS text), :fuzzy, "
+            "CAST(:types AS text[]), CAST(:meta AS jsonb), CAST(:since AS timestamptz), "
+            "CAST(:seen AS uuid[]), CAST(:cap AS int), CAST(:lim AS int)) WITH ORDINALITY AS t(id, n) ORDER BY t.n",
+            {"tsq": tsq, "f": folded, "fuzzy": fuzzy, "seen": out, "cap": CANDIDATES, "lim": lim - len(out), **fp},
+        )
+        out += [str(r["id"]) for r in rows]
+    return out
+
+
+async def _vector(c: AsyncConnection, model_id: str, dims: int, qv: list[float], fp: dict[str, Any], lim: int) -> list[str]:
+    """Tìm theo nghĩa qua chỉ mục HNSW riêng của model (hàm `aico_mem_vector`).
+
+    Chỉ mục trả ứng viên gần nhất TRƯỚC khi lọc phạm vi, nên lấy dư VEC_OVERFETCH ứng viên rồi mới lọc. pgvector ≥ 0.8
+    bật thêm quét lặp (iterative scan) để luôn đủ ứng viên sau lọc; bản cũ hơn dựa vào lấy dư."""
+    if not re.fullmatch(r"[a-z0-9_-]{1,60}", model_id):
+        raise AppError("EMBED_MODEL_INVALID", "Tên model embedding không hợp lệ.", 500)
+    lit = "[" + ",".join(f"{x:.7f}" for x in qv) + "]"
+    await db.execute(c, f"SET LOCAL hnsw.ef_search = {VEC_OVERFETCH}")
+    if await _pgvector_at_least(c, (0, 8)):
+        await db.execute(c, "SET LOCAL hnsw.iterative_scan = relaxed_order")
+    rows = await db.all_(
+        c,
+        "SELECT t.id FROM aico_mem_vector(CAST(:model AS text), CAST(:dims AS int), CAST(:qv AS text), "
+        "CAST(:types AS text[]), CAST(:meta AS jsonb), CAST(:since AS timestamptz), "
+        "CAST(:fetch AS int), CAST(:lim AS int)) WITH ORDINALITY AS t(id, n) ORDER BY t.n",
+        {"model": model_id, "dims": dims, "qv": lit, "fetch": VEC_OVERFETCH, "lim": lim, **fp},
+    )
+    return [str(r["id"]) for r in rows]
+
+
+_PGV: tuple[int, ...] | None = None
+
+
+async def _pgvector_at_least(c: AsyncConnection, v: tuple[int, int]) -> bool:
+    global _PGV  # noqa: PLW0603 — phiên bản extension không đổi khi tiến trình đang chạy
+    if _PGV is None:
+        r = await db.one(c, "SELECT extversion FROM pg_extension WHERE extname = 'vector'")
+        _PGV = tuple(int(x) for x in re.findall(r"\d+", str(r["extversion"]))[:3]) if r else (0,)
+    return _PGV >= v
+
+
 def pack(items: list[Item], budget: int, share: dict[str, float]) -> list[Item]:
-    """Chọn theo điểm có khử trùng (MMR), mỗi nhóm trong hạn mức token của nó; phần hạn mức thừa chia lại theo điểm."""
-    if not items:
+    """Chọn theo điểm có khử trùng (MMR), mỗi nhóm trong hạn mức token của nó; phần hạn mức thừa chia lại theo điểm.
+
+    Độ giống lớn nhất với các mục đã chọn được cập nhật dần sau mỗi lần chọn: O(n·k) phép so Jaccard thay vì O(n·k²)."""
+    n = len(items)
+    if not n:
         return []
     top = items[0].score or 1.0
+    sim = [0.0] * n
+    taken = [False] * n
     chosen: list[Item] = []
-    used = {c: 0 for c in CATEGORIES}
+    used = dict.fromkeys(CATEGORIES, 0)
     total = 0
-
-    def best(pool: list[Item]) -> Item | None:
-        sel, sel_v = None, -1e9
-        for it in pool:
-            sim = max((jaccard(it.terms, s.terms) for s in chosen), default=0.0)
-            if sim >= NEAR_DUP:
-                continue
-            v = MMR_LAMBDA * it.score / top - (1 - MMR_LAMBDA) * sim
-            if v > sel_v:
-                sel, sel_v = it, v
-        return sel
-
     for strict in (True, False):  # lượt 1: theo hạn mức từng nhóm; lượt 2: dùng phần còn thừa
-        pool = [i for i in items if i not in chosen]
-        while pool:
-            it = best(pool)
-            if it is None:
+        tried = list(taken)
+        while True:
+            k, best = -1, -1e9
+            for j in range(n):
+                if tried[j] or sim[j] >= NEAR_DUP:
+                    continue
+                v = MMR_LAMBDA * items[j].score / top - (1 - MMR_LAMBDA) * sim[j]
+                if v > best:
+                    k, best = j, v
+            if k < 0:
                 break
-            pool.remove(it)
+            tried[k] = True
+            it = items[k]
             quota = share.get(it.category, 0) * budget
             if total + it.tokens > budget or (strict and used[it.category] + it.tokens > quota):
                 continue
+            taken[k] = True
             chosen.append(it)
             used[it.category] += it.tokens
             total += it.tokens
+            for j in range(n):
+                if not taken[j]:
+                    sim[j] = max(sim[j], jaccard(items[j].terms, it.terms))
     chosen.sort(key=lambda x: -x.score)
     return chosen
 

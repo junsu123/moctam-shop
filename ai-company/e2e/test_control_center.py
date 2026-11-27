@@ -240,6 +240,33 @@ def test_control_center_first_run(page: Page) -> None:
     expect(page.locator("tr[data-tool='site']")).to_contain_text("Chưa kết nối")
     shot(page, "08c-cong-cu")
 
+    # 8c. Trí nhớ (Sprint 3): Owner thêm kiến thức chung; agent truy hồi được bằng câu không dấu, có giải thích điểm
+    page.get_by_role("link", name="Trí nhớ").click()
+    expect(page.get_by_text("Chưa có mục nào")).to_be_visible()
+    expect(page.get_by_text("Chưa bật")).to_be_visible()  # chưa có khóa OpenAI thật: chỉ tìm theo từ khóa
+    page.get_by_role("button", name="Thêm kiến thức").click()
+    dlg = page.get_by_role("dialog")
+    dlg.get_by_label("Nhóm").select_option("policy")
+    dlg.get_by_label("Tiêu đề").fill("Chính sách giao hàng")
+    dlg.get_by_label("Nội dung").fill("Xưởng không giao trong ngày; đơn đặt trước 15 giờ được gửi ngay sáng hôm sau.")
+    shot(page, "08d-them-kien-thuc")
+    dlg.get_by_role("button", name="Lưu vào trí nhớ").click()
+    expect(page.locator(".toast").filter(has_text="Đã thêm vào trí nhớ.")).to_be_visible()
+    row = page.locator(".mem-list li").filter(has_text="Chính sách giao hàng")
+    expect(row).to_contain_text("Kiến thức")
+    expect(page.get_by_role("tab", name=re.compile("^Kiến thức chung"))).to_contain_text("1")
+    row.locator(".mem-head").click()
+    expect(row.locator(".mem-content")).to_contain_text("đơn đặt trước 15 giờ")
+    shot(page, "08e-tri-nho")
+    page.goto(BASE + "/agent/customer_agent?tab=tri-nho")
+    page.get_by_placeholder("Ví dụ: viết bài trà gừng mật ong cho mùa đông").fill("sp co giao trong ngay ko")
+    page.get_by_role("button", name="Thử truy hồi").click()
+    hit = page.locator(".hits li").first
+    expect(hit).to_contain_text("Chính sách giao hàng")
+    expect(hit).to_contain_text("Từ khóa hạng 1")
+    expect(page.locator(".preview")).to_contain_text("chỉ tìm theo từ khóa")
+    shot(page, "08f-thu-truy-hoi")
+
     # 9. Đăng xuất qua menu người dùng, đăng nhập lại; sai mã thì báo lỗi rõ
     page.locator(".menu-btn").click()
     page.get_by_role("menuitem", name="Đăng xuất").click()

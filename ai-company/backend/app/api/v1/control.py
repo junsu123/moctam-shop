@@ -238,6 +238,8 @@ ACTION_TEXT = {
     "tool.invoked": "dùng công cụ",
     "tool.denied": "bị chặn khi dùng công cụ",
     "tool.failed": "dùng công cụ lỗi",
+    "memory.added": "thêm kiến thức vào trí nhớ",
+    "memory.retired": "cho mục trí nhớ nghỉ hưu",
     "telegram.ignored": "bỏ qua tin từ chat lạ",
 }
 
