@@ -1,0 +1,9 @@
+# Cấu hình quét secret (gitleaks): dùng bộ luật mặc định, cộng một ngoại lệ hẹp.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Mã định danh snake_case (KPI, kỹ năng) trong bộ não agent: không phải secret"
+condition = "AND"
+paths = ['''^ai-company/brains/.*\.ya?ml$''']
+regexes = ['''^[a-z][a-z0-9_]*$''']
