@@ -9,6 +9,7 @@ ROOT="$(dirname "$HERE")"
 case "${AICO_E2E_DATABASE_URL##*/}" in *e2e*) ;; *) echo "CSDL phải có tên chứa e2e"; exit 2 ;; esac
 
 export AICO_DATABASE_URL="$AICO_E2E_DATABASE_URL" AICO_REDIS_URL="$AICO_E2E_REDIS_URL" AICO_ENV=test
+export AICO_BRAINS_DIR="$ROOT/brains"
 export AICO_MASTER_KEY="e2e-master-key-$(printf 'x%.0s' {1..32})" AICO_TELEGRAM_API_BASE="http://127.0.0.1:8081"
 LOGS="$HERE/logs"; mkdir -p "$LOGS"
 pids=()
@@ -18,6 +19,7 @@ trap cleanup EXIT
 cd "$ROOT/backend"
 uv run alembic downgrade base >/dev/null 2>&1 || true
 uv run alembic upgrade head
+AICO_BRAINS_DIR="$ROOT/brains" uv run python -m app.cli sync-brains
 python3 "$HERE/fake_telegram.py" 8081 >"$LOGS/telegram-fake.log" 2>&1 & pids+=($!)
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 >"$LOGS/backend.log" 2>&1 & pids+=($!)
 uv run python -m app.workers.telegram >"$LOGS/worker.log" 2>&1 & pids+=($!)

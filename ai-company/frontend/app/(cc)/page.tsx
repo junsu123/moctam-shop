@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, ArrowRight, Bot, Check, Database, Inbox, Layers, MessageCircle, Send, TriangleAlert, Wallet } from "lucide-react";
+import { Activity, ArrowRight, Bot, Check, ClipboardCheck, Database, Inbox, Layers, MessageCircle, Send, TriangleAlert, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -72,6 +72,15 @@ export default function OverviewPage() {
       {err && <ErrorAlert>{err}</ErrorAlert>}
 
       <div className="stack">
+        {ov.approvals_pending > 0 && (
+          <Link href="/phe-duyet" className="alert warn link-alert">
+            <ClipboardCheck size={16} aria-hidden="true" />
+            <span>
+              <b>{ov.approvals_pending} việc đang chờ anh/chị duyệt.</b> Yêu cầu tự hủy sau 72 giờ nếu không duyệt.
+            </span>
+            <ArrowRight size={16} aria-hidden="true" />
+          </Link>
+        )}
         {left > 0 && (
           <Card
             title={`Thiết lập ban đầu: còn ${left} bước`}

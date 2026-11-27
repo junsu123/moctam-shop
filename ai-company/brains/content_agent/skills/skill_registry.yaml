@@ -1,0 +1,10 @@
+skills:
+- key: seo_article
+  name: Viết bài SEO
+  version: 1.0.0
+- key: facebook_post
+  name: Bài Facebook
+  version: 1.0.0
+- key: video_script
+  name: Kịch bản video ngắn
+  version: 1.0.0

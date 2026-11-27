@@ -26,6 +26,21 @@ SHOTS = Path(__file__).parent / "screenshots"
 EMAIL, PASSWORD = "chu.xuong@xuongtramoc.vn", "tra-moc-mat-khau-2026"
 
 
+class Codes:
+    """Mã TOTP chưa dùng: máy chủ từ chối dùng lại mã của bước 30 giây đã dùng, nên mỗi lần lấy bước kế tiếp (chờ nếu cần)."""
+
+    def __init__(self, secret: str) -> None:
+        self.totp, self.last = pyotp.TOTP(secret), 0
+
+    def fresh(self) -> str:
+        now = int(time.time() // 30)
+        step = max(now, self.last + 1)
+        if step > now + 1:
+            time.sleep((step - 1) * 30 - time.time() + 0.5)
+        self.last = step
+        return str(self.totp.at(step * 30))
+
+
 def shot(page: Page, name: str) -> None:
     SHOTS.mkdir(exist_ok=True)
     page.screenshot(path=str(SHOTS / f"{name}.png"), full_page=True)
@@ -84,8 +99,8 @@ def test_control_center_first_run(page: Page) -> None:
     shot(page, "01-thiet-lap-2fa")
     page.get_by_text("Không quét được?").click()
     secret = page.locator(".secret").inner_text().strip()
-    totp = pyotp.TOTP(secret)
-    page.get_by_label("Mã 6 số").fill(totp.now())
+    totp = Codes(secret)
+    page.get_by_label("Mã 6 số").fill(totp.fresh())
     with page.expect_response(lambda r: r.url.endswith("/auth/setup/confirm")) as confirm:
         page.get_by_role("button", name="Hoàn tất").click()
     assert confirm.value.ok, confirm.value.text()
@@ -117,6 +132,24 @@ def test_control_center_first_run(page: Page) -> None:
     page.get_by_label("Tìm agent").fill("")
     shot(page, "03-agent")
 
+    # 3b. Trang từng agent: hồ sơ, bộ não, quyền công cụ, lịch sử (Sprint 2)
+    page.get_by_role("link", name="SEO", exact=True).click()
+    expect(page.get_by_role("heading", name="SEO", exact=True)).to_be_visible()
+    expect(page.get_by_text("Đưa các trang của Xưởng Trà Mộc lên đúng ý định tìm kiếm")).to_be_visible()
+    expect(page.get_by_text("Không bịa số liệu tìm kiếm")).to_be_visible()
+    shot(page, "03b-agent-ho-so")
+    page.get_by_role("tab", name="Bộ não").click()
+    expect(page.get_by_role("heading", name="Bộ não đang chạy: v1.0.0")).to_be_visible()
+    expect(page.locator(".badge").filter(has_text="Toàn vẹn")).to_be_visible()
+    expect(page.locator("tr[data-brain='1.0.0'] .badge")).to_have_text("Đang chạy")
+    shot(page, "03c-agent-bo-nao")
+    page.get_by_role("tab", name=re.compile("^Quyền công cụ")).click()
+    expect(page.locator("tr[data-perm='site.publish']")).to_contain_text("L3 Thực hiện")
+    expect(page.locator("tr[data-perm='site.publish']")).to_contain_text("2 lần/ngày")
+    shot(page, "03d-agent-quyen")
+    page.get_by_role("tab", name="Lịch sử").click()
+    expect(page.get_by_text("Nạp lần đầu: v1.0.0")).to_be_visible()
+
     # 4. Diễn biến: sự kiện mới đến ngay qua SSE, không cần tải lại trang
     page.get_by_role("link", name="Diễn biến").click()
     expect(page.get_by_text("Đang cập nhật trực tiếp")).to_be_visible(timeout=10_000)
@@ -144,7 +177,7 @@ def test_control_center_first_run(page: Page) -> None:
     expect(dlg.get_by_role("heading", name="Xác nhận lại")).to_be_visible()
     shot(page, "05-xac-thuc-lai")
     dlg.get_by_label("Mật khẩu").fill(PASSWORD)
-    dlg.get_by_label("Mã 6 số").fill(totp.now())
+    dlg.get_by_label("Mã 6 số").fill(totp.fresh())
     dlg.get_by_role("button", name="Xác nhận").click()
     expect(page.locator(".toast").filter(has_text="Bot @xuongtra_ai_bot đã sẵn sàng")).to_be_visible()
     page.get_by_role("button", name="Tạo mã kết nối", exact=True).click()
@@ -185,17 +218,39 @@ def test_control_center_first_run(page: Page) -> None:
     assert "EEEEEEEE" not in page.content()
     shot(page, "08-cai-dat-nha-cung-cap")
 
+    # 8b. Phê duyệt: agent xin chạy thí nghiệm trên trang thật (luôn cần duyệt) → Owner từ chối kèm góp ý
+    subprocess.run(["uv", "run", "python", str(Path(__file__).parent / "make_approval.py")],
+                   cwd=os.environ["AICO_E2E_BACKEND_DIR"], check=True, capture_output=True)
+    page.get_by_role("link", name="Tổng quan").click()
+    expect(page.get_by_text("1 việc đang chờ anh/chị duyệt.")).to_be_visible()
+    page.goto(BASE + "/phe-duyet")
+    expect(page.locator(".sb-count")).to_have_text("1")
+    card = page.get_by_role("region", name="Giám đốc Tăng trưởng muốn: chạy thí nghiệm trên trang thật")
+    expect(card).to_contain_text("Rủi ro vừa")
+    expect(card).to_contain_text("nút mua to hơn")
+    shot(page, "08b-phe-duyet")
+    card.get_by_role("button", name="Từ chối").click()
+    page.get_by_role("dialog").get_by_role("textbox").fill("Chưa đủ lượt truy cập để kết luận")
+    page.get_by_role("dialog").get_by_role("button", name="Từ chối").click()
+    expect(page.get_by_text("Không có việc nào chờ duyệt.")).to_be_visible()
+    page.get_by_role("tab", name=re.compile("^Đã xử lý")).click()
+    expect(page.get_by_role("region", name="Giám đốc Tăng trưởng muốn: chạy thí nghiệm trên trang thật")).to_contain_text("Chưa đủ lượt truy cập")
+    page.goto(BASE + "/cai-dat?tab=cong-cu")
+    expect(page.locator("tr[data-tool='signals']")).to_contain_text("Đã kết nối")
+    expect(page.locator("tr[data-tool='site']")).to_contain_text("Chưa kết nối")
+    shot(page, "08c-cong-cu")
+
     # 9. Đăng xuất qua menu người dùng, đăng nhập lại; sai mã thì báo lỗi rõ
     page.locator(".menu-btn").click()
     page.get_by_role("menuitem", name="Đăng xuất").click()
     expect(page).to_have_url(re.compile(r"/dang-nhap$"))
     page.get_by_label("Email").fill(EMAIL)
     page.get_by_label("Mật khẩu").fill(PASSWORD)
-    page.get_by_label("Mã xác thực 6 số").fill("000000" if totp.now() != "000000" else "111111")
+    page.get_by_label("Mã xác thực 6 số").fill("000000")
     page.get_by_role("button", name="Đăng nhập").click()
     expect(page.locator(".alert.danger")).to_contain_text("không đúng")
     shot(page, "09-dang-nhap-sai")
-    page.get_by_label("Mã xác thực 6 số").fill(totp.now())
+    page.get_by_label("Mã xác thực 6 số").fill(totp.fresh())
     page.get_by_role("button", name="Đăng nhập").click()
     expect(page.get_by_role("heading", name="Thiết lập ban đầu: còn 1 bước")).to_be_visible()  # còn kiểm tra khóa API
     shot(page, "10-tong-quan-sau-cai-dat")

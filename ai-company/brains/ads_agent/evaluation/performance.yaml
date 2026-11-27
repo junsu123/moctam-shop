@@ -1,0 +1,6 @@
+# KPI tính từ đánh giá độc lập, không từ báo cáo tự khai (BRAIN_SPEC §8).
+kpis:
+- key: applied_roas_delta
+  name: ROAS/CPA của đề xuất được áp dụng so với trước
+- key: proposal_approval
+  name: Tỉ lệ đề xuất được duyệt

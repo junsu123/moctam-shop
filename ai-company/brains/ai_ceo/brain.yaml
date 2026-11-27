@@ -1,0 +1,10 @@
+# Bộ não của AI CEO (ai_ceo). Manifest: phiên bản, kế thừa, model, ngân sách (BRAIN_SPEC §2.1).
+agent_id: ai_ceo
+extends: _core/templates/executive.yaml
+versions:
+  brain_version: 1.0.0
+  prompt_version: 1.0.0
+  knowledge_version: 1.0.0
+  skill_version: 1.0.0
+department: executive
+reports_to: null

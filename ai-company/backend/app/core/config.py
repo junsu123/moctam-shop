@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, SecretStr, model_validator
@@ -23,6 +24,11 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     # Telegram Bot API (đổi được để kiểm thử)
     telegram_api_base: str = "https://api.telegram.org"
+    # Thư mục bộ não (brains/). Trong container được gắn chỉ đọc vào /brains.
+    brains_dir: Path = Path(__file__).resolve().parents[3] / "brains"
+    # OpenTelemetry: gửi trace về collector OTLP/HTTP nếu đặt (vd http://otel:4318). Để trống: chỉ gắn trace_id vào log.
+    otel_endpoint: str | None = None
+    otel_service_name: str = "aico-backend"
 
     @model_validator(mode="after")
     def _prod_needs_master_key(self) -> Settings:

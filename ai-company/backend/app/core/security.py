@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -65,9 +66,22 @@ def totp_qr_svg(uri: str) -> str:
     return str(segno.make(uri, error="m").svg_inline(scale=5, dark="#1E2B24", light="#FFFFFF"))
 
 
-def check_totp(secret: str, code: str) -> bool:
+def totp_step(secret: str, code: str, last_step: int | None = None, now: float | None = None) -> int | None:
+    """Bước thời gian (30 giây) của mã hợp lệ, chấp nhận lệch ±1 bước. Mã thuộc bước đã dùng (≤ last_step) bị từ chối:
+    một mã chỉ đăng nhập/xác thực được một lần (chống dùng lại mã nhìn trộm)."""
     code = "".join(ch for ch in code if ch.isdigit())
-    return len(code) == 6 and pyotp.TOTP(secret).verify(code, valid_window=1)
+    if len(code) != 6:
+        return None
+    t = pyotp.TOTP(secret)
+    cur = int((time.time() if now is None else now) // 30)
+    for step in (cur - 1, cur, cur + 1):
+        if hmac.compare_digest(t.generate_otp(step), code) and (last_step is None or step > last_step):
+            return step
+    return None
+
+
+def check_totp(secret: str, code: str) -> bool:
+    return totp_step(secret, code) is not None
 
 
 def sha(s: str) -> str:

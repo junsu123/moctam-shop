@@ -1,0 +1,8 @@
+# Cấu hình quét secret (gitleaks): dùng bộ luật mặc định, cộng một ngoại lệ hẹp.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dòng 'key: <định_danh_snake_case>' (KPI, kỹ năng trong bộ não agent): không phải secret"
+regexTarget = "line"
+regexes = ['''^\s*-?\s*key:\s*[a-z][a-z0-9_]*\s*$''']

@@ -1,0 +1,12 @@
+# Bộ não của Chăm sóc khách (customer_agent). Manifest: phiên bản, kế thừa, model, ngân sách (BRAIN_SPEC §2.1).
+agent_id: customer_agent
+extends: _core/templates/specialist_sales.yaml
+versions:
+  brain_version: 1.0.0
+  prompt_version: 1.0.0
+  knowledge_version: 1.0.0
+  skill_version: 1.0.0
+department: sales
+reports_to: sales_director
+model:
+  primary: writer_vi

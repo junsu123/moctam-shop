@@ -1,0 +1,6 @@
+# KPI tính từ đánh giá độc lập, không từ báo cáo tự khai (BRAIN_SPEC §8).
+kpis:
+- key: lead_quality
+  name: Lead đạt chuẩn / lead đề xuất
+- key: lead_to_order
+  name: Tỉ lệ thành đơn sỉ

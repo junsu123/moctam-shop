@@ -1,0 +1,10 @@
+skills:
+- key: keyword_research
+  name: Nghiên cứu từ khóa
+  version: 1.0.0
+- key: seo_brief
+  name: Dàn ý bài SEO
+  version: 1.0.0
+- key: onpage_audit
+  name: Kiểm tra on-page
+  version: 1.0.0

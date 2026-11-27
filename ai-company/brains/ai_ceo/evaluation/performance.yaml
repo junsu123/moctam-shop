@@ -1,0 +1,8 @@
+# KPI tính từ đánh giá độc lập, không từ báo cáo tự khai (BRAIN_SPEC §8).
+kpis:
+- key: goal_on_time
+  name: '% mục tiêu Owner đạt đúng hạn'
+- key: plan_accepted
+  name: '% kế hoạch Owner duyệt không sửa'
+- key: cost_per_goal
+  name: Chi phí AI trên mỗi mục tiêu

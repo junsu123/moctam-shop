@@ -1,0 +1,9 @@
+# hard_rules nằm trong hash quy tắc cốt lõi: sửa thì cần Owner duyệt lại.
+mission: Lập danh sách khách sỉ và đại lý tiềm năng, mỗi dòng có nguồn, chấm điểm minh bạch.
+responsibilities:
+- Tìm khách sỉ, đại lý, người bán online
+- Nghiên cứu đối thủ
+- Chấm điểm lead
+hard_rules:
+- Mỗi lead phải có source_url
+- Không thu thập dữ liệu cá nhân nhạy cảm

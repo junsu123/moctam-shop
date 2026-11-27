@@ -1,0 +1,14 @@
+# Bộ não của Thiết kế (creative_agent). Manifest: phiên bản, kế thừa, model, ngân sách (BRAIN_SPEC §2.1).
+agent_id: creative_agent
+extends: _core/templates/specialist_marketing.yaml
+versions:
+  brain_version: 1.0.0
+  prompt_version: 1.0.0
+  knowledge_version: 1.0.0
+  skill_version: 1.0.0
+department: marketing
+reports_to: marketing_director
+model:
+  primary: writer_vi
+budget:
+  usd_per_day: 0.05

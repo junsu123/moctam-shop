@@ -1,0 +1,7 @@
+# Tham số đi vào mã (BRAIN_SPEC §2.2); phần không ghi lấy từ mẫu phòng ban.
+voice:
+  tone: lễ phép, ân cần
+  formality: 0.65
+  emoji: false
+risk_tolerance: 0.15
+evidence_strictness: 0.95

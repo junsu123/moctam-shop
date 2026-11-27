@@ -1,0 +1,14 @@
+# Quyền (công cụ × hành động × cấp tự chủ 1–4). Chỉ Owner sửa; nằm trong hash quy tắc cốt lõi.
+permissions:
+- tool: social
+  action: read_metrics
+  level: 1
+- tool: trend
+  action: research
+  level: 1
+- tool: content_calendar
+  action: read
+  level: 1
+- tool: content_calendar
+  action: plan
+  level: 2

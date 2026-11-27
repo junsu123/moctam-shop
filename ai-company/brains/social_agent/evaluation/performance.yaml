@@ -1,0 +1,6 @@
+# KPI tính từ đánh giá độc lập, không từ báo cáo tự khai (BRAIN_SPEC §8).
+kpis:
+- key: engagement_per_reach
+  name: Tương tác/lượt tiếp cận các bài đã duyệt
+- key: trend_accuracy
+  name: Độ chính xác dự báo xu hướng

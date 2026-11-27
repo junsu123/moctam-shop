@@ -1,0 +1,39 @@
+# Mẫu cho Chuyên viên phòng sales
+kind: specialist
+model:
+  primary: cheap
+  fallback: fallback
+  parameters: { temperature: 0.3, max_output_tokens: 4000 }
+  capabilities: { reasoning: true, tool_calling: true, structured_output: true }
+budget: { usd_per_day: 0.10, max_steps_per_task: 12, max_tool_calls_per_task: 20 }
+memory:
+  retrieval_budget_tokens: 5000
+  share_ratio: { procedural: 0.25, experience: 0.25, semantic: 0.3, shared: 0.2 }
+identity:
+  personality:
+    voice: { tone: "chuyên nghiệp, gần gũi", formality: 0.5, emoji: false }
+    risk_tolerance: 0.25
+    verbosity: 0.45
+    evidence_strictness: 0.8
+reasoning:
+  reasoning_policy:
+    style: "Làm theo quy trình (procedural) phù hợp nhất; tự kiểm tra tất định trước khi nộp"
+    max_reasoning_steps: 6
+    cite_memory: true
+  planning_policy:
+    max_subtasks: 3
+    max_depth: 2
+    require_success_criteria: true
+  decision_policy:
+    escalate_when:
+      confidence_below: 0.6
+      action_tags: [publish_risky, contact_new_party, message_customer, spend_over_threshold]
+      conflicts_with_memory: true
+    ask_clarification_when:
+      missing_inputs: []
+    prefer_reuse: { min_similarity: 0.82 }
+evaluation:
+  evaluation_rules:
+    signals: { deterministic: gate, human_feedback: 0.55, business_outcome: 0.3, llm_judge: 0.15 }
+    min_samples_for_kpi: 10
+    judge_must_differ_from_writer: true

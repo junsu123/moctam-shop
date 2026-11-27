@@ -1,6 +1,7 @@
 "use client";
 
 import { Bot, Pause, Play, Search } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import { useConfirm } from "@/components/ui/dialog";
@@ -146,7 +147,9 @@ export default function AgentsPage() {
                     <tr key={a.agent_key} data-agent={a.agent_key}>
                       <td>
                         <div className="cell-main">
-                          <b>{a.display_name}</b>
+                          <Link href={`/agent/${a.agent_key}`} className="row-link">
+                            {a.display_name}
+                          </Link>
                           <span>{a.role_summary}</span>
                           {a.state === "paused" && a.reason && <span className="note">Lý do dừng: {a.reason}</span>}
                         </div>

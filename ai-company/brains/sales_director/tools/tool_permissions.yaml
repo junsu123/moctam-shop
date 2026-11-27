@@ -1,0 +1,23 @@
+# Quyền (công cụ × hành động × cấp tự chủ 1–4). Chỉ Owner sửa; nằm trong hash quy tắc cốt lõi.
+permissions:
+- tool: signals
+  action: read
+  level: 1
+- tool: crm
+  action: read
+  level: 1
+- tool: site
+  action: aggregates
+  level: 1
+- tool: task
+  action: create
+  level: 2
+- tool: task
+  action: delegate
+  level: 2
+- tool: task
+  action: review
+  level: 2
+- tool: report
+  action: compose
+  level: 2

@@ -1,0 +1,10 @@
+skills:
+- key: goal_breakdown
+  name: Phân rã mục tiêu
+  version: 1.0.0
+- key: weekly_strategy
+  name: Chiến lược tuần
+  version: 1.0.0
+- key: daily_report
+  name: Báo cáo 18:00
+  version: 1.0.0

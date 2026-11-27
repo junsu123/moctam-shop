@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from app.api.v1.health import ready as health_ready
 from app.core import audit, db, security
 from app.core.errors import AppError
-from app.domain import store
+from app.domain import lifecycle, store
 from app.gateway import models as gateway
 
 router = APIRouter(tags=["control"])
@@ -47,23 +47,7 @@ class PauseIn(BaseModel):
 
 
 async def _set_state(conn: AsyncConnection, key: str, state: str, reason: str, cur: security.Current, request: Request) -> dict[str, Any]:
-    r = await db.one(
-        conn,
-        "UPDATE agent_status s SET state = :st, reason = :r, changed_by = :by, updated_at = now() FROM agents a "
-        "WHERE a.id = s.agent_id AND a.agent_key = :k RETURNING a.agent_key, s.state",
-        {"st": state, "r": reason or None, "by": cur.actor, "k": key},
-    )
-    if r is None:
-        raise AppError("AGENT_NOT_FOUND", "Không có agent này.", 404)
-    await audit.record(
-        conn,
-        cur.actor,
-        f"agent.{'pause' if state == 'paused' else 'resume'}",
-        f"agent:{key}",
-        reason=reason or None,
-        request_id=_rid(request),
-    )
-    return dict(r)
+    return await lifecycle.transition(conn, key, state, cur.actor, reason, _rid(request))
 
 
 @router.post("/agents/{key}/pause")
@@ -84,7 +68,8 @@ async def pause_all(
 ) -> dict[str, int]:
     n = await db.execute(
         conn,
-        "UPDATE agent_status SET state = 'paused', reason = :r, changed_by = :by, updated_at = now() WHERE state <> 'paused'",
+        "UPDATE agent_status SET state = 'paused', reason = :r, changed_by = :by, updated_at = now() "
+        "WHERE state IN ('active','learning','waiting_approval','degraded')",
         {"r": body.reason or "Tạm dừng toàn bộ", "by": cur.actor},
     )
     await audit.record(conn, cur.actor, "agent.pause_all", "agents", {"count": n}, reason=body.reason or None, request_id=_rid(request))
@@ -211,6 +196,9 @@ async def overview(request: Request, conn: AsyncConnection = Depends(db.get_db),
         "budget": spend,
         "agents": {"total": sum(states.values()), "by_state": states},
         "telegram": {"configured": tg_token is not None, "chats": int(tg_chats or 0)},
+        "approvals_pending": int(
+            await db.scalar(conn, "SELECT count(*) FROM approvals WHERE status = 'pending' AND expires_at > now()") or 0
+        ),
         "providers": [dict(p) for p in prov],
         "now": datetime.now(UTC),
     }
@@ -237,6 +225,19 @@ ACTION_TEXT = {
     "telegram.chat_updated": "đổi cài đặt chat Telegram",
     "telegram.chat_removed": "gỡ chat Telegram",
     "telegram.link_failed": "nhập sai mã kết nối Telegram",
+    "agent.disable": "tắt agent",
+    "brain.bootstrap": "nạp bộ não lần đầu",
+    "brain.sync": "đọc lại thư mục bộ não",
+    "brain.activated": "kích hoạt phiên bản bộ não mới",
+    "brain.rolled_back": "quay lại phiên bản bộ não cũ",
+    "brain.shadow": "cho chạy thử phiên bản bộ não",
+    "approval.requested": "gửi yêu cầu duyệt",
+    "approval.approved": "duyệt",
+    "approval.rejected": "từ chối duyệt",
+    "approval.expired": "yêu cầu duyệt hết hạn",
+    "tool.invoked": "dùng công cụ",
+    "tool.denied": "bị chặn khi dùng công cụ",
+    "tool.failed": "dùng công cụ lỗi",
     "telegram.ignored": "bỏ qua tin từ chat lạ",
 }
 

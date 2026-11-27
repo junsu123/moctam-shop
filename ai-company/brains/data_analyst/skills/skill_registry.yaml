@@ -1,0 +1,7 @@
+skills:
+- key: kpi_report
+  name: Báo cáo KPI
+  version: 1.0.0
+- key: golden_hours
+  name: Tính giờ vàng
+  version: 1.0.0

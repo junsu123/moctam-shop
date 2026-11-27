@@ -54,6 +54,16 @@
 | Ghi sổ ngoài giao dịch request | Chi phí LLM, cảnh báo ngân sách, bộ đếm đăng nhập sai | Lỗi trả về rollback giao dịch chính, nhưng tiền đã tiêu và lần đăng nhập sai vẫn phải được ghi |
 | TypeScript | Ghim 6.0 | `typescript-eslint` chưa hỗ trợ TS 7 |
 
+### Ghi chú kỹ thuật Sprint 2 (không cần Owner quyết)
+
+| Điểm | Quyết định | Lý do |
+|---|---|---|
+| Nạp bộ não lần đầu | Tự ghim hash quy tắc cốt lõi (`bootstrap`) | Bundle trong git đã qua review PR; mọi thay đổi sau đó cần Owner duyệt trên dashboard (rủi ro cao, 2FA) |
+| Quyền công cụ | Chỉ lấy từ `tools/tool_permissions.yaml` của bộ não đang chạy; dashboard chỉ xem | Đổi quyền = đổi bộ não = qua duyệt; không có đường ghi quyền nào khác (SECURITY_PLAN §3.1) |
+| Danh tính, kỹ năng | Đọc từ bộ não, chưa tạo `agent_profiles`, `agent_skills` | Một nguồn sự thật; kỹ năng gắn procedural memory ở Sprint 3/5 |
+| Thứ tự Policy Engine | Danh sách bắt buộc duyệt xét **sau** quyền và hạn mức | Agent không có quyền thì bị chặn hẳn, không biến thành "xin duyệt"; có quyền (kể cả L4) thì vẫn phải duyệt |
+| Công cụ chưa có tích hợp | Khai báo đủ 30 công cụ, chưa kết nối thì trả `NOT_CONFIGURED` | Quyền và chính sách kiểm được ngay; không có dữ liệu giả (CLAUDE.md quy tắc 5) |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |

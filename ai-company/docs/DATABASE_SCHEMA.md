@@ -54,9 +54,10 @@ erDiagram
 |---|---|---|
 | `agents` | `id`, `agent_key` (vd `seo_agent`), `department`, `reports_to_agent_id`, `kind` (`executive/director/specialist`), `status` | `UNIQUE(org_id, agent_key)` |
 | `agent_profiles` | `agent_id`, `display_name`, `avatar_url`, `role_summary`, `personality jsonb` (tham số BRAIN_SPEC §2.2) | 1–1 với `agents` |
-| `agent_brains` | `id`, `agent_id`, `brain_version`, `prompt_version`, `knowledge_version`, `skill_version`, `bundle jsonb` (đã chuẩn hóa), `bundle_hash`, `core_rules_hash`, `state` (`draft/shadow/active/retired`), `activated_at` | Tối đa 1 bản `active` cho mỗi agent (unique index một phần) |
-| `agent_versions` | `id`, `agent_id`, `component`, `from_version`, `to_version`, `diff`, `sources jsonb`, `proposed_by_principal`, `test_results jsonb`, `approved_by_user_id`, `previous_brain_id` | Chỉ thêm, không sửa (SRS §4.5) |
-| `agent_permissions` | `agent_id`, `tool_id`, `action`, `autonomy_level 1..4`, `limits jsonb` (vd `max_usd`, `per_day`), `requires_approval bool`, `granted_by_user_id`, `expires_at` | `UNIQUE(agent_id, tool_id, action)`. Chỉ người dùng ghi |
+| `agent_brains` | `id`, `agent_key`, `brain_version`, `prompt_version`, `knowledge_version`, `skill_version`, `bundle jsonb` (đã chuẩn hóa), `bundle_hash`, `core_rules_hash`, `state` (`draft/shadow/active/retired/rejected`), `created_by`, `activated_at` | Tối đa 1 bản `active` cho mỗi agent (unique index một phần); `UNIQUE(agent_key, bundle_hash)`. *Đã có từ Sprint 2* |
+| ➕ `brain_core_pins` | `agent_key`, `core_rules_hash`, `approved_by`, `approved_at`, `approval_id` | Hash quy tắc cốt lõi Owner đã chấp nhận; runtime từ chối nạp bundle có hash không nằm ở đây (BRAIN_SPEC §9). *Sprint 2* |
+| `agent_versions` | `id`, `agent_key`, `event` (`bootstrap/proposed/activated/rolled_back/rejected`), `component`, `from_version`, `to_version`, `brain_id`, `previous_brain_id`, `diff`, `sources jsonb`, `proposed_by`, `approved_by`, `test_results jsonb` | Chỉ thêm, không sửa: trigger chặn UPDATE/DELETE (SRS §4.5). *Sprint 2* |
+| `agent_permissions` | `agent_key`, `tool_id`, `action`, `autonomy_level 1..4`, `limits jsonb` (vd `max_usd`, `per_day`), `requires_approval bool`, `granted_by`, `brain_id`, `expires_at` | Khóa `(agent_key, tool_id, action)`. Chỉ ghi khi một bộ não được kích hoạt (lấy từ `tools/tool_permissions.yaml`); agent không có công cụ nào ghi vào đây. *Sprint 2* |
 | `agent_skills` | `agent_id`, `skill_key`, `version`, `procedural_memory_id`, `enabled` | |
 | `agent_status` | `agent_id`, `state`, `reason`, `circuit_failures`, `paused_by`, `updated_at` | |
 | ➕ `agent_budgets` | `agent_id`, `period` (`day/month`), `usd_limit`, `usd_used`, `token_used` | Ngân sách theo agent (ARCH §8) |
@@ -108,7 +109,7 @@ CREATE POLICY mem_write_episodic ON agent_memories FOR INSERT
 | `task_outputs` | `task_id`, `kind`, `content jsonb`, `asset_id`, `version` | |
 | `task_reviews` | `task_id`, `reviewer_principal`, `verdict` (`approve/request_changes/reject`), `notes`, `rubric_scores jsonb` | |
 | `task_logs` | `task_id`, `step_no`, `event`, `data jsonb`, `at` | Phân vùng theo tháng |
-| ➕ `approvals` | `id`, `subject_type`, `subject_id`, `action`, `requested_by`, `risk`, `payload_digest`, `status`, `decided_by_user_id`, `decided_at`, `expires_at` | Hàng chờ phê duyệt chung cho task, công cụ, kiến thức, quyền (SRS §13) |
+| ➕ `approvals` | `id`, `subject_type`, `subject_id`, `action`, `title`, `summary`, `payload jsonb`, `payload_digest`, `risk`, `requested_by`, `status`, `decided_by`, `decided_at`, `decision_note`, `expires_at` | Hàng chờ phê duyệt chung cho task, công cụ, kiến thức, quyền (SRS §13). Một yêu cầu đang chờ cho mỗi (subject, digest). *Sprint 2* |
 | ➕ `schedules` | `id`, `agent_id`, `cron`, `timezone`, `task_template jsonb`, `enabled`, `last_run_at`, `next_run_at` | Lịch cấu hình được (SRS §14) |
 
 **Checkpoint LangGraph (v0.2, ADR-05):** bảng do thư viện quản lý (checkpoint, các lần ghi đang chờ) nằm trong schema riêng `langgraph` của cùng CSDL. `thread_id` = `tasks.id`. Bảng `tasks` thêm cột `graph_key` (đồ thị nào đang chạy) và `graph_node` (nút gần nhất, để hiển thị). Checkpoint của task đã đóng được dọn sau 30 ngày.
@@ -157,8 +158,9 @@ Nguyên tắc: dữ liệu bán hàng là **bản sao chỉ đọc** từ websit
 | `model_registry` | `id`, `profile` (`reasoning_high`…), `provider_id`, `model_name`, `context_window`, `price_in_per_mtok`, `price_out_per_mtok`, `capabilities jsonb`, `fallback_model_id`, `enabled` |
 | ➕ `provider_registry` | `id`, `kind` (`anthropic/openai_compat/google/ollama/vllm`), `base_url`, `secret_ref`, `rate_limits jsonb`, `data_policy` (`may_receive_pii false` mặc định) |
 | `model_usage` | `id`, `model_id`, `agent_id`, `task_id`, `purpose`, `tokens_in`, `tokens_out`, `cost_usd`, `latency_ms`, `ok`, `error_code`, `at` (phân vùng theo tháng) |
-| `tool_registry` | `id`, `tool_key`, `description`, `input_schema`, `output_schema`, `side_effects` (`none/internal/external`), `default_timeout_s`, `retry_policy jsonb`, `risk`, `mcp_server` |
-| ➕ `tool_invocations` | `id`, `tool_id`, `agent_id`, `task_id`, `idempotency_key`, `input_digest`, `status`, `duration_ms`, `approval_id`, `at` |
+| `tool_registry` | `id` (vd `site`), `description`, `actions jsonb` (mỗi hành động: cấp tối thiểu, tác động, thẻ chính sách), `input_schema`, `output_schema` (theo hành động), `side_effects` (`none/internal/external`), `default_timeout_s`, `retry_policy jsonb`, `risk`, `available` | Bản chiếu của danh mục công cụ trong mã (`app/tools/catalog.py`). *Sprint 2* |
+| ➕ `tool_invocations` | `id`, `tool_id`, `action`, `agent_key`, `task_id`, `idempotency_key` (UNIQUE), `input_digest`, `status` (`running/succeeded/failed/denied/waiting_approval`), `output`, `error_code`, `attempts`, `duration_ms`, `approval_id`, `at` | *Sprint 2* |
+| ➕ `policy_decisions` | `id`, `at`, `agent_key`, `tool_id`, `action`, `decision` (`allow/require_approval/deny`), `rule`, `reason`, `context jsonb` | Trả lời "vì sao agent bị chặn". *Sprint 2* |
 | `integration_configs` | `id`, `kind`, `display_name`, `config jsonb` (không có secret), `secret_ref`, `oauth_expires_at`, `status` (`connected/expired/error/not_configured`), `last_sync_at`, `last_error` |
 | ➕ `secrets` | `id`, `name`, `ciphertext`, `key_version`, `rotated_at` | Mã hóa phong bì (SECURITY_PLAN §5) |
 | `system_logs` | Log ứng dụng có cấu trúc (mức ≥ WARN), đã che dữ liệu nhạy cảm |

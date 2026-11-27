@@ -1,0 +1,7 @@
+skills:
+- key: banner
+  name: Banner
+  version: 1.0.0
+- key: product_shot
+  name: Ảnh sản phẩm
+  version: 1.0.0

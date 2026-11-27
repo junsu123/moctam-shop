@@ -1,0 +1,6 @@
+# KPI tính từ đánh giá độc lập, không từ báo cáo tự khai (BRAIN_SPEC §8).
+kpis:
+- key: verbatim_approval
+  name: Tỉ lệ duyệt nguyên văn
+- key: published_performance
+  name: Hiệu suất bài đã đăng (Data Analyst đo)

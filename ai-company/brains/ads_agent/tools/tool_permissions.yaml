@@ -1,0 +1,10 @@
+# Quyền (công cụ × hành động × cấp tự chủ 1–4). Chỉ Owner sửa; nằm trong hash quy tắc cốt lõi.
+permissions:
+- tool: ads
+  action: read_metrics
+  level: 1
+- tool: ads
+  action: create_draft_campaign
+  level: 2
+  limits:
+    per_day: 3

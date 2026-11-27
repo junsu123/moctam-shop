@@ -1,0 +1,19 @@
+# Quyền (công cụ × hành động × cấp tự chủ 1–4). Chỉ Owner sửa; nằm trong hash quy tắc cốt lõi.
+permissions:
+- tool: ga4
+  action: read
+  level: 1
+- tool: site
+  action: page_audit
+  level: 1
+- tool: site
+  action: funnel_stats
+  level: 1
+- tool: experiment
+  action: design
+  level: 2
+- tool: notify
+  action: owner
+  level: 3
+  limits:
+    per_day: 6

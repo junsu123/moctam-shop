@@ -1,0 +1,4 @@
+skills:
+- key: integration_check
+  name: Kiểm tra tích hợp
+  version: 1.0.0

@@ -1,0 +1,7 @@
+skills:
+- key: campaign_analysis
+  name: Phân tích chiến dịch
+  version: 1.0.0
+- key: budget_proposal
+  name: Đề xuất ngân sách
+  version: 1.0.0

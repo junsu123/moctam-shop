@@ -1,0 +1,7 @@
+skills:
+- key: trend_scan
+  name: Quét xu hướng
+  version: 1.0.0
+- key: post_schedule
+  name: Lịch đăng
+  version: 1.0.0
