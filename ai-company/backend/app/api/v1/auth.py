@@ -147,7 +147,8 @@ async def _verify(conn: AsyncConnection, body: LoginIn, request: Request, requir
     if require_confirmed and u["totp_confirmed_at"] is None:
         raise AppError("SETUP_INCOMPLETE", "Chưa hoàn tất thiết lập xác thực hai lớp.", 409)
     sec = await store.get_secret(conn, f"totp:{u['id']}") or ""
-    if not (security.check_password(u["password_hash"], body.password) and security.check_totp(sec, body.code)):
+    step = security.totp_step(sec, body.code, u["totp_last_step"])
+    if not (security.check_password(u["password_hash"], body.password) and step is not None):
         # Ghi lần sai bằng giao dịch riêng: lỗi trả về sẽ rollback giao dịch của request, nhưng bộ đếm khóa phải được giữ.
         async with db.engine().begin() as c2:
             fails = int(
@@ -164,7 +165,9 @@ async def _verify(conn: AsyncConnection, body: LoginIn, request: Request, requir
                 )
             await audit.record(c2, f"user:{u['email']}", "auth.login_failed", data={"lock": locked}, request_id=_rid(request))
         raise bad
-    await db.execute(conn, "UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = :id", {"id": u["id"]})
+    await db.execute(
+        conn, "UPDATE users SET failed_logins = 0, locked_until = NULL, totp_last_step = :s WHERE id = :id", {"s": step, "id": u["id"]}
+    )
     return dict(u)
 
 

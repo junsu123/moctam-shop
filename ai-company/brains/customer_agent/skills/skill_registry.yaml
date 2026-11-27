@@ -1,0 +1,7 @@
+skills:
+- key: reply_draft
+  name: Soạn trả lời
+  version: 1.0.0
+- key: care_plan
+  name: Kế hoạch chăm sóc
+  version: 1.0.0

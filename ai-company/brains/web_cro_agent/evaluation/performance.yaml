@@ -1,0 +1,4 @@
+# KPI tính từ đánh giá độc lập, không từ báo cáo tự khai (BRAIN_SPEC §8).
+kpis:
+- key: verified_cro_uplift
+  name: Mức tăng chuyển đổi đã kiểm chứng từ đề xuất được áp dụng

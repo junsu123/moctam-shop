@@ -1,0 +1,7 @@
+skills:
+- key: lead_review
+  name: Review lead
+  version: 1.0.0
+- key: retention_policy
+  name: Chính sách giữ chân
+  version: 1.0.0

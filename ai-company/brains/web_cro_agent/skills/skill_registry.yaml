@@ -1,0 +1,7 @@
+skills:
+- key: funnel_analysis
+  name: Phân tích phễu
+  version: 1.0.0
+- key: ab_proposal
+  name: Đề xuất A/B
+  version: 1.0.0

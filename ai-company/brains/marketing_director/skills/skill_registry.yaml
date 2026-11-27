@@ -1,0 +1,7 @@
+skills:
+- key: content_review
+  name: Review nội dung theo rubric
+  version: 1.0.0
+- key: calendar_planning
+  name: Lên lịch nội dung
+  version: 1.0.0

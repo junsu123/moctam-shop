@@ -1,0 +1,7 @@
+skills:
+- key: experiment_design
+  name: Thiết kế thí nghiệm
+  version: 1.0.0
+- key: evidence_ladder
+  name: Thang bằng chứng L0–L3
+  version: 1.0.0

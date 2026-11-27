@@ -90,7 +90,7 @@ async def test_login_logout_and_wrong_code(owner: OwnerSession) -> None:
 async def test_lockout_after_five_failures(owner: OwnerSession) -> None:
     api = owner.api
     for _ in range(5):
-        r = await api.post("/api/v1/auth/login", json={"email": owner.EMAIL, "password": "sai-mat-khau-123", "code": owner.code()})
+        r = await api.post("/api/v1/auth/login", json={"email": owner.EMAIL, "password": "sai-mat-khau-123", "code": "123456"})
         assert r.status_code == 401
     r = await api.post("/api/v1/auth/login", json={"email": owner.EMAIL, "password": owner.PASSWORD, "code": owner.code()})
     assert r.status_code == 423 and r.json()["error"]["code"] == "LOCKED"

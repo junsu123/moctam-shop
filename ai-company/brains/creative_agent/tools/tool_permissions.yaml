@@ -1,0 +1,23 @@
+# Quyền (công cụ × hành động × cấp tự chủ 1–4). Chỉ Owner sửa; nằm trong hash quy tắc cốt lõi.
+permissions:
+- tool: image
+  action: generate
+  level: 2
+  limits:
+    per_day: 20
+- tool: image
+  action: edit
+  level: 2
+  limits:
+    per_day: 20
+- tool: video
+  action: generate
+  level: 2
+  limits:
+    per_day: 3
+- tool: brand
+  action: read_assets
+  level: 1
+- tool: asset
+  action: store
+  level: 2

@@ -1,0 +1,7 @@
+skills:
+- key: lead_scoring
+  name: Chấm điểm lead
+  version: 1.0.0
+- key: competitor_scan
+  name: Nghiên cứu đối thủ
+  version: 1.0.0

@@ -33,6 +33,14 @@ PROFILES = _seed_profiles()
 
 # Bảng có dữ liệu do người dùng/hệ thống sinh ra (xóa giữa các test); bảng cấu hình (agents, registry) giữ nguyên
 RESET_TABLES = [
+    "policy_decisions",
+    "tool_invocations",
+    "approvals",
+    "agent_permissions",
+    "brain_core_pins",
+    "agent_versions",
+    "agent_brains",
+    "tool_registry",
     "notification_deliveries",
     "notifications",
     "telegram_link_codes",
@@ -125,10 +133,20 @@ class OwnerSession:
     def h(self) -> dict[str, str]:
         return {"X-CSRF-Token": self.csrf}
 
+    last_step = 0
+
     def code(self) -> str:
+        """Mã TOTP chưa dùng (máy chủ chặn dùng lại mã cũ): lấy bước 30 giây kế tiếp, chờ nếu cần."""
+        import time
+
         import pyotp
 
-        return str(pyotp.TOTP(self.secret).now())
+        now = int(time.time() // 30)
+        step = max(now, self.last_step + 1)
+        if step > now + 1:  # máy chủ chấp nhận lệch ±1 bước
+            time.sleep((step - 1) * 30 - time.time() + 0.5)
+        self.last_step = step
+        return str(pyotp.TOTP(self.secret).at(step * 30))
 
     async def reauth(self) -> None:
         r = await self.api.post("/api/v1/auth/reauth", json={"password": self.PASSWORD, "code": self.code()}, headers=self.h)
@@ -136,6 +154,8 @@ class OwnerSession:
 
 
 async def make_owner(api: AsyncClient) -> OwnerSession:
+    import time
+
     import pyotp
 
     from app.api.v1.auth import issue_setup_token
@@ -157,9 +177,31 @@ async def make_owner(api: AsyncClient) -> OwnerSession:
     assert r.status_code == 200, r.text
     st = (await api.get("/api/v1/auth/state")).json()
     assert st["authenticated"]
-    return OwnerSession(api, secret, st["csrf"])
+    o = OwnerSession(api, secret, st["csrf"])
+    o.last_step = int(time.time() // 30)
+    return o
 
 
 @pytest.fixture
 async def owner(api: AsyncClient) -> OwnerSession:
     return await make_owner(api)
+
+
+BRAINS = BACKEND.parent / "brains"
+
+
+async def sync_brains(root: Path = BRAINS) -> list[object]:
+    """Nạp bộ não từ thư mục (commit), như lệnh `python -m app.cli sync-brains` lúc khởi động."""
+    from app.brain import registry
+    from app.core import db
+    from app.tools.gateway import sync_registry
+
+    async with db.engine().begin() as c:
+        await sync_registry(c)
+        items = await registry.sync_all(c, root, "test")
+    return list(items)
+
+
+@pytest.fixture
+async def synced(env: None) -> list[object]:
+    return await sync_brains()

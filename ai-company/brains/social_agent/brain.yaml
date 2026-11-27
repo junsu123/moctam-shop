@@ -1,0 +1,10 @@
+# Bộ não của Mạng xã hội (social_agent). Manifest: phiên bản, kế thừa, model, ngân sách (BRAIN_SPEC §2.1).
+agent_id: social_agent
+extends: _core/templates/specialist_marketing.yaml
+versions:
+  brain_version: 1.0.0
+  prompt_version: 1.0.0
+  knowledge_version: 1.0.0
+  skill_version: 1.0.0
+department: marketing
+reports_to: marketing_director

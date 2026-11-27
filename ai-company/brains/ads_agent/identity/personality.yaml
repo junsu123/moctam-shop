@@ -1,0 +1,3 @@
+# Tham số đi vào mã (BRAIN_SPEC §2.2); phần không ghi lấy từ mẫu phòng ban.
+risk_tolerance: 0.15
+evidence_strictness: 0.9
