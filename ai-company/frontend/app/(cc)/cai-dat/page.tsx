@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Cpu, KeyRound, Link2, MessageCircle, Plug, Send, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import { Clock, Cpu, KeyRound, Link2, MessageCircle, Plug, Send, ShieldCheck, Trash2, Wallet, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useShell } from "@/components/shell";
@@ -8,11 +8,12 @@ import { useConfirm } from "@/components/ui/dialog";
 import { Badge, Bar, Card, Empty, ErrorAlert, Loading, PageHeader } from "@/components/ui/primitives";
 import { Tabs, TabPanel, useTabParam } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { api, ApiError, type Budget, type Hours, type Overview, type Provider, type TgStatus } from "@/lib/api";
+import { api, ApiError, type Budget, type Hours, type Overview, type Provider, type TgStatus, type ToolInfo } from "@/lib/api";
+import { LEVEL, RISK } from "@/lib/labels";
 import { usd, when } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 
-const TABS = ["telegram", "ngan-sach", "gio", "nha-cung-cap"] as const;
+const TABS = ["telegram", "ngan-sach", "gio", "nha-cung-cap", "cong-cu"] as const;
 type Tab = (typeof TABS)[number];
 const msg = (x: unknown) => (x instanceof ApiError ? (x.code === "REAUTH_CANCELLED" ? "" : x.message) : "Có lỗi, thử lại.");
 
@@ -30,6 +31,7 @@ export default function SettingsPage() {
           { id: "ngan-sach", label: "Ngân sách AI", icon: <Wallet size={16} aria-hidden="true" /> },
           { id: "gio", label: "Giờ làm việc", icon: <Clock size={16} aria-hidden="true" /> },
           { id: "nha-cung-cap", label: "Nhà cung cấp AI", icon: <Cpu size={16} aria-hidden="true" /> },
+          { id: "cong-cu", label: "Công cụ", icon: <Wrench size={16} aria-hidden="true" /> },
         ]}
       />
       <TabPanel id={tab}>
@@ -37,6 +39,7 @@ export default function SettingsPage() {
         {tab === "ngan-sach" && <BudgetTab />}
         {tab === "gio" && <HoursTab />}
         {tab === "nha-cung-cap" && <ProvidersTab />}
+        {tab === "cong-cu" && <ToolsTab />}
       </TabPanel>
     </>
   );
@@ -532,6 +535,73 @@ function ProvidersTab() {
           </div>
         </Card>
       ))}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- Công cụ
+const SIDE: Record<string, string> = { none: "Chỉ đọc", internal: "Trong hệ thống", external: "Ra bên ngoài" };
+
+function ToolsTab() {
+  const { data: list, error } = useApi<ToolInfo[]>("/tools");
+  if (!list) return error ? <ErrorAlert>{error}</ErrorAlert> : <Loading what="công cụ" />;
+  const ready = list.filter((t) => t.available).length;
+  return (
+    <>
+      <p className="alert info">
+        <Wrench size={16} aria-hidden="true" /> Mọi tác động của agent đi qua cổng công cụ: kiểm quyền, hạn mức, phê duyệt và ghi nhật ký. Đã kết nối {ready}/{list.length}{" "}
+        công cụ; phần còn lại được bật dần khi có tích hợp (website, Search Console, mạng xã hội…).
+      </p>
+      <Card flush>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Công cụ</th>
+                <th scope="col">Hành động</th>
+                <th scope="col">Tác động</th>
+                <th scope="col">Rủi ro</th>
+                <th scope="col">Agent được dùng</th>
+                <th scope="col">Kết nối</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((t) => {
+                const agents = [...new Map(t.grants.map((g) => [g.agent_key, g.display_name])).values()];
+                const [riskLabel, riskTone] = RISK[t.risk];
+                return (
+                  <tr key={t.id} data-tool={t.id}>
+                    <td>
+                      <div className="cell-main">
+                        <b className="mono-tag">{t.id}</b>
+                        <span>{t.description}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <ul className="mini-list">
+                        {Object.entries(t.actions).map(([k, a]) => (
+                          <li key={k} title={a.description}>
+                            {k} <span className="subtle xs">L{a.min_level} {LEVEL[a.min_level]}</span>
+                            {a.tags.length > 0 && <Badge tone="warn" plain>luôn cần duyệt</Badge>}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td className="nowrap muted">{SIDE[t.side_effects]}</td>
+                    <td className="nowrap">
+                      <Badge tone={riskTone} plain>
+                        {riskLabel}
+                      </Badge>
+                    </td>
+                    <td className="small">{agents.length ? agents.join(", ") : <span className="subtle">Chưa agent nào</span>}</td>
+                    <td className="nowrap">{t.available ? <Badge tone="success">Đã kết nối</Badge> : <Badge>Chưa kết nối</Badge>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </>
   );
 }

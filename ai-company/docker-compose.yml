@@ -36,9 +36,13 @@ services:
 
   migrate:                  # chạy một lần mỗi khi khởi động: cập nhật lược đồ CSDL rồi thoát
     build: ./backend
-    command: ["alembic", "upgrade", "head"]
+    # cập nhật lược đồ CSDL, rồi nạp bộ não (bản mới chỉ thành bản nháp chờ Owner duyệt)
+    command: ["sh", "-c", "alembic upgrade head && python -m app.cli sync-brains"]
     environment:
       AICO_DATABASE_URL: *db_url
+      AICO_BRAINS_DIR: /brains
+    volumes:
+      - ./brains:/brains:ro
     depends_on:
       db: { condition: service_healthy }
     mem_limit: 256m
@@ -52,6 +56,10 @@ services:
       AICO_REDIS_URL: redis://queue:6379/0
       AICO_MASTER_KEY: ${AICO_MASTER_KEY:?Thiếu AICO_MASTER_KEY trong .env}
       AICO_LOG_LEVEL: INFO
+      AICO_BRAINS_DIR: /brains
+      AICO_OTEL_ENDPOINT: ${AICO_OTEL_ENDPOINT:-}   # để trống: không gửi trace đi đâu
+    volumes:
+      - ./brains:/brains:ro   # nút "Đọc lại thư mục bộ não" trên dashboard
     depends_on:
       migrate: { condition: service_completed_successfully }
       queue: { condition: service_healthy }

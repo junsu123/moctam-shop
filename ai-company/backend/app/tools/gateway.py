@@ -137,6 +137,7 @@ async def _invoke(
                 log.info("Phê duyệt không dùng được: %s", why)
         if not ok:
             async with db.engine().begin() as c:
+                name = await db.scalar(c, "SELECT display_name FROM agents WHERE agent_key = :a", {"a": agent_key}) or agent_key
                 appr = await approvals.create(
                     c,
                     subject_type="tool_call",
@@ -144,7 +145,7 @@ async def _invoke(
                     action=f"{tool_id}.{action}",
                     risk=decision.risk,
                     requested_by=actor,
-                    title=f"{agent_key} muốn dùng {tool_id}.{action}",
+                    title=f"{name} muốn: {act.description[:1].lower()}{act.description[1:]}",
                     summary=decision.reason,
                     payload=payload,
                 )

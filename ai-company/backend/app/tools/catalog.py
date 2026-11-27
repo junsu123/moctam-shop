@@ -116,7 +116,7 @@ register(
         act("aggregates", "Số liệu tổng hợp đơn hàng (đã ẩn danh)", 1, "none"),
         act("care_list", "Danh sách khách cần chăm sóc (chỉ customer_key)", 1, "none"),
         act("draft", "Gửi bản nháp FAQ/blog chờ duyệt", 2, "external"),
-        act("publish", "Xuất bản FAQ/blog (ADR-16)", 3, "external", "publish"),
+        act("publish", "Xuất bản FAQ/blog (ADR-16)", 3, "external"),  # bài rủi ro: Content Gate gắn publish_risky
         act("unpublish", "Gỡ bài đã xuất bản", 3, "external"),
     )
 )

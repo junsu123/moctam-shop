@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bot, ChevronDown, ChevronRight, LayoutDashboard, Leaf, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { Activity, Bot, ChevronDown, ChevronRight, ClipboardCheck, LayoutDashboard, Leaf, LogOut, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -26,6 +26,7 @@ const NAV = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard },
   { href: "/agent", label: "Agent", icon: Bot },
   { href: "/dien-bien", label: "Diễn biến", icon: Activity },
+  { href: "/phe-duyet", label: "Phê duyệt", icon: ClipboardCheck },
   { href: "/cai-dat", label: "Cài đặt", icon: Settings },
 ];
 
@@ -36,6 +37,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [failed, setFailed] = useState("");
   const pending = useRef<{ resolve: () => void; reject: (e: unknown) => void } | null>(null);
   const [asking, setAsking] = useState(false);
+  const approvalsPending = usePendingCount(path, !!state?.authenticated);
 
   useEffect(() => {
     let alive = true;
@@ -115,6 +117,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   <Link key={n.href} href={n.href} className="sb-link" aria-current={current?.href === n.href ? "page" : undefined}>
                     <n.icon size={18} aria-hidden="true" />
                     {n.label}
+                    {n.href === "/phe-duyet" && approvalsPending > 0 && (
+                      <span className="sb-count" aria-label={`${approvalsPending} việc chờ duyệt`}>
+                        {approvalsPending}
+                      </span>
+                    )}
                   </Link>
                 ))}
               </nav>
@@ -153,6 +160,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </ToastProvider>
     </ShellCtx.Provider>
   );
+}
+
+/** Số việc chờ duyệt cho thanh bên: hỏi lại mỗi 30 giây và mỗi khi chuyển trang. */
+function usePendingCount(path: string, enabled: boolean): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    let alive = true;
+    const tick = () =>
+      api<{ pending: number }>("/approvals/count")
+        .then((r) => alive && setN(r.pending))
+        .catch(() => undefined);
+    void tick();
+    const t = setInterval(tick, 30_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [path, enabled]);
+  return n;
 }
 
 function HealthPill() {
