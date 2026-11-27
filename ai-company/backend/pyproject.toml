@@ -65,7 +65,7 @@ max-line-length = 160  # formatter vẫn gói ở 140; chỉ cho phép câu SQL 
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Body"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S603", "S404"]  # test gọi alembic bằng subprocess với tham số cố định
+"tests/**" = ["S603", "S404", "S608", "S311"]  # test: subprocess alembic tham số cố định; SQL dựng từ dữ liệu test; random có hạt giống
 
 [tool.mypy]
 python_version = "3.12"
