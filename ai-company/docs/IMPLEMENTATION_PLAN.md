@@ -1,6 +1,6 @@
 # IMPLEMENTATION_PLAN: kế hoạch triển khai
 
-> Trạng thái: **v0.2 đã duyệt** (26/11/2026 22:43). **Đang làm Sprint 0.** Owner ưu tiên trang quản trị trọn gói, nên Control Center có từ Sprint 1 và lớn dần theo từng Sprint (§3).
+> Trạng thái: **v0.2 đã duyệt** (26/11/2026 22:43). **Sprint 0, 1 xong** (báo cáo ở `progress/`); tiếp theo Sprint 2. Owner ưu tiên trang quản trị trọn gói, nên Control Center có từ Sprint 1 và lớn dần theo từng Sprint (§3).
 
 ## 1. Tóm tắt cho Owner
 
@@ -73,7 +73,7 @@ Phiên bản cụ thể được khóa ở Sprint 0. Giấy phép cần kiểm t
 | Hàng đợi | Dramatiq + Redis | LGPL-3.0 | Celery (BSD) |
 | Điều phối (v0.2) | **LangGraph** + `langgraph-checkpoint-postgres` | MIT | — |
 | SDK LLM (v0.2) | `anthropic`, `openai` (bọc trong Model Gateway) | MIT / Apache-2.0 | — |
-| Telegram (v0.2) | aiogram (async) | MIT | python-telegram-bot (LGPL-3.0) |
+| Telegram (v0.2) | httpx gọi thẳng Bot API (đổi ở Sprint 1, xem DECISIONS) | BSD-3 | aiogram (MIT), python-telegram-bot (LGPL-3.0) |
 | Chạy trên Windows (v0.2) | Docker Desktop (backend WSL2) | Điều khoản Docker: miễn phí cho doanh nghiệp nhỏ (cần kiểm tra) | Docker Engine cài trong WSL2 Ubuntu |
 | Redis | Valkey hoặc Redis | Valkey BSD-3; Redis bản mới có thay đổi giấy phép, **cần chọn** | — |
 | HTTP client | httpx | BSD-3 | aiohttp |

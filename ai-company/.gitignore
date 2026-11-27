@@ -13,3 +13,6 @@ next-env.d.ts
 .env
 data/
 backups/
+# Kiểm thử E2E (ảnh chụp và log sinh ra mỗi lần chạy)
+e2e/screenshots/
+e2e/logs/

@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     # Khóa chủ để mã hóa secret (token Telegram, khóa API) theo kiểu phong bì: Sprint 1 dùng.
     master_key: SecretStr | None = None
     health_timeout_s: float = Field(default=2.0, gt=0, le=10)
+    # Trang quản trị chạy http://127.0.0.1 nên cookie mặc định không đặt cờ Secure; bật khi đứng sau HTTPS.
+    cookie_secure: bool = False
+    # Telegram Bot API (đổi được để kiểm thử)
+    telegram_api_base: str = "https://api.telegram.org"
 
     @model_validator(mode="after")
     def _prod_needs_master_key(self) -> Settings:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, FastAPI
 
 from app import __version__
-from app.api.v1 import health
+from app.api.v1 import auth, control, health, telegram
 from app.core import errors
 from app.core.config import get_settings
 from app.core.logging import setup_logging
@@ -24,6 +24,9 @@ def create_app() -> FastAPI:
     errors.install(app)
     v1 = APIRouter(prefix="/api/v1")
     v1.include_router(health.router)
+    v1.include_router(auth.router)
+    v1.include_router(control.router)
+    v1.include_router(telegram.router)
     app.include_router(v1)
     return app
 

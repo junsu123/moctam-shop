@@ -22,4 +22,14 @@ try {
 } catch {
     Write-Host "Hệ thống chưa sẵn sàng sau 3 phút. Trang quản trị vẫn mở để xem mục nào chưa chạy." -ForegroundColor Yellow
 }
-Start-Process $url
+# Lần đầu (chưa có tài khoản Owner): in mã thiết lập dùng một lần và mở thẳng trang thiết lập
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$setup = & docker compose exec -T backend python -m app.cli setup-token 2>$null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host ""
+    Write-Host ($setup -join "`r`n") -ForegroundColor Cyan
+    Write-Host "Giữ cửa sổ này mở trong lúc thiết lập." -ForegroundColor Cyan
+    Start-Process ($url + "/thiet-lap")
+} else {
+    Start-Process $url
+}
