@@ -1,108 +1,176 @@
 "use client";
 
+import { Bot, Pause, Play, Search } from "lucide-react";
 import { useState } from "react";
 
-import { Loading, StateTag, useFlash } from "@/components/bits";
+import { useConfirm } from "@/components/ui/dialog";
+import { Card, Empty, ErrorAlert, Loading, PageHeader, StateBadge } from "@/components/ui/primitives";
+import { Tabs, TabPanel, useTabParam } from "@/components/ui/tabs";
+import { useToast } from "@/components/ui/toast";
 import { api, ApiError, type Agent } from "@/lib/api";
 import { ago } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 
-const DEPTS: { key: string; name: string; note: string }[] = [
-  { key: "executive", name: "Điều hành", note: "Nhận mục tiêu từ anh/chị, chia việc cho các phòng" },
-  { key: "marketing", name: "Phòng Marketing", note: "SEO, nội dung, mạng xã hội, quảng cáo, thiết kế" },
-  { key: "sales", name: "Phòng Kinh doanh", note: "Khách hàng, đối tác, khách sỉ" },
-  { key: "growth", name: "Phòng Tăng trưởng", note: "Thí nghiệm và tối ưu chuyển đổi" },
-  { key: "technology", name: "Phòng Công nghệ & Dữ liệu", note: "Website, số liệu, tự động hóa" },
-];
+const DEPTS = [
+  { id: "all", label: "Tất cả" },
+  { id: "executive", label: "Điều hành" },
+  { id: "marketing", label: "Marketing" },
+  { id: "sales", label: "Kinh doanh" },
+  { id: "growth", label: "Tăng trưởng" },
+  { id: "technology", label: "Công nghệ & Dữ liệu" },
+] as const;
+type Dept = (typeof DEPTS)[number]["id"];
+const DEPT_NAME: Record<string, string> = Object.fromEntries(DEPTS.map((d) => [d.id, d.label]));
+const KIND_NAME: Record<Agent["kind"], string> = { executive: "Điều hành", director: "Giám đốc", specialist: "Chuyên viên" };
 
 export default function AgentsPage() {
-  const { data: agents, error, reload: load } = useApi<Agent[]>("/agents");
-  const [flash, say] = useFlash();
-  const [busy, setBusy] = useState<string>("");
+  const { data: agents, error, reload } = useApi<Agent[]>("/agents");
+  const [tab, setTab] = useTabParam<Dept>(
+    DEPTS.map((d) => d.id),
+    "all",
+  );
+  const [q, setQ] = useState("");
+  const [busy, setBusy] = useState("");
+  const confirm = useConfirm();
+  const toast = useToast();
 
   async function act(a: Agent) {
-    let body: { reason: string } | undefined;
-    if (a.state !== "paused") {
-      const reason = window.prompt(`Tạm dừng “${a.display_name}”. Lý do (để ghi vào nhật ký, có thể bỏ trống):`, "");
-      if (reason === null) return;
-      body = { reason };
-    }
+    const pausing = a.state !== "paused";
+    const reason = pausing
+      ? await confirm({
+          title: `Tạm dừng ${a.display_name}?`,
+          body: "Agent sẽ không nhận việc mới và không gọi AI cho tới khi anh/chị cho chạy lại.",
+          confirmLabel: "Tạm dừng",
+          tone: "warn",
+          reason: { label: "Lý do (ghi vào nhật ký, có thể bỏ trống)", placeholder: "Ví dụ: chờ duyệt bộ từ khóa mới" },
+        })
+      : "";
+    if (reason === null) return;
     setBusy(a.agent_key);
     try {
-      await api(`/agents/${a.agent_key}/${a.state === "paused" ? "resume" : "pause"}`, { method: "POST", body: body ?? {} });
-      say(a.state === "paused" ? `${a.display_name} đã chạy lại.` : `${a.display_name} đã tạm dừng.`);
-      await load();
+      await api(`/agents/${a.agent_key}/${pausing ? "pause" : "resume"}`, { method: "POST", body: pausing ? { reason } : {} });
+      toast(pausing ? `Đã tạm dừng ${a.display_name}.` : `${a.display_name} đã chạy lại.`);
+      await reload();
     } catch (x) {
-      say(x instanceof ApiError ? x.message : "Không thực hiện được.", "err");
+      toast(x instanceof ApiError ? x.message : "Không thực hiện được.", "error");
     } finally {
       setBusy("");
     }
   }
 
   async function pauseAll() {
-    const reason = window.prompt("Tạm dừng TẤT CẢ agent. Lý do:", "Tạm dừng toàn bộ");
+    const reason = await confirm({
+      title: "Tạm dừng tất cả agent?",
+      body: "Toàn bộ văn phòng AI ngừng nhận việc và ngừng gọi AI. Có thể cho chạy lại từng agent.",
+      confirmLabel: "Tạm dừng tất cả",
+      tone: "danger",
+      reason: { label: "Lý do", initial: "Tạm dừng toàn bộ" },
+    });
     if (reason === null) return;
     setBusy("*");
     try {
       const r = await api<{ paused: number }>("/agents/pause-all", { method: "POST", body: { reason } });
-      say(`Đã tạm dừng ${r.paused} agent.`);
-      await load();
+      toast(`Đã tạm dừng ${r.paused} agent.`);
+      await reload();
     } catch (x) {
-      say(x instanceof ApiError ? x.message : "Không thực hiện được.", "err");
+      toast(x instanceof ApiError ? x.message : "Không thực hiện được.", "error");
     } finally {
       setBusy("");
     }
   }
 
-  if (!agents) return error ? <p className="err">{error}</p> : <Loading what="danh sách agent" />;
+  if (!agents) return error ? <ErrorAlert>{error}</ErrorAlert> : <Loading what="danh sách agent" />;
   const paused = agents.filter((a) => a.state === "paused").length;
+  const needle = q.trim().toLowerCase();
+  const list = agents.filter(
+    (a) => (tab === "all" || a.department === tab) && (!needle || `${a.display_name} ${a.role_summary} ${a.agent_key}`.toLowerCase().includes(needle)),
+  );
 
   return (
     <>
-      <header className="page-head">
-        <div>
-          <h1>Agent</h1>
-          <p className="muted">
-            {agents.length} agent, {paused ? `${paused} đang tạm dừng` : "tất cả đang chạy"}. Agent tạm dừng không nhận việc mới và không gọi AI.
-          </p>
-        </div>
-        <button type="button" className="btn danger" onClick={pauseAll} disabled={busy !== "" || paused === agents.length}>
-          Tạm dừng tất cả
-        </button>
-      </header>
-      {flash}
-      {DEPTS.map((d) => {
-        const list = agents.filter((a) => a.department === d.key);
-        if (!list.length) return null;
-        return (
-          <section key={d.key} className="panel" aria-labelledby={`d-${d.key}`}>
-            <div className="panel-head">
-              <h2 id={`d-${d.key}`}>{d.name}</h2>
-              <p className="muted small">{d.note}</p>
-            </div>
-            <ul className="agents">
-              {list.map((a) => (
-                <li key={a.agent_key} className={a.kind}>
-                  <div className="who">
-                    <span className="name">{a.display_name}</span>
-                    <span className="muted small">{a.role_summary}</span>
-                    {a.state === "paused" && (
-                      <span className="small paused-note">
-                        Dừng {ago(a.updated_at)}
-                        {a.reason ? `: ${a.reason}` : ""}
-                      </span>
+      <PageHeader
+        title="Agent"
+        description={`${agents.length} agent, ${paused ? `${paused} đang tạm dừng` : "tất cả đang chạy"}. Agent tạm dừng không nhận việc mới và không gọi AI.`}
+        actions={
+          <button type="button" className="btn btn-danger-outline" onClick={pauseAll} disabled={busy !== "" || paused === agents.length}>
+            <Pause size={16} aria-hidden="true" /> Tạm dừng tất cả
+          </button>
+        }
+      />
+      <Tabs
+        label="Phòng ban"
+        value={tab}
+        onChange={setTab}
+        tabs={DEPTS.map((d) => ({ id: d.id, label: d.label, count: d.id === "all" ? agents.length : agents.filter((a) => a.department === d.id).length }))}
+      />
+      <TabPanel id={tab}>
+        <Card
+          title={tab === "all" ? "Toàn bộ agent" : `Phòng ${DEPT_NAME[tab]}`}
+          actions={
+            <label className="input-icon">
+              <Search size={16} aria-hidden="true" />
+              <input className="input" type="search" placeholder="Tìm agent" aria-label="Tìm agent" value={q} onChange={(e) => setQ(e.target.value)} />
+            </label>
+          }
+          flush
+        >
+          {list.length === 0 ? (
+            <Empty icon={<Bot size={20} />} title="Không có agent phù hợp">
+              Thử từ khóa khác hoặc chọn tab Tất cả.
+            </Empty>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Agent</th>
+                    {tab === "all" && (
+                      <th scope="col" className="hide-sm">
+                        Phòng ban
+                      </th>
                     )}
-                  </div>
-                  <StateTag state={a.state} />
-                  <button type="button" className="btn ghost" onClick={() => act(a)} disabled={busy !== ""}>
-                    {a.state === "paused" ? "Chạy lại" : "Tạm dừng"}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        );
-      })}
+                    <th scope="col" className="hide-sm">
+                      Cấp
+                    </th>
+                    <th scope="col">Trạng thái</th>
+                    <th scope="col" className="hide-sm">
+                      Cập nhật
+                    </th>
+                    <th scope="col" className="right">
+                      <span className="sr-only">Thao tác</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((a) => (
+                    <tr key={a.agent_key} data-agent={a.agent_key}>
+                      <td>
+                        <div className="cell-main">
+                          <b>{a.display_name}</b>
+                          <span>{a.role_summary}</span>
+                          {a.state === "paused" && a.reason && <span className="note">Lý do dừng: {a.reason}</span>}
+                        </div>
+                      </td>
+                      {tab === "all" && <td className="hide-sm nowrap">{DEPT_NAME[a.department] ?? a.department}</td>}
+                      <td className="hide-sm nowrap">{KIND_NAME[a.kind]}</td>
+                      <td>
+                        <StateBadge state={a.state} />
+                      </td>
+                      <td className="hide-sm nowrap muted">{ago(a.updated_at)}</td>
+                      <td className="right">
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => act(a)} disabled={busy !== ""}>
+                          {a.state === "paused" ? <Play size={14} aria-hidden="true" /> : <Pause size={14} aria-hidden="true" />}
+                          {a.state === "paused" ? "Chạy lại" : "Tạm dừng"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </TabPanel>
     </>
   );
 }

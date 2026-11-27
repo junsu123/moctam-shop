@@ -1,19 +1,28 @@
 "use client";
 
+import { Inbox } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Loading } from "@/components/bits";
+import { Badge, Card, Empty, ErrorAlert, Loading, PageHeader, type Tone } from "@/components/ui/primitives";
+import { Tabs, TabPanel, useTabParam } from "@/components/ui/tabs";
 import { api, ApiError, type EventItem } from "@/lib/api";
 import { actorLabel, clock, dayKey, dayLabel } from "@/lib/format";
 
-type Live = "connecting" | "live" | "retrying";
-const NOTE_STATUS: Record<string, string> = { queued: "chờ gửi", sent: "đã gửi", failed: "gửi lỗi", no_recipient: "chưa có chat nhận" };
+type Live = "connecting" | "on" | "retry";
+type Filter = "all" | "audit" | "notification";
+const FILTERS = ["all", "audit", "notification"] as const;
+const NOTE_STATUS: Record<string, [string, Tone]> = {
+  queued: ["Chờ gửi", "warn"],
+  sent: ["Đã gửi", "success"],
+  failed: ["Gửi lỗi", "danger"],
+  no_recipient: ["Chưa có chat nhận", "neutral"],
+};
 
 export default function EventsPage() {
   const [items, setItems] = useState<EventItem[] | null>(null);
   const [live, setLive] = useState<Live>("connecting");
   const [err, setErr] = useState("");
-  const [filter, setFilter] = useState<"all" | "audit" | "notification">("all");
+  const [tab, setTab] = useTabParam<Filter>(FILTERS, "all");
 
   useEffect(() => {
     let alive = true;
@@ -28,13 +37,13 @@ export default function EventsPage() {
         .then((e) => alive && merge(e))
         .catch((x) => alive && setErr(x instanceof ApiError ? x.message : "Không tải được."));
     void reload();
-    // Luồng trực tiếp (SSE). Mất kết nối thì trình duyệt tự nối lại; khi nối lại thì tải lại để không sót sự kiện.
+    // Luồng trực tiếp (SSE). Mất kết nối thì trình duyệt tự nối lại; nối lại xong thì tải lại để không sót sự kiện.
     const es = new EventSource("/api/v1/events/stream");
     es.onopen = () => {
-      setLive("live");
+      setLive("on");
       void reload();
     };
-    es.onerror = () => setLive("retrying");
+    es.onerror = () => setLive("retry");
     es.onmessage = (m) => merge([JSON.parse(m.data) as EventItem]);
     return () => {
       alive = false;
@@ -42,70 +51,100 @@ export default function EventsPage() {
     };
   }, []);
 
+  const counts = useMemo(() => {
+    const l = items ?? [];
+    return { all: l.length, audit: l.filter((e) => e.source === "audit").length, notification: l.filter((e) => e.source === "notification").length };
+  }, [items]);
+
   const groups = useMemo(() => {
-    const list = (items ?? []).filter((e) => filter === "all" || e.source === filter);
     const out: { day: string; label: string; items: EventItem[] }[] = [];
-    for (const e of list) {
+    for (const e of (items ?? []).filter((x) => tab === "all" || x.source === tab)) {
       const k = dayKey(e.at);
       if (out.at(-1)?.day !== k) out.push({ day: k, label: dayLabel(e.at), items: [] });
       out.at(-1)!.items.push(e);
     }
     return out;
-  }, [items, filter]);
+  }, [items, tab]);
 
   return (
     <>
-      <header className="page-head">
-        <div>
-          <h1>Diễn biến</h1>
-          <p className="muted">Mọi thao tác của anh/chị, của agent và mọi tin gửi Telegram, mới nhất ở trên.</p>
-        </div>
-        <p className={`live ${live}`} role="status">
-          <span className="dot" aria-hidden="true" />
-          {live === "live" ? "Đang cập nhật trực tiếp" : live === "connecting" ? "Đang kết nối…" : "Mất kết nối, đang thử lại…"}
-        </p>
-      </header>
-
-      <div className="seg" role="group" aria-label="Lọc diễn biến">
-        {(
-          [
-            ["all", "Tất cả"],
-            ["audit", "Thao tác"],
-            ["notification", "Tin Telegram"],
-          ] as const
-        ).map(([k, label]) => (
-          <button key={k} type="button" aria-pressed={filter === k} onClick={() => setFilter(k)}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {err && <p className="err">{err}</p>}
-      {!items ? (
-        <Loading what="diễn biến" />
-      ) : groups.length === 0 ? (
-        <p className="muted">Chưa có diễn biến nào. Khi agent bắt đầu làm việc, từng bước sẽ hiện ở đây ngay lập tức.</p>
-      ) : (
-        groups.map((g) => (
-          <section key={g.day} className="panel" aria-label={g.label}>
-            <h2 className="day">{g.label}</h2>
-            <ol className="feed">
-              {g.items.map((e) => (
-                <li key={`${e.source}-${e.id}`} className={e.source === "notification" ? `note ${e.status ?? ""}` : e.action.endsWith("_failed") ? "warn" : ""}>
-                  <time dateTime={e.at}>{clock(e.at)}</time>
-                  <span className="who">{e.source === "notification" ? "Telegram" : actorLabel(e.actor)}</span>
-                  <span className="what">
-                    {e.text}
-                    {e.resource && e.source === "audit" ? <span className="obj">{e.resource.replace(/^[a-z_]+:/, "")}</span> : null}
-                    {e.reason ? <span className="sub">Lý do: {e.reason}</span> : null}
-                  </span>
-                  {e.source === "notification" && <span className="small muted">{NOTE_STATUS[e.status ?? ""] ?? e.status}</span>}
-                </li>
-              ))}
-            </ol>
-          </section>
-        ))
-      )}
+      <PageHeader
+        title="Diễn biến"
+        description="Mọi thao tác của anh/chị, của agent và mọi tin gửi Telegram. Mới nhất ở trên, cập nhật ngay khi có."
+        actions={
+          <span className={`live ${live === "on" ? "on" : live === "retry" ? "retry" : ""}`} role="status">
+            <span className="dot" aria-hidden="true" />
+            {live === "on" ? "Đang cập nhật trực tiếp" : live === "connecting" ? "Đang kết nối…" : "Mất kết nối, đang thử lại…"}
+          </span>
+        }
+      />
+      <Tabs
+        label="Loại diễn biến"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { id: "all", label: "Tất cả", count: counts.all },
+          { id: "audit", label: "Thao tác", count: counts.audit },
+          { id: "notification", label: "Tin Telegram", count: counts.notification },
+        ]}
+      />
+      <TabPanel id={tab}>
+        {err && <ErrorAlert>{err}</ErrorAlert>}
+        {!items ? (
+          <Loading what="diễn biến" />
+        ) : (
+          <Card flush>
+            {groups.length === 0 ? (
+              <Empty icon={<Inbox size={20} />} title="Chưa có diễn biến">
+                Khi agent bắt đầu làm việc, từng bước sẽ hiện ở đây ngay lập tức.
+              </Empty>
+            ) : (
+              <div className="table-wrap">
+                <table className="table feed">
+                  <thead>
+                    <tr>
+                      <th scope="col">Thời gian</th>
+                      <th scope="col">Nguồn</th>
+                      <th scope="col">Nội dung</th>
+                      <th scope="col" className="hide-sm">
+                        Đối tượng
+                      </th>
+                    </tr>
+                  </thead>
+                  {groups.map((g) => (
+                    <tbody key={g.day}>
+                      <tr className="day">
+                        <td colSpan={4}>{g.label}</td>
+                      </tr>
+                      {g.items.map((e) => {
+                        const tg = e.source === "notification";
+                        const st = tg ? NOTE_STATUS[e.status ?? ""] : undefined;
+                        return (
+                          <tr key={`${e.source}-${e.id}`}>
+                            <td className="nowrap muted">
+                              <time dateTime={e.at}>{clock(e.at)}</time>
+                            </td>
+                            <td className="nowrap">{tg ? <Badge tone="info" plain>Telegram</Badge> : actorLabel(e.actor)}</td>
+                            <td>
+                              <div className="cell-main">
+                                <span className={e.action.endsWith("_failed") ? "note" : ""}>{e.text}</span>
+                                {e.reason && <span>Lý do: {e.reason}</span>}
+                              </div>
+                            </td>
+                            <td className="hide-sm">
+                              {tg ? st && <Badge tone={st[1]}>{st[0]}</Badge> : e.resource && <span className="mono-tag">{e.resource.replace(/^[a-z_]+:/, "")}</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  ))}
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
+      </TabPanel>
     </>
   );
 }

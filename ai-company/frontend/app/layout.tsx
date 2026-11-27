@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+// Phông Be Vietnam Pro (thiết kế cho tiếng Việt), tự host trong bản build: không gọi Google Fonts, CSP chỉ cần 'self'.
+import "@fontsource/be-vietnam-pro/400.css";
+import "@fontsource/be-vietnam-pro/500.css";
+import "@fontsource/be-vietnam-pro/600.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

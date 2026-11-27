@@ -1,5 +1,6 @@
 "use client";
 
+import { Leaf } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -11,7 +12,7 @@ export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [enroll, setEnroll] = useState<Enroll | null>(null);
-  const [cred, setCred] = useState<{ email: string; password: string }>({ email: "", password: "" });
+  const [cred, setCred] = useState({ email: "", password: "" });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -64,67 +65,83 @@ export default function SetupPage() {
     }
   }
 
+  const head = (
+    <>
+      <div className="auth-brand">
+        <span className="logo lg" aria-hidden="true">
+          <Leaf size={20} />
+        </span>
+        <div>
+          <b>Xưởng Trà Mộc</b>
+          <span>Thiết lập văn phòng AI, bước {step}/2</span>
+        </div>
+      </div>
+      <div className="steps" aria-hidden="true">
+        <span className="on" />
+        <span className={step === 2 ? "on" : ""} />
+      </div>
+    </>
+  );
+  const error = err && (
+    <p className="alert danger" role="alert">
+      {err}
+    </p>
+  );
+
   return (
-    <main className="gate">
+    <main className="auth">
       {step === 1 ? (
-        <form className="card-form" onSubmit={step1}>
-          <p className="brand-name">Xưởng Trà Mộc</p>
-          <h1>Thiết lập văn phòng AI</h1>
-          <p className="muted">
-            Tạo tài khoản Owner. Mã thiết lập hiện trong cửa sổ PowerShell khi chạy <code>scripts\windows\khoi-dong.ps1</code>, dùng một lần trong 30 phút.
+        <form className="auth-card" onSubmit={step1}>
+          {head}
+          <h1>Tạo tài khoản Owner</h1>
+          <p className="lead">
+            Mã thiết lập hiện trong cửa sổ PowerShell khi chạy <code>khoi-dong.ps1</code>, dùng một lần trong 30 phút.
           </p>
-          <label>
-            Mã thiết lập
-            <input name="setup_token" autoComplete="off" placeholder="ABCD-1234" required autoFocus />
+          <label className="field">
+            <span>Mã thiết lập</span>
+            <input className="input" name="setup_token" autoComplete="off" placeholder="ABCD-1234" required autoFocus />
           </label>
-          <label>
-            Tên hiển thị
-            <input name="display_name" autoComplete="name" required maxLength={80} />
+          <label className="field">
+            <span>Tên hiển thị</span>
+            <input className="input" name="display_name" autoComplete="name" required maxLength={80} />
           </label>
-          <label>
-            Email
-            <input name="email" type="email" autoComplete="username" required />
+          <label className="field">
+            <span>Email</span>
+            <input className="input" name="email" type="email" autoComplete="username" required />
           </label>
-          <label>
-            Mật khẩu (ít nhất 10 ký tự)
-            <input name="password" type="password" autoComplete="new-password" minLength={10} required />
+          <div className="field">
+            <label htmlFor="pw">Mật khẩu</label>
+            <input className="input" id="pw" name="password" type="password" autoComplete="new-password" minLength={10} required aria-describedby="pw-help" />
+            <span className="help" id="pw-help">
+              Ít nhất 10 ký tự.
+            </span>
+          </div>
+          <label className="field">
+            <span>Nhập lại mật khẩu</span>
+            <input className="input" name="password2" type="password" autoComplete="new-password" minLength={10} required />
           </label>
-          <label>
-            Nhập lại mật khẩu
-            <input name="password2" type="password" autoComplete="new-password" minLength={10} required />
-          </label>
-          {err && (
-            <p className="err" role="alert">
-              {err}
-            </p>
-          )}
-          <button type="submit" className="btn wide" disabled={busy}>
+          {error}
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
             Tiếp tục
           </button>
         </form>
       ) : (
-        <form className="card-form" onSubmit={step2}>
-          <p className="brand-name">Bước 2 / 2</p>
+        <form className="auth-card" onSubmit={step2}>
+          {head}
           <h1>Bật xác thực hai lớp</h1>
-          <p className="muted">
-            Mở Google Authenticator hoặc Microsoft Authenticator trên điện thoại, quét mã dưới đây, rồi nhập mã 6 số ứng dụng hiện ra.
-          </p>
-          {/* SVG do backend sinh từ thư viện segno (không chứa dữ liệu người dùng nhập ngoài email đã kiểm tra) */}
+          <p className="lead">Mở Google Authenticator hoặc Microsoft Authenticator, quét mã dưới đây, rồi nhập mã 6 số ứng dụng hiện ra.</p>
+          {/* SVG do backend sinh bằng thư viện segno */}
           <div className="qr" dangerouslySetInnerHTML={{ __html: enroll?.qr_svg ?? "" }} />
           <details>
             <summary>Không quét được? Nhập khóa bằng tay</summary>
             <code className="secret">{enroll?.totp_secret}</code>
           </details>
-          <label>
-            Mã 6 số
-            <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" required autoFocus />
+          <label className="field">
+            <span>Mã 6 số</span>
+            <input className="input" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" required autoFocus />
           </label>
-          {err && (
-            <p className="err" role="alert">
-              {err}
-            </p>
-          )}
-          <button type="submit" className="btn wide" disabled={busy}>
+          {error}
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
             Hoàn tất
           </button>
         </form>

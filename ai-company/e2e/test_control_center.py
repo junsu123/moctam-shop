@@ -76,7 +76,7 @@ def test_control_center_first_run(page: Page) -> None:
     page.get_by_label("Mã thiết lập").fill(setup_token())
     page.get_by_label("Tên hiển thị").fill("Chủ xưởng")
     page.get_by_label("Email").fill(EMAIL)
-    page.get_by_label("Mật khẩu (ít nhất 10 ký tự)").fill(PASSWORD)
+    page.get_by_label("Mật khẩu", exact=True).fill(PASSWORD)
     page.get_by_label("Nhập lại mật khẩu").fill(PASSWORD)
     page.get_by_role("button", name="Tiếp tục").click()
     expect(page.get_by_role("heading", name="Bật xác thực hai lớp")).to_be_visible()
@@ -89,39 +89,55 @@ def test_control_center_first_run(page: Page) -> None:
     with page.expect_response(lambda r: r.url.endswith("/auth/setup/confirm")) as confirm:
         page.get_by_role("button", name="Hoàn tất").click()
     assert confirm.value.ok, confirm.value.text()
-    print("set-cookie:", confirm.value.headers.get("set-cookie", "(không có)")[:80], "cookies:", [c["name"] for c in page.context.cookies()])
 
-    # 2. Tổng quan: chỉ ra các bước còn thiếu bằng dữ liệu thật
+    # 2. Tổng quan: danh sách việc thiết lập tính từ dữ liệu thật
     expect(page.get_by_role("heading", name="Tổng quan")).to_be_visible()
-    expect(page.get_by_text("Còn 2 bước")).to_be_visible()
-    expect(page.locator(".tile").filter(has=page.get_by_role("heading", name="Agent", exact=True)).locator(".figure")).to_have_text("15")
+    expect(page.get_by_role("heading", name="Thiết lập ban đầu: còn 4 bước")).to_be_visible()
+    expect(page.get_by_role("region", name="Agent", exact=True)).to_contain_text("15")
     shot(page, "02-tong-quan")
 
-    # 3. Agent: tạm dừng SEO có lý do
+    # 3. Agent: tab theo phòng ban, tạm dừng SEO có lý do qua hộp xác nhận
     page.get_by_role("link", name="Agent", exact=True).click()
-    row = page.locator(".agents li").filter(has_text="Từ khóa, đối thủ")
-    page.once("dialog", lambda d: d.accept("Chờ Owner duyệt bộ từ khóa"))
+    page.get_by_role("tab", name=re.compile("^Marketing")).click()
+    expect(page).to_have_url(re.compile(r"/agent\?tab=marketing$"))
+    expect(page.locator("tbody tr")).to_have_count(6)
+    row = page.locator("tr[data-agent=seo_agent]")
     row.get_by_role("button", name="Tạm dừng").click()
-    expect(row.locator(".tag")).to_have_text("Tạm dừng")
+    dlg = page.get_by_role("dialog")
+    dlg.get_by_role("textbox").fill("Chờ Owner duyệt bộ từ khóa")
+    shot(page, "03a-agent-xac-nhan")
+    dlg.get_by_role("button", name="Tạm dừng").click()
+    expect(row.locator(".badge")).to_have_text("Tạm dừng")
     expect(row).to_contain_text("Chờ Owner duyệt bộ từ khóa")
+    expect(page.locator(".toast").filter(has_text="Đã tạm dừng SEO")).to_be_visible()
+    page.get_by_role("tab", name=re.compile("^Tất cả")).click()
+    expect(page.locator("tbody tr")).to_have_count(15)
+    page.get_by_label("Tìm agent").fill("quảng cáo")
+    expect(page.locator("tbody tr")).to_have_count(1)
+    page.get_by_label("Tìm agent").fill("")
     shot(page, "03-agent")
 
     # 4. Diễn biến: sự kiện mới đến ngay qua SSE, không cần tải lại trang
     page.get_by_role("link", name="Diễn biến").click()
     expect(page.get_by_text("Đang cập nhật trực tiếp")).to_be_visible(timeout=10_000)
-    expect(page.locator(".feed li").first).to_contain_text("tạm dừng agent")
+    first = page.locator("table.feed tbody tr:not(.day)").first
+    expect(first).to_contain_text("tạm dừng agent")
     other = page.context.new_page()
     other.goto(BASE + "/agent")
-    other.once("dialog", lambda d: d.accept("Thử luồng trực tiếp"))
-    other.locator(".agents li").filter(has_text="Bài website, Facebook").get_by_role("button", name="Tạm dừng").click()
-    expect(other.locator(".flash")).to_be_visible()
+    other.locator("tr[data-agent=content_agent]").get_by_role("button", name="Tạm dừng").click()
+    other.get_by_role("dialog").get_by_role("textbox").fill("Thử luồng trực tiếp")
+    other.get_by_role("dialog").get_by_role("button", name="Tạm dừng").click()
+    expect(other.locator(".toast")).to_be_visible()
     other.close()
-    expect(page.locator(".feed li").first).to_contain_text("content_agent", timeout=10_000)
-    expect(page.locator(".feed li").first).to_contain_text("Thử luồng trực tiếp")
+    expect(first).to_contain_text("content_agent", timeout=10_000)
+    expect(first).to_contain_text("Thử luồng trực tiếp")
+    page.get_by_role("tab", name=re.compile("^Thao tác")).click()
+    expect(page).to_have_url(re.compile(r"tab=audit$"))
     shot(page, "04-dien-bien")
 
-    # 5. Telegram: token cần xác thực lại → hộp thoại → lưu → mã kết nối → điện thoại nhắn mã → chat xuất hiện
+    # 5. Cài đặt → tab Telegram: token cần xác thực lại → lưu → mã kết nối → điện thoại nhắn mã → chat xuất hiện
     page.get_by_role("link", name="Cài đặt").click()
+    expect(page.get_by_role("tab", name="Telegram")).to_have_attribute("aria-selected", "true")
     page.get_by_label("Token do BotFather cấp").fill(TG_TOKEN)
     page.get_by_role("button", name="Kiểm tra và lưu").click()
     dlg = page.get_by_role("dialog")
@@ -130,47 +146,65 @@ def test_control_center_first_run(page: Page) -> None:
     dlg.get_by_label("Mật khẩu").fill(PASSWORD)
     dlg.get_by_label("Mã 6 số").fill(totp.now())
     dlg.get_by_role("button", name="Xác nhận").click()
-    expect(page.get_by_text("Bot @xuongtra_ai_bot đã sẵn sàng")).to_be_visible()
+    expect(page.locator(".toast").filter(has_text="Bot @xuongtra_ai_bot đã sẵn sàng")).to_be_visible()
     page.get_by_role("button", name="Tạo mã kết nối", exact=True).click()
-    code = page.locator(".code-box .code").inner_text().split()[-1]
+    code = page.locator(".code-panel .code").inner_text().split()[-1]
     assert re.fullmatch(r"\d{6}", code)
-    shot(page, "06-ma-ket-noi")
     tg_push(5550001, f"/ketnoi {code}")
-    expect(page.locator(".chats li").filter(has_text="Điện thoại Owner")).to_be_visible(timeout=15_000)
+    expect(page.locator("table.chats tbody tr").filter(has_text="Điện thoại Owner")).to_be_visible(timeout=15_000)
     assert any("Đã kết nối" in str(m["text"]) for m in tg_sent())
+    shot(page, "06-cai-dat-telegram")
     page.get_by_role("button", name="Gửi tin thử").click()
     deadline = time.time() + 15
     while time.time() < deadline and not any("Tin thử" in str(m["text"]) for m in tg_sent()):
         time.sleep(0.5)
     assert any("Tin thử" in str(m["text"]) for m in tg_sent()), tg_sent()
 
-    # 6. Ngân sách
+    # 6. Tab Ngân sách AI
+    page.get_by_role("tab", name="Ngân sách AI").click()
+    expect(page).to_have_url(re.compile(r"tab=ngan-sach$"))
     page.get_by_label("Trần mỗi tháng (USD)").fill("40")
     page.get_by_role("button", name="Lưu ngân sách").click()
-    expect(page.get_by_text("Đã lưu ngân sách.")).to_be_visible()
+    expect(page.locator(".toast").filter(has_text="Đã lưu ngân sách.")).to_be_visible()
+    shot(page, "07-cai-dat-ngan-sach")
 
-    # 7. Khóa API (vẫn trong 5 phút xác thực lại nên không hỏi lại)
-    prov = page.locator(".provider").filter(has_text="Anthropic")
+    # 7. Tab Giờ làm việc (tải lại trang vẫn đúng tab)
+    page.get_by_role("tab", name="Giờ làm việc").click()
+    expect(page).to_have_url(re.compile(r"tab=gio$"))
+    page.reload()
+    expect(page.get_by_role("tab", name="Giờ làm việc")).to_have_attribute("aria-selected", "true")
+    expect(page.get_by_label("Telegram im lặng từ")).to_have_value("22:00")
+
+    # 8. Tab Nhà cung cấp AI: lưu khóa (vẫn trong 5 phút xác thực lại nên không hỏi lại)
+    page.get_by_role("tab", name="Nhà cung cấp AI").click()
+    prov = page.get_by_role("region", name="Anthropic (Claude)")
     prov.get_by_label("Khóa API").fill("sk-ant-api03-" + "E" * 40 + "Z9Z9")
     prov.get_by_role("button", name="Lưu khóa").click()
     expect(prov).to_contain_text("…Z9Z9")
-    expect(prov.locator(".tag")).to_have_text("Chưa kiểm tra")
+    expect(prov.locator(".card-head .badge")).to_have_text("Chưa kiểm tra")
     assert "EEEEEEEE" not in page.content()
-    shot(page, "07-cai-dat")
+    shot(page, "08-cai-dat-nha-cung-cap")
 
-    # 8. Đăng xuất, đăng nhập lại; sai mã thì báo lỗi rõ
-    page.get_by_role("button", name="Đăng xuất").click()
+    # 9. Đăng xuất qua menu người dùng, đăng nhập lại; sai mã thì báo lỗi rõ
+    page.locator(".menu-btn").click()
+    page.get_by_role("menuitem", name="Đăng xuất").click()
     expect(page).to_have_url(re.compile(r"/dang-nhap$"))
     page.get_by_label("Email").fill(EMAIL)
     page.get_by_label("Mật khẩu").fill(PASSWORD)
-    page.get_by_label("Mã 6 số trong ứng dụng xác thực").fill("000000" if totp.now() != "000000" else "111111")
+    page.get_by_label("Mã xác thực 6 số").fill("000000" if totp.now() != "000000" else "111111")
     page.get_by_role("button", name="Đăng nhập").click()
-    expect(page.locator("p.err")).to_contain_text("không đúng")
-    shot(page, "08-dang-nhap-sai")
-    page.get_by_label("Mã 6 số trong ứng dụng xác thực").fill(totp.now())
+    expect(page.locator(".alert.danger")).to_contain_text("không đúng")
+    shot(page, "09-dang-nhap-sai")
+    page.get_by_label("Mã xác thực 6 số").fill(totp.now())
     page.get_by_role("button", name="Đăng nhập").click()
-    expect(page.get_by_role("heading", name="Tổng quan")).to_be_visible()
-    expect(page.get_by_text("Còn 1 bước")).to_be_visible()  # còn bấm kiểm tra khóa API
-    shot(page, "09-tong-quan-sau-cai-dat")
+    expect(page.get_by_role("heading", name="Thiết lập ban đầu: còn 1 bước")).to_be_visible()  # còn kiểm tra khóa API
+    shot(page, "10-tong-quan-sau-cai-dat")
+
+    # 10. Màn hình hẹp (điện thoại) vẫn dùng được
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.get_by_role("link", name="Cài đặt").click()
+    expect(page.get_by_role("tab", name="Telegram")).to_be_visible()
+    expect(page.get_by_role("region", name="Bot Telegram")).to_be_visible()
+    shot(page, "11-dien-thoai")
 
     assert page.csp_errors == [], page.csp_errors  # type: ignore[attr-defined]

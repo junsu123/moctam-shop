@@ -102,6 +102,34 @@ Trang quản trị cũng đã dùng được, có các phần: Tổng quan, Agen
 
 Tổng: **65 test backend đạt** (ruff, ruff format, mypy strict sạch), **1 test E2E đạt**.
 
+## Chuẩn hóa giao diện (27/11/2026, theo yêu cầu Owner)
+
+Owner yêu cầu giao diện giống các bản thương mại, màn hình nhiều phần thì chuyển sang tab.
+
+- **Khung trang**:
+  - thanh bên tối có icon;
+  - thanh trên có đường dẫn, trạng thái hệ thống (kiểm mỗi 30 giây) và menu người dùng (đăng xuất nằm trong menu).
+- **Bộ thành phần dùng chung** (`components/ui/`):
+  - tab;
+  - thẻ, thẻ số liệu;
+  - nhãn trạng thái, bảng, trạng thái trống;
+  - hộp xác nhận (thay `window.prompt/confirm` của trình duyệt), thông báo nổi;
+  - công tắc.
+- **Phông Be Vietnam Pro** (thiết kế cho tiếng Việt). Phông tự chứa trong bản build: không gọi Google Fonts, CSP vẫn chỉ `'self'`. Icon dùng `lucide-react` (ISC).
+- **Tab**, lưu trên URL `?tab=…` (tải lại trang hay gửi link vẫn mở đúng tab; dùng được bằng phím mũi tên):
+  - Cài đặt: Telegram, Ngân sách AI, Giờ làm việc, Nhà cung cấp AI;
+  - Agent: Tất cả, Điều hành, Marketing, Kinh doanh, Tăng trưởng, Công nghệ & Dữ liệu (có đếm số), kèm bảng và ô tìm agent;
+  - Diễn biến: Tất cả, Thao tác, Tin Telegram (có đếm số), dạng bảng nhóm theo ngày.
+- **Tổng quan**:
+  - danh sách bước thiết lập có đánh dấu đã xong;
+  - 4 thẻ số liệu;
+  - hoạt động gần đây, tình trạng hệ thống, nhà cung cấp AI.
+- **E2E** đi lại toàn bộ luồng trên giao diện mới. Kiểm thêm:
+  - chuyển tab, tab nằm trên URL, tải lại vẫn giữ tab;
+  - ô tìm agent;
+  - màn hình điện thoại 390 px.
+- Kết quả: 1/1 đạt, 12 ảnh chụp.
+
 ## Lệch so với kế hoạch (ghi trung thực)
 
 | Kế hoạch | Thực tế | Lý do / xử lý |
