@@ -38,11 +38,16 @@
 |---|---|---|
 | "Một màn hình hiển thị tất cả diễn biến đang diễn ra trên phần mềm, từng công việc của từng agent đang làm" | (1) **Làm ngay cho Văn phòng AI hiện tại** (`ai/`): `python -m xuong_ai monitor`, tự mở cùng `run` tại http://127.0.0.1:8765. Nội dung: làn hoạt động 60 phút theo nhân viên, bảng nhân viên, việc chờ + lý do, việc cần Owner, dòng diễn biến 2 giây. (2) **Đưa vào AI Company** thành màn hình **"Diễn biến trực tiếp"** của dashboard, làm từ Sprint 4 (lát cắt dọc). Mở rộng cho 15 agent: làn theo phòng ban, thu gọn/mở rộng, xem bước trong đồ thị LangGraph đang chạy, chi phí theo agent | ARCH §4 (Dashboard), PLAN Sprint 4/8, TEST E2E-LIVE |
 
+### Lần 5 (22:43): duyệt kiến trúc
+
+| Owner | Quyết định | Tài liệu đổi |
+|---|---|---|
+| "**duyệt kiến trúc** trang quản trị trọn gói" | Kiến trúc v0.2 **được duyệt**; bắt đầu Sprint 0. **Trang quản trị trọn gói (Control Center) đưa lên sớm:** Sprint 1 đã có trang dùng được (đăng nhập + 2FA, Cài đặt → Telegram, ngân sách, danh sách agent với tạm dừng/chạy lại, màn hình diễn biến). Mỗi Sprint sau bổ sung màn hình cho phần vừa làm, thay vì dồn hết dashboard vào Sprint 8 | CLAUDE.md, PLAN §3 |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |
 |---|---|---|
 | Q-A2b | Giữ mã trong repo `moctam-shop` hay tạo repo riêng? | Giữ trong `moctam-shop/ai-company/` |
 | Q-W1 | Máy bật những giờ nào? Có UPS (bộ lưu điện) không? | 7:00–22:00 (bao trùm các giờ đăng bài), không có UPS |
-| **Duyệt kiến trúc** 🔴 | Owner ghi "duyệt kiến trúc" để bắt đầu Sprint 0 | — |
 | Q-B2, Q-T4, Q-I1…I6 | Như `QUESTIONS_FOR_OWNER.md` | Như mặc định đã ghi ở đó |

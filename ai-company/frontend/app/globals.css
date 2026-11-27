@@ -1,0 +1,59 @@
+/* Trang quản trị AI Marketing Company. Dùng chung bảng màu "trà" với màn hình diễn biến của văn phòng AI:
+   xanh chè = ổn/đang chạy, hổ phách ô long = chờ/cảnh báo, đỏ son = lỗi/cần Owner. */
+:root {
+  --nen: #EEF2EC;
+  --giay: #FAFBF8;
+  --muc: #1E2B24;
+  --phu: #5E6E64;
+  --ke: #D3DCD2;
+  --che: #2E7A57;
+  --che-nhat: #CFE5D8;
+  --olong: #B8741A;
+  --olong-nhat: #F3E2C4;
+  --son: #B03A32;
+  --son-nhat: #F4D6D2;
+  --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --nen: #121A16; --giay: #18231E; --muc: #E4EBE5; --phu: #9DADA3; --ke: #2A3832;
+    --che: #4FB386; --che-nhat: #1F3D30; --olong: #E0A24A; --olong-nhat: #3D2F19; --son: #E06A5F; --son-nhat: #44221F;
+  }
+}
+* { box-sizing: border-box; }
+html { font-size: 15px; }
+body { margin: 0; background: var(--nen); color: var(--muc); font-family: var(--font); line-height: 1.5; font-variant-numeric: tabular-nums; }
+h1, h2 { margin: 0; font-weight: 600; }
+:focus-visible { outline: 2px solid var(--che); outline-offset: 2px; }
+
+.shell { max-width: 1080px; margin: 0 auto; padding: 32px 32px 48px; }
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 24px; flex-wrap: wrap; padding-bottom: 18px; border-bottom: 1px solid var(--ke); }
+.head h1 { font-size: clamp(1.6rem, 2.6vw, 2.2rem); letter-spacing: -0.01em; line-height: 1.15; }
+.head p { margin: 4px 0 0; color: var(--phu); }
+.sprint { color: var(--phu); font-size: .9rem; text-align: right; }
+.sprint b { display: block; color: var(--muc); font-size: 1.05rem; }
+
+.panel { margin-top: 28px; }
+.panel h2 { font-size: 1.07rem; margin-bottom: 8px; }
+.checks { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--ke); }
+.checks li { display: grid; grid-template-columns: 14px 220px 1fr auto; gap: 12px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--ke); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--phu); align-self: center; }
+.ok .dot { background: var(--che); }
+.error .dot { background: var(--son); }
+.checks .name { font-weight: 600; }
+.checks .state { color: var(--phu); }
+.error .state { color: var(--son); }
+.checks .ms { color: var(--phu); font-size: .85rem; }
+.note { margin-top: 10px; color: var(--phu); font-size: .9rem; max-width: 70ch; }
+.next { margin: 0; padding-left: 1.2em; max-width: 70ch; }
+.next li { padding: 3px 0; }
+.foot { margin-top: 40px; color: var(--phu); font-size: .85rem; }
+
+@media (max-width: 720px) {
+  .shell { padding: 20px 18px 36px; }
+  .sprint { text-align: left; }
+  .checks li { grid-template-columns: 14px 1fr auto; }
+  .checks .state { grid-column: 2 / span 2; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

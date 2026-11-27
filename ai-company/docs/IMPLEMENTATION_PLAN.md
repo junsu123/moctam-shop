@@ -1,6 +1,6 @@
 # IMPLEMENTATION_PLAN: kế hoạch triển khai
 
-> Trạng thái: **v0.2** (26/11/2026), đã cập nhật theo `DECISIONS.md`, **chờ Owner ghi "duyệt kiến trúc"**. Việc lập trình chỉ bắt đầu sau đó (SRS §21, bước 5–6).
+> Trạng thái: **v0.2 đã duyệt** (26/11/2026 22:43). **Đang làm Sprint 0.** Owner ưu tiên trang quản trị trọn gói, nên Control Center có từ Sprint 1 và lớn dần theo từng Sprint (§3).
 
 ## 1. Tóm tắt cho Owner
 
@@ -24,6 +24,9 @@
 
 ## 2. Vì sao đổi thứ tự Sprint
 
+**Bổ sung khi duyệt (22:43):** Owner ưu tiên trang quản trị trọn gói. Control Center không còn dồn vào Sprint 8. Sprint 1 đã có trang dùng được; mỗi Sprint sau thêm màn hình cho phần vừa xong. Owner điều hành được hệ thống ngay từ khi agent đầu tiên chạy.
+
+
 Lộ trình SRS §20 xây theo **lớp ngang**: nền tảng → lõi agent → trí nhớ → điều phối → học → agent → dashboard. Rủi ro của cách này là tới Sprint 8 mới thấy cả hệ thống chạy cùng nhau, nên lỗi tích hợp lộ ra muộn và đắt.
 
 Đề xuất: giữ đủ nội dung các Sprint của SRS, nhưng **ở Sprint 4 dựng một lát cắt dọc**:
@@ -39,14 +42,14 @@ Kích thước tương đối: S ≈ 1 tuần, M ≈ 2 tuần, L ≈ 3 tuần (m
 | Sprint | Nội dung (giữ đủ mục SRS §20) | Kích thước | Tiêu chí thoát (đo được) | Cần Owner trước |
 |---|---|---|---|---|
 | **0. Quyết định và khung** | Owner duyệt thiết kế; CI (lint, type, test, quét secret); `CLAUDE.md`; mẫu PR có DoD; **hướng dẫn cài đặt trên Windows 11** (Docker Desktop/WSL2, `.wslconfig` giới hạn 6 GB, tự khởi động, tắt chế độ ngủ, BitLocker, sao lưu) | S | CI xanh trên khung rỗng; `docker compose up` chạy được trên máy Owner (16 GB RAM) | **Duyệt kiến trúc** |
-| **1. Foundation** | Backend FastAPI, frontend Next.js (khung + đăng nhập + i18n vi), Postgres + pgvector, Redis/Valkey, Docker Compose, Authentication + 2FA Owner, **Model Gateway** (adapter **Anthropic + OpenAI**, registry có giá thật, chi phí, trần ngày/tháng, che dữ liệu), log + OpenTelemetry, audit chuỗi băm, **Telegram Gateway bản thông báo** + **trang Cài đặt → Telegram** (dán token, kết nối bằng mã 6 số, loại tin, giờ yên lặng) | L | UT-MGW-* đạt; gọi thật Claude và OpenAI qua gateway; IT-DB-01/03, IT-TG-01…05 đạt; Owner tự cài bot và nhận tin Telegram đầu tiên | — |
-| **2. Agent Core** | Agent Registry, vòng đời, Brain Loader (bundle YAML, schema, hash, phiên bản, ghim), cấu hình agent, **Tool Registry + Tool Gateway**, **Policy Engine** (4 cấp, danh sách bắt buộc duyệt, hạn mức), `approvals` | L | UT-AG-*, UT-BRAIN-*, UT-POL-*, UT-TOOL-* đạt; tạm dừng/tiếp tục agent qua API | — |
-| **3. Memory System** | Private/dept/shared, episodic/semantic/procedural/working, RLS, truy hồi lai + chuẩn hóa tiếng Việt, embedding qua gateway (cục bộ/đám mây), `memory_access_log` | M | UT-MEM-*, IT-DB-02, IT-VEC-*, PT-03 đạt | Q-T3 (GPU) |
+| **1. Foundation + Control Center v1** | Backend FastAPI, **trang quản trị dùng được**: đăng nhập + 2FA, Tổng quan, Cài đặt (Telegram, ngân sách LLM, giờ làm việc), danh sách agent (đọc từ registry, nút tạm dừng/chạy lại ghi audit), khung màn hình Diễn biến (SSE); i18n vi, Postgres + pgvector, Redis/Valkey, Docker Compose, Authentication + 2FA Owner, **Model Gateway** (adapter **Anthropic + OpenAI**, registry có giá thật, chi phí, trần ngày/tháng, che dữ liệu), log + OpenTelemetry, audit chuỗi băm, **Telegram Gateway bản thông báo** + **trang Cài đặt → Telegram** (dán token, kết nối bằng mã 6 số, loại tin, giờ yên lặng) | L | UT-MGW-* đạt; gọi thật Claude và OpenAI qua gateway; IT-DB-01/03, IT-TG-01…05 đạt; Owner tự cài bot và nhận tin Telegram đầu tiên | — |
+| **2. Agent Core** | Agent Registry, vòng đời, Brain Loader (bundle YAML, schema, hash, phiên bản, ghim), cấu hình agent, **Tool Registry + Tool Gateway**, **Policy Engine** (4 cấp, danh sách bắt buộc duyệt, hạn mức), `approvals` Control Center: **trang từng agent** (danh tính, bộ não đang chạy, quyền công cụ, lịch sử phiên bản) + **hàng chờ phê duyệt**. | L | UT-AG-*, UT-BRAIN-*, UT-POL-*, UT-TOOL-* đạt; tạm dừng/tiếp tục agent qua API | — |
+| **3. Memory System** | Private/dept/shared, episodic/semantic/procedural/working, RLS, truy hồi lai + chuẩn hóa tiếng Việt, embedding qua gateway (cục bộ/đám mây), `memory_access_log` Control Center: **xem trí nhớ** của agent (lọc theo loại, phạm vi, nguồn). | M | UT-MEM-*, IT-DB-02, IT-VEC-*, PT-03 đạt | Q-T3 (GPU) |
 | **4. Orchestration + lát cắt dọc** | **Đồ thị LangGraph** (checkpoint Postgres, `interrupt` + tiếp tục qua Telegram, job đối soát), AI CEO, 3 Director, Task Engine (9 trạng thái, lease, retry, phụ thuộc), Message Bus (outbox), cộng tác + giải quyết bất đồng; **SEO + Content Agent** chạy đầu–cuối với website moctam thật; **website thêm API `publish`/`unpublish` + sửa AT-09** (trong `web/`); **Content Gate**; **tự xuất bản theo lịch giờ vàng 3 giai đoạn** (hàng chờ xuất bản, chạy lại Content Gate trước giờ đăng, tự lùi giai đoạn) **+ link Telegram + nút Gỡ bài**; trang *Cài đặt → Lịch đăng bài*; **màn hình "Diễn biến trực tiếp" bản đầu** (dựa trên bản mẫu ở `ai/`, đọc `tasks`, `task_logs`, checkpoint LangGraph, `agent_messages`, SSE); Evaluation Service bản đầu (tất định + phản hồi người + OpenAI chấm chéo); **Claude soạn bản giọng văn thương hiệu** để Owner duyệt | L+ | IT-ORCH-01/02, IT-REC-*, IT-A2A-*, IT-LG-*, IT-PUB-01…07, WEB-AT-09' đạt; **AC-BRAIN-01 đạt cho SEO và Content**; số liệu chi phí thật cho 1 tuần chạy thử | Q-B2 |
-| **5. Learning Engine** | Research Collector, Knowledge Extractor (đọc cách ly), Validator (5 cửa), Memory Manager (gộp/tóm tắt), Experience Evaluator (thang bằng chứng), Learning Scheduler, Knowledge Version Manager, shadow brain | L | LT-01…08 đạt; một bài học L2 sinh ra từ dữ liệu thật có nhãn "tương quan" | — |
+| **5. Learning Engine** | Research Collector, Knowledge Extractor (đọc cách ly), Validator (5 cửa), Memory Manager (gộp/tóm tắt), Experience Evaluator (thang bằng chứng), Learning Scheduler, Knowledge Version Manager, shadow brain Control Center: **Trung tâm học tập** (kiến thức mới, đề xuất cải thiện, duyệt kiến thức). | L | LT-01…08 đạt; một bài học L2 sinh ra từ dữ liệu thật có nhãn "tương quan" | — |
 | **6. Chuyên viên đợt 1** | SEO và Content (hoàn thiện), Social, Creative (+ **Claude thiết kế brand guidelines hình ảnh**: màu, font, logo, mẫu ảnh, dựa trên giao diện website hiện tại, Owner duyệt), Data Analyst (sandbox tính toán, schema phân tích) | L | AC-BRAIN-01 đạt cho 5 agent; ST-01…06 đạt với các agent đọc web; brand guidelines đã duyệt nằm trong shared knowledge | Q-I1, Q-I6 |
 | **7. Chuyên viên đợt 2** | Ads, Customer, Affiliate, Sales Intelligence, Web CRO, Automation | L | AC-BRAIN-01 đạt cho 15 agent; Content Gate chặn đúng bộ câu cấm; mỗi lead có `source_url` | Q-I2…I5 |
-| **8. Dashboard + tích hợp** | Tổng quan, trang agent, quản lý bộ não (so sánh, rollback), trung tâm học tập, Task Center (Kanban + bảng), chat agent, chat công ty, phê duyệt; Integration Layer theo thứ tự Q-O4: **GSC + GA4** → website (bổ sung endpoint) → Facebook/TikTok → Shopee/TikTok Shop, CRM, email, Zalo → quảng cáo, **tùy theo điều kiện API thực tế** | L+ | E2E-01…12 đạt; mỗi tích hợp đã bật có IT-INT riêng; tích hợp chưa đủ điều kiện hiện "chưa kết nối" | Q-I* |
+| **8. Hoàn thiện Control Center + tích hợp** | Phần còn lại của SRS §12: quản lý bộ não (so sánh, rollback), Task Center (Kanban + bảng), chat agent, chat công ty, phân tích kinh doanh; Integration Layer theo thứ tự Q-O4: **GSC + GA4** → website (bổ sung endpoint) → Facebook/TikTok → Shopee/TikTok Shop, CRM, email, Zalo → quảng cáo, **tùy theo điều kiện API thực tế** | L+ | E2E-01…12 đạt; mỗi tích hợp đã bật có IT-INT riêng; tích hợp chưa đủ điều kiện hiện "chưa kết nối" | Q-I* |
 | **9. Test và production** | Security test đầy đủ, performance, backup/DR (IT-WIN-*), giám sát, chạy chính thức trên máy Windows của Owner, chuyển dần từ dịch vụ AI cũ | M | Toàn bộ AC-01…25 đạt; IT-BK-01 trên production; báo cáo nghiệm thu | — |
 
 ## 4. Chuyển từ dịch vụ AI hiện tại (`ai/`)
@@ -93,4 +96,4 @@ Phiên bản cụ thể được khóa ở Sprint 0. Giấy phép cần kiểm t
 
 1. Xem `DECISIONS.md`: kiểm tra mình đã hiểu đúng câu trả lời của Owner chưa.
 2. ~~Trả lời 4 câu 🔴 mới~~: đã trả lời đủ (lần 3, 21:53).
-3. Ghi **"duyệt kiến trúc"** (hoặc yêu cầu chỉnh). Khi duyệt, Sprint 0 bắt đầu.
+3. ~~Ghi "duyệt kiến trúc"~~: đã duyệt 26/11/2026 22:43. Sprint 0 đang làm; tiến độ ở `docs/progress/`.

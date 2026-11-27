@@ -2,15 +2,29 @@
 
 Nền tảng nhiều agent AI vận hành như một công ty marketing cho xưởng: có AI CEO, 3 giám đốc và 12 chuyên viên. Mỗi agent có bộ não, trí nhớ, kiến thức và kinh nghiệm riêng. Owner giao mục tiêu, giám sát và phê duyệt.
 
-> **Trạng thái: thiết kế v0.2, đã cập nhật theo câu trả lời của Owner ngày 26/11/2026; chờ Owner ghi "duyệt kiến trúc".** Chưa có mã. Xem `docs/IMPLEMENTATION_PLAN.md` §7.
->
-> Đã quyết:
-> - chạy trên máy Windows 11 của Owner;
-> - LangGraph;
-> - Claude + ChatGPT;
-> - Telegram là kênh của Owner;
-> - AI tự xuất bản FAQ/blog (có 5 lớp chặn, gỡ được ngay);
-> - trần LLM 50 USD.
+> **Trạng thái:** kiến trúc v0.2 **đã duyệt** (26/11/2026). **Sprint 0 (khung hệ thống) đã dựng**: báo cáo ở `docs/progress/sprint-0.md`. Owner ưu tiên trang quản trị trọn gói, nên trang có từ Sprint 1 và lớn dần mỗi Sprint.
+
+## Chạy trên máy Windows của Owner
+
+Xem hướng dẫn đầy đủ ở [docs/CAI-DAT-WINDOWS.md](docs/CAI-DAT-WINDOWS.md). Tóm tắt:
+
+```powershell
+cd C:\moctam-shop\ai-company
+powershell -ExecutionPolicy Bypass -File scripts\windows\kiem-tra-may.ps1
+powershell -ExecutionPolicy Bypass -File scripts\windows\cau-hinh-wsl.ps1   # rồi: wsl --shutdown, mở lại Docker Desktop
+powershell -ExecutionPolicy Bypass -File scripts\windows\tao-env.ps1
+powershell -ExecutionPolicy Bypass -File scripts\windows\khoi-dong.ps1      # mở http://127.0.0.1:3000
+```
+
+## Mã nguồn
+
+| Thư mục | Nội dung |
+|---|---|
+| `backend/` | Máy chủ FastAPI + migration Alembic ([README](backend/README.md)) |
+| `frontend/` | Trang quản trị Next.js (Trung tâm điều hành) |
+| `docker-compose.yml` | Postgres + pgvector, Valkey, migrate, backend, frontend (tổng RAM ≤ 6 GB) |
+| `scripts/windows/` | Script PowerShell cài đặt, khởi động, sao lưu |
+| `docs/progress/` | Báo cáo từng Sprint, độ phủ SRS |
 
 | Tài liệu | Nội dung |
 |---|---|

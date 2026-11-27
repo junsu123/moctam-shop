@@ -1,0 +1,23 @@
+# Trang quản trị (Next.js, bản standalone gọn ~150 MB RAM khi chạy). Địa chỉ backend được đóng vào lúc build.
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+FROM node:22-alpine AS build
+WORKDIR /app
+ARG AICO_BACKEND_URL=http://backend:8000
+ENV NEXT_TELEMETRY_DISABLED=1 AICO_BACKEND_URL=${AICO_BACKEND_URL}
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM node:22-alpine
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+RUN addgroup -S app && adduser -S app -G app
+COPY --from=build --chown=app:app /app/.next/standalone ./
+COPY --from=build --chown=app:app /app/.next/static ./.next/static
+USER app
+EXPOSE 3000
+CMD ["node", "server.js"]

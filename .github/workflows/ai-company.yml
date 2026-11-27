@@ -1,0 +1,68 @@
+# Kiểm thử tự động cho AI Marketing Company (SRS §18, TEST_PLAN). Chạy khi có thay đổi trong ai-company/.
+name: ai-company
+on:
+  pull_request:
+    paths: ["ai-company/**", ".github/workflows/ai-company.yml"]
+  push:
+    branches: [main]
+    paths: ["ai-company/**", ".github/workflows/ai-company.yml"]
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ai-company/backend } }
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env: { POSTGRES_USER: aico, POSTGRES_PASSWORD: aico, POSTGRES_DB: aico_test }
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U aico" --health-interval 5s --health-timeout 5s --health-retries 20
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports: ["6379:6379"]
+    env:
+      AICO_TEST_DATABASE_URL: postgresql+psycopg://aico:aico@127.0.0.1:5432/aico_test
+      AICO_TEST_REDIS_URL: redis://127.0.0.1:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "uv==0.11.*"
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy app
+      - run: uv run pytest -p no:warnings
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: ai-company/frontend } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: ai-company/frontend/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+        env: { NEXT_TELEMETRY_DISABLED: "1" }
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Kiểm tra cú pháp docker-compose.yml
+        working-directory: ai-company
+        run: AICO_DB_PASSWORD=ci AICO_MASTER_KEY=ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci docker compose config -q
+      - name: Build image backend + frontend
+        working-directory: ai-company
+        run: AICO_DB_PASSWORD=ci AICO_MASTER_KEY=ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci-ci docker compose build backend frontend
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
