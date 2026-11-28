@@ -489,9 +489,15 @@ async def node_request_review(s: State) -> State:
                 "budget_usd": min(0.2, max(0.02, float(t["budget_usd"]) * 0.2)),
             },
         )
+        await _save_draft(c, tid, s.get("output") or {})
         who = "anh/chị" if reviewer == "owner" else reviewer.removeprefix("agent:")
         await engine.log_event(c, tid, "review_requested", f"Gửi {who} review (vòng {rnd})", agent=t["assigned_agent"], node="review")
     return {}
+
+
+async def _save_draft(c: AsyncConnection, tid: str, output: dict[str, Any]) -> None:
+    """Bản nháp đang chờ review/duyệt hiện trên dashboard (bản cuối ghi lại khi xong)."""
+    await db.execute(c, "UPDATE tasks SET output_data = CAST(:o AS jsonb) WHERE id = CAST(:t AS uuid)", {"o": _json(output), "t": tid})
 
 
 async def node_await_review(s: State) -> State:
@@ -530,6 +536,7 @@ async def node_request_approval(s: State) -> State:
     tid = s["task_id"]
     async with db.engine().begin() as c:
         t = await _task(c, tid)
+        await _save_draft(c, tid, s.get("output") or {})
         name = await db.scalar(c, "SELECT display_name FROM agents WHERE agent_key = :a", {"a": t["assigned_agent"]})
         a = await approvals.create(
             c,

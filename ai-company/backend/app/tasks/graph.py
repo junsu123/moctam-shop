@@ -166,6 +166,9 @@ async def execute(task: dict[str, Any], worker: str) -> str:
                 await db.execute(c, "UPDATE tasks SET lease_owner = NULL, lease_until = NULL WHERE id = CAST(:t AS uuid)", {"t": tid})
                 await engine.log_event(c, tid, "paused", "Agent bị tạm dừng: việc sẽ chạy tiếp từ checkpoint khi agent chạy lại")
             return "paused"
+        if e.code == "LLM_FAILED" and all("chưa có khóa API" in x for x in e.message.split(": ", 1)[-1].split("; ")):
+            # thử lại vô ích: báo rõ cho Owner cần làm gì
+            return await _fail(tid, "LLM_NOT_CONFIGURED", "Chưa nhập khóa API nhà cung cấp AI (Cài đặt → Nhà cung cấp AI).", worker)
         code = "LLM_FAILED" if e.code in ("LLM_FAILED", "NO_MODEL") else e.code
         return await _fail(tid, code, e.message, worker)
     except Exception as e:

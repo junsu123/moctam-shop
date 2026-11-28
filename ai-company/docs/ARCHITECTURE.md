@@ -182,7 +182,7 @@ Owner chọn chạy toàn bộ trên máy cá nhân (Q-A2, Q-A3). Đây cũng l�
 | WSL2 (đặt trong `.wslconfig`: `memory=6GB`, `swap=4GB`) | **6 GB** cho cả hệ thống |
 | ↳ Postgres + pgvector (`shared_buffers=512MB`) | ~1 GB |
 | ↳ Redis/Valkey | ~150 MB |
-| ↳ API + 2 worker + scheduler + Telegram + worker trí nhớ (Python, LangGraph) | ~2 GB (worker trí nhớ đo được ~90 MB, Sprint 3) |
+| ↳ API + worker agent (gồm lịch tự động, đối soát) + Telegram + worker trí nhớ (Python, LangGraph) | ~2 GB (worker trí nhớ ~90 MB, Sprint 3; worker agent ~135 MB khi rảnh, giới hạn 384 MB, Sprint 4a) |
 | ↳ Dashboard Next.js (bản build production, không chạy dev server) | ~400 MB |
 | ↳ Dự phòng | ~2 GB |
 
@@ -239,6 +239,7 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
 - **Nhược:** hệ sinh thái nhỏ hơn Celery; ít công cụ giám sát dựng sẵn, nên dashboard tự hiển thị trạng thái hàng đợi.
 - **Chi phí:** Redis nhỏ (vài trăm MB RAM).
 - **Mở rộng:** hàng đợi theo agent hoặc nhóm agent, đặt giới hạn đồng thời cho từng hàng. Chạy thêm worker theo chiều ngang.
+- **Cập nhật Sprint 4a: không dùng Dramatiq.** Bảng `tasks` với lease + `FOR UPDATE SKIP LOCKED` đã là hàng đợi bền; Redis chỉ còn vai trò đánh thức worker (`LPUSH/BLPOP aico:tasks:wake`, mất Redis thì worker quét bảng mỗi 3 giây). Lý do: Dramatiq không thêm được đảm bảo nào mà bảng `tasks` chưa có, lại thêm một nơi giữ trạng thái và khoảng 40 MB RAM mỗi tiến trình. Một dịch vụ `worker` chạy tối đa 3 việc song song (agent chủ yếu chờ API); mỗi agent một việc một lúc. Cần nhiều hơn thì `docker compose up --scale worker=2`.
 
 ### ADR-05 (v0.2). LangGraph là bộ chạy luồng công việc, checkpoint lưu trong Postgres
 - **Lý do:** Owner chọn theo SRS (Q-T1). LangGraph có sẵn ba thứ cần cho hệ thống này:
@@ -253,7 +254,7 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
   - **Quy tắc hai nguồn trạng thái:** bảng `tasks` là *góc nhìn nghiệp vụ* (trạng thái SRS, người giao, hạn chót, kết quả). Checkpoint là *trạng thái thực thi* (đang ở nút nào, biến của đồ thị). Mỗi nút đồ thị cập nhật `tasks` qua một hàm duy nhất có khóa phiên bản. Mỗi nút có tác động ra ngoài đều mang khóa chống trùng (`task_id:node:attempt`), nên chạy lại từ checkpoint không gây trùng.
   - Một job đối soát chạy mỗi 5 phút: task `IN_PROGRESS` mà không có worker và checkpoint đã dừng quá thời hạn thì được đưa lại vào hàng đợi; checkpoint mồ côi thì đánh dấu và báo.
   - Duyệt của người: nút `await_approval` gọi `interrupt(payload)`. Bấm nút trên Telegram hoặc dashboard thì gửi `Command(resume=...)` kèm digest nội dung đã duyệt.
-  - Dramatiq vẫn là hàng đợi đánh thức worker (ADR-04). LangGraph không thay hàng đợi.
+  - Hàng đợi là bảng `tasks` (lease), Redis chỉ đánh thức worker (ADR-04, cập nhật Sprint 4a). LangGraph không thay hàng đợi.
 - **Ưu:** đúng SRS; không phải tự viết cơ chế checkpoint và chờ người duyệt; xem đồ thị trực quan được.
 - **Nhược:** hai nơi lưu trạng thái, nên phải đối soát (đã thiết kế ở trên); phụ thuộc vào nhịp thay đổi API của thư viện. Giảm thiểu: ghim phiên bản; mọi lời gọi LangGraph đi qua lớp `ReasoningEngine` của chúng ta, nên khi cần thay thư viện chỉ sửa một chỗ.
 - **Chi phí:** không phát sinh (giấy phép MIT); thêm một ít dung lượng CSDL cho checkpoint (dọn checkpoint của task đã đóng sau 30 ngày).

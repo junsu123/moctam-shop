@@ -78,6 +78,21 @@
 | `experience_records` | Chưa tạo | Cần Task Engine (Sprint 4) và Evaluation (Sprint 5). Sprint 3 ghi trải nghiệm vào episodic memory |
 | Worker trí nhớ | Dịch vụ `memory` riêng, mỗi phút nhúng tối đa 256 mục; RAM đo được ~90 MB (giới hạn 128 MB) | Lỗi nhúng (hết hạn mức, mất mạng) không ảnh hưởng API; chưa có khóa thì chờ, vẫn tìm được theo từ khóa |
 
+### Ghi chú kỹ thuật Sprint 4a (không cần Owner quyết)
+
+| Điểm | Quyết định | Lý do |
+|---|---|---|
+| Hàng đợi | Bảng `tasks` (lease + `SKIP LOCKED`) là hàng đợi; Redis chỉ đánh thức worker. Không dùng Dramatiq | Xem ARCHITECTURE ADR-04 (cập nhật). Ít thành phần, ít RAM, trạng thái chỉ ở một nơi |
+| Lớp LangGraph | Chỉ `app/tasks/graph.py` chạm vào LangGraph; checkpoint `AsyncPostgresSaver` trong schema `langgraph`, ghi đồng bộ (`durability="sync"`) | Đổi thư viện thì sửa một tệp; tắt máy giữa chừng chỉ làm lại tối đa một nút |
+| Dừng chờ | `interrupt()` chỉ là điểm dừng; khi chạy tiếp, worker đọc kết quả duyệt/review/task con **từ CSDL** rồi mới tiếp tục | Không phụ thuộc giá trị trong bộ nhớ; khởi động lại giữa lúc chờ không mất gì (IT-REC-02) |
+| Mỗi lần chạy nút "làm" một bước | Nút `act` làm đúng một bước kế hoạch rồi lặp lại | Mỗi lần chạy nút có tối đa một lần dừng chờ duyệt: tránh lỗi ghép sai giá trị tiếp tục khi một nút có nhiều `interrupt()` |
+| Khóa chống trùng công cụ | `task:<id>:r<vòng review>:p<lần lập lại>.<lần sửa>:s<bước>` | Chạy lại sau sự cố cùng khóa → Tool Gateway trả kết quả cũ (IT-REC-01); kế hoạch mới thì khóa mới |
+| Review của cấp trên | Message `review_request` tạo một task loại `review` cho agent cấp trên; kết luận ghi vào `task_reviews` và đánh thức task gốc. Owner review trên trang Việc | Review cũng là việc có ngân sách, nhật ký, trí nhớ như mọi việc khác |
+| Góp ý thành kiểm tra | Người review ghi được kiểm tra tất định kèm góp ý (`checks`, vd `contains "15 giờ"`); lưu trong trải nghiệm của agent và áp lại ở bước tự kiểm tra lần sau | Nền cho AC-BRAIN-01 bước 3c (Sprint 4c) |
+| Trần cấp tự chủ theo việc | `PolicyCtx.max_level` = `tasks.autonomy_max`; task con không vượt cấp của task cha | Hợp đồng giao việc (AGENT_DESIGN §5) |
+| Chưa có khóa AI | Lỗi `LLM_NOT_CONFIGURED`, không thử lại, báo rõ phải nhập khóa ở đâu | Thử lại 3 lần là vô ích và gây hiểu lầm |
+| Q-B2 (ngưỡng ngân sách quảng cáo) | Sprint 4 chưa có công cụ quảng cáo; dùng mặc định: mọi thay đổi ngân sách đều cần duyệt | Câu hỏi vẫn mở cho Sprint 7 |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |

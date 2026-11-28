@@ -64,7 +64,7 @@ services:
       migrate: { condition: service_completed_successfully }
       queue: { condition: service_healthy }
     ports: ["127.0.0.1:8000:8000"]
-    mem_limit: 768m         # API; worker agent và scheduler thêm ở Sprint 2–4
+    mem_limit: 768m         # API (worker agent + lịch tự động chạy ở dịch vụ `worker`)
     restart: unless-stopped
 
   telegram:                 # worker Telegram: nhận /ketnoi, gửi báo cáo/cảnh báo theo giờ yên lặng
@@ -80,6 +80,28 @@ services:
       migrate: { condition: service_completed_successfully }
     healthcheck: { disable: true }  # không mở cổng HTTP
     mem_limit: 128m         # ~60 MB
+    restart: unless-stopped
+
+  worker:                   # worker agent: chạy task (đồ thị LangGraph), Message Bus, lịch tự động, đối soát mỗi 5 phút
+    build: ./backend
+    command: ["python", "-m", "app.workers.agents"]
+    environment:
+      AICO_ENV: prod
+      AICO_DATABASE_URL: *db_url
+      AICO_REDIS_URL: redis://queue:6379/0
+      AICO_MASTER_KEY: ${AICO_MASTER_KEY:?Thiếu AICO_MASTER_KEY trong .env}
+      AICO_LOG_LEVEL: INFO
+      AICO_BRAINS_DIR: /brains
+      AICO_WORKER_CONCURRENCY: "3"
+      AICO_OTEL_ENDPOINT: ${AICO_OTEL_ENDPOINT:-}
+    volumes:
+      - ./brains:/brains:ro
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      queue: { condition: service_healthy }
+    healthcheck: { disable: true }  # không mở cổng HTTP
+    stop_grace_period: 40s  # chờ việc đang chạy lưu checkpoint
+    mem_limit: 384m         # xem RAM đo được trong docs/progress/sprint-4.md
     restart: unless-stopped
 
   memory:                   # worker trí nhớ: nhúng (embedding) các mục mới mỗi phút qua Model Gateway
