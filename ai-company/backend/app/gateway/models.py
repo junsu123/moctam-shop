@@ -347,10 +347,86 @@ async def complete(conn: AsyncConnection, profile: str, system: str, prompt: str
         return r
 
 
+@dataclass
+class EmbedModel:
+    id: str  # embedding_models.id
+    model_id: str  # model_registry.id (giá)
+    model_name: str
+    dims: int
+    base_url: str
+    secret_name: str | None
+    price_in: float
+
+
+async def embed_model(conn: AsyncConnection) -> EmbedModel | None:
+    r = await db.one(
+        conn,
+        "SELECT e.id, e.model_id, m.model_name, e.dims, p.base_url, p.secret_name, m.price_in_per_mtok AS price_in "
+        "FROM embedding_models e JOIN model_registry m ON m.id = e.model_id JOIN provider_registry p ON p.id = m.provider_id "
+        "WHERE e.active AND m.enabled AND p.enabled",
+    )
+    if r is None:
+        return None
+    d = dict(r)
+    d["price_in"] = float(d["price_in"])
+    return EmbedModel(**d)
+
+
+async def embed(
+    conn: AsyncConnection, texts: list[str], *, purpose: str, agent_key: str | None = None
+) -> tuple[EmbedModel, list[list[float]]]:
+    """Nhúng văn bản qua nhà cung cấp (OpenAI, `dimensions` theo model). Che SĐT/email trước khi gửi; ghi chi phí như mọi lời gọi.
+
+    Chưa có khóa API → AppError NOT_CONFIGURED (trí nhớ vẫn tìm được theo từ khóa)."""
+    em = await embed_model(conn)
+    if em is None:
+        raise AppError("NOT_CONFIGURED", "Chưa có model embedding nào đang bật.", 503)
+    key = await store.get_secret(conn, em.secret_name) if em.secret_name else None
+    if not key:
+        raise AppError("NOT_CONFIGURED", "Chưa nhập khóa API OpenAI (dùng cho tìm kiếm theo nghĩa).", 503)
+    clean = [redact(t)[:8000] for t in texts]
+    m = Model(
+        id=em.model_id,
+        name=em.model_name,
+        provider="openai",
+        kind="openai_compat",
+        base_url=em.base_url,
+        secret_name=em.secret_name,
+        may_receive_pii=False,
+        price_in=em.price_in,
+        price_out=0.0,
+    )
+    await _check_budget(conn, m, cost(m, sum(len(t) for t in clean) // 3, 0), None, agent_key, purpose)
+    t0 = time.perf_counter()
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT, transport=transport) as c:
+            r = await c.post(
+                em.base_url.rstrip("/") + "/embeddings",
+                headers={"authorization": f"Bearer {key}"},
+                json={"model": em.model_name, "input": clean, "dimensions": em.dims},
+            )
+    except httpx.HTTPError as e:
+        await _record(m, None, agent_key, None, purpose, 0, 0, round((time.perf_counter() - t0) * 1000), False, "NETWORK", None)
+        raise AppError("EMBED_FAILED", f"Không gọi được dịch vụ embedding: {type(e).__name__}", 502) from e
+    ms = round((time.perf_counter() - t0) * 1000)
+    if r.status_code >= 400:
+        await _record(m, None, agent_key, None, purpose, 0, 0, ms, False, f"HTTP_{r.status_code}", None)
+        raise AppError("EMBED_FAILED", f"Dịch vụ embedding trả lỗi HTTP {r.status_code}.", 502)
+    d = r.json()
+    vecs = [row["embedding"] for row in sorted(d["data"], key=lambda x: x["index"])]
+    if len(vecs) != len(texts) or any(len(v) != em.dims for v in vecs):
+        raise AppError("EMBED_FAILED", "Dịch vụ embedding trả sai số lượng hoặc số chiều.", 502)
+    await _record(m, None, agent_key, None, purpose, int(d.get("usage", {}).get("prompt_tokens", 0)), 0, ms, True, None, None)
+    return em, vecs
+
+
 async def ping_provider(conn: AsyncConnection, pid: str) -> dict[str, Any]:
     """Kiểm tra khóa API bằng một lời gọi rất nhỏ tới model rẻ nhất của nhà cung cấp."""
     mid = await db.scalar(
-        conn, "SELECT id FROM model_registry WHERE provider_id = :p AND enabled ORDER BY price_out_per_mtok LIMIT 1", {"p": pid}
+        conn,
+        "SELECT id FROM model_registry WHERE provider_id = :p AND enabled AND id NOT IN (SELECT model_id FROM embedding_models) "
+        "ORDER BY price_out_per_mtok LIMIT 1",
+        {"p": pid},
     )
     m = await _model(conn, mid)
     if m is None:

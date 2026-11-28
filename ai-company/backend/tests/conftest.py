@@ -33,6 +33,12 @@ PROFILES = _seed_profiles()
 
 # Bảng có dữ liệu do người dùng/hệ thống sinh ra (xóa giữa các test); bảng cấu hình (agents, registry) giữ nguyên
 RESET_TABLES = [
+    "memory_access_log",
+    "memory_embeddings",
+    "episodic_memories",
+    "semantic_memories",
+    "procedural_memories",
+    "agent_memories",
     "policy_decisions",
     "tool_invocations",
     "approvals",
@@ -80,6 +86,9 @@ def reset_db() -> None:
                 text("UPDATE model_profiles SET model_id = :m, fallback_model_id = :f WHERE profile = :p"), {"m": mid, "f": fb, "p": prof}
             )
         c.execute(text("DELETE FROM system_meta WHERE key IN ('setup_token', 'telegram_offset')"))
+        c.execute(text("UPDATE embedding_models SET active = false"))
+        c.execute(text("DELETE FROM embedding_models WHERE id <> 'openai-te3s-512'"))
+        c.execute(text("UPDATE embedding_models SET active = true WHERE id = 'openai-te3s-512'"))
     eng.dispose()
 
 

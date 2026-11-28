@@ -4,7 +4,7 @@ Hướng dẫn cho Claude Code khi làm việc trong thư mục này. Đọc h�
 
 ## Trạng thái dự án
 
-**ĐÃ DUYỆT KIẾN TRÚC (26/11/2026 22:43) · ĐÃ XONG: SPRINT 2 (Agent Core) · TIẾP THEO: SPRINT 3 (Memory System).**
+**ĐÃ DUYỆT KIẾN TRÚC (26/11/2026 22:43) · ĐÃ XONG: SPRINT 3 (Memory System) · TIẾP THEO: SPRINT 4 (Orchestration + lát cắt dọc).**
 
 Owner ưu tiên **trang quản trị trọn gói** (Control Center) có sớm. Thứ tự Sprint ghi trong `docs/IMPLEMENTATION_PLAN.md` §3.
 - Chỉ làm việc của Sprint hiện tại. Việc của Sprint sau thì ghi vào `docs/progress/` thay vì làm luôn.
@@ -64,4 +64,5 @@ Lệnh kiểm tra:
 - Telegram là kênh của Owner, cấu hình trong dashboard (token mã hóa, không để trong `.env`). Không gửi dữ liệu cá nhân khách, giá vốn hay secret qua Telegram.
 - Lệnh: `make test`, `make lint`, `docker compose up` (trên Windows: `docker compose up` trong PowerShell). E2E: `AICO_E2E_DATABASE_URL=… e2e/run.sh`.
 - Ghi sổ chi phí, bộ đếm đăng nhập sai, cảnh báo, lời gọi công cụ và quyết định chính sách bằng **kết nối riêng commit ngay**: lỗi trả về sẽ rollback giao dịch của request. Không gọi Model Gateway hay Tool Gateway trong giao dịch đã ghi audit (khóa advisory của audit).
+- Đọc/ghi trí nhớ thay agent chỉ qua `app.memory` (`store`, `retrieval`), luôn **trong giao dịch** (`store.acting_as` đặt `SET LOCAL ROLE` + phạm vi; ngoài giao dịch thì dừng với `RLS_NOT_ACTIVE`). Không viết truy vấn trí nhớ trực tiếp bỏ qua `acting_as`.
 - Agent chỉ tác động ra ngoài qua `app.tools.gateway.invoke` (Policy Engine + khóa chống trùng). Thêm công cụ: khai báo trong `app/tools/catalog.py`; công cụ chưa có tích hợp để `handler=None` (trả `NOT_CONFIGURED`).

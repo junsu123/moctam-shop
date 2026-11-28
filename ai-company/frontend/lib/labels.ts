@@ -83,3 +83,38 @@ export function actor(a: string | null | undefined): string {
   if (a.startsWith("system")) return "hệ thống";
   return a;
 }
+
+export const MEM_TYPE: Record<string, [string, Tone]> = {
+  episodic: ["Trải nghiệm", "info"],
+  semantic: ["Kiến thức", "success"],
+  procedural: ["Quy trình", "warn"],
+  working: ["Đang làm", "neutral"],
+};
+export const TRUST: Record<string, string> = {
+  owner: "Owner",
+  internal: "Nội bộ",
+  verified_external: "Nguồn ngoài đã kiểm",
+  unverified_external: "Nguồn ngoài chưa kiểm",
+};
+export const MEM_STATUS: Record<string, string> = {
+  active: "Đang dùng",
+  verified: "Đã kiểm chứng",
+  candidate: "Chờ thẩm định",
+  deprecated: "Đã thay thế",
+  retired: "Nghỉ hưu",
+};
+export const CATEGORY: Record<string, string> = {
+  procedural: "Quy trình",
+  experience: "Kinh nghiệm",
+  semantic: "Kiến thức",
+  shared: "Kiến thức chung",
+};
+
+/** "agent:seo_agent" → "Riêng seo_agent", "dept:marketing" → "Phòng Marketing", "company" → "Chung", "owner_only" → "Chỉ Owner". */
+export function scopeLabel(s: string): string {
+  if (s === "company") return "Chung";
+  if (s === "owner_only") return "Chỉ Owner";
+  if (s.startsWith("dept:")) return `Phòng ${DEPT[s.slice(5)] ?? s.slice(5)}`;
+  if (s.startsWith("agent:")) return `Riêng ${s.slice(6)}`;
+  return s;
+}

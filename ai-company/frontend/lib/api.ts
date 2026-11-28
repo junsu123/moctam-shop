@@ -249,3 +249,65 @@ export type ToolInfo = {
   available: boolean;
   grants: { action: string; agent_key: string; display_name: string; level: number }[];
 };
+
+// ---------------------------------------------------------------- Trí nhớ (Sprint 3)
+export type MemType = "working" | "episodic" | "semantic" | "procedural";
+export type MemoryItem = {
+  id: string;
+  owner_scope: string;
+  type: MemType;
+  title: string;
+  snippet: string;
+  source_ref: string | null;
+  source_trust: "owner" | "internal" | "verified_external" | "unverified_external";
+  confidence: number;
+  verification_status: string;
+  valid_from: string;
+  valid_to: string | null;
+  usefulness: number;
+  created_at: string;
+  created_by_principal: string;
+  metadata: Record<string, unknown>;
+  access_count: number;
+};
+export type MemoryDetail = Omit<MemoryItem, "snippet"> & {
+  content: string;
+  supersedes_id: string | null;
+  version: number;
+  detail?: Record<string, unknown>;
+  access: { at: string; principal: string; task_id: string | null; purpose: string; rank: number | null; score: number | null; used_in_output: boolean }[];
+  embeddings: string[];
+};
+export type MemoryStats = {
+  total: number;
+  by_type: Partial<Record<MemType, number>>;
+  by_scope: { scope: string; n: number }[];
+  embedding: { model: string | null; dims: number | null; configured: boolean; embedded: number; pending: number };
+  retrievals_today: number;
+};
+export type RetrievedItem = {
+  memory_id: string;
+  type: MemType;
+  scope: string;
+  title: string;
+  content: string;
+  source_trust: string;
+  confidence: number;
+  category: string;
+  tokens: number;
+  kw_rank: number | null;
+  vec_rank: number | null;
+  rrf: number;
+  w_recency: number;
+  w_conf: number;
+  w_trust: number;
+  score: number;
+};
+export type RetrievalResult = {
+  items: RetrievedItem[];
+  considered: number;
+  used_tokens: number;
+  budget_tokens: number;
+  vector_search: string;
+  scopes: string[];
+};

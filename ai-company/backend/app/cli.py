@@ -1,4 +1,4 @@
-"""Lệnh quản trị chạy trong container: `python -m app.cli setup-token` | `verify-audit` | `sync-brains`."""
+"""Lệnh quản trị chạy trong container: `python -m app.cli setup-token` | `verify-audit` | `sync-brains` | `embed-memories`."""
 
 from __future__ import annotations
 
@@ -50,11 +50,23 @@ async def _sync_brains() -> int:
     return 1 if any(i.status == "error" for i in items) else 0
 
 
+async def _embed_memories() -> int:
+    from app.memory.embedding import embed_pending
+
+    async with db.engine().begin() as conn:
+        rep = await embed_pending(conn, limit=10_000)
+    await db.dispose()
+    print(f"Nhúng trí nhớ: {rep.status}, đã nhúng {rep.embedded}, còn {rep.remaining} ({rep.model or 'chưa có model'}). {rep.detail}")
+    return 0 if rep.status in ("done", "not_configured") else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m app.cli")
-    p.add_argument("command", choices=["setup-token", "verify-audit", "sync-brains"])
+    p.add_argument("command", choices=["setup-token", "verify-audit", "sync-brains", "embed-memories"])
     a = p.parse_args(argv)
-    run = {"setup-token": _setup_token, "verify-audit": _verify_audit, "sync-brains": _sync_brains}[a.command]
+    run = {"setup-token": _setup_token, "verify-audit": _verify_audit, "sync-brains": _sync_brains, "embed-memories": _embed_memories}[
+        a.command
+    ]
     return asyncio.run(run())
 
 

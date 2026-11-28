@@ -15,8 +15,9 @@ import { ago, usd, when } from "@/lib/format";
 import { actor, BRAIN_STATE, CALL_STATUS, DECISION, DEPT, LEVEL, LEVEL_TONE, MODEL_PROFILE, short, VERSION_EVENT } from "@/lib/labels";
 import { useApi } from "@/lib/use-api";
 import { DiffTable } from "@/components/diff-table";
+import { MemoryBrowser, MemoryPreview } from "@/components/memory";
 
-const TABS = ["ho-so", "bo-nao", "quyen", "lich-su"] as const;
+const TABS = ["ho-so", "bo-nao", "quyen", "tri-nho", "lich-su"] as const;
 type Tab = (typeof TABS)[number];
 const msg = (x: unknown) => (x instanceof ApiError ? (x.code === "REAUTH_CANCELLED" ? "" : x.message) : "Có lỗi, thử lại.");
 
@@ -95,6 +96,7 @@ export default function AgentPage() {
           { id: "ho-so", label: "Hồ sơ" },
           { id: "bo-nao", label: "Bộ não" },
           { id: "quyen", label: "Quyền công cụ", count: a.permissions.length },
+          { id: "tri-nho", label: "Trí nhớ" },
           { id: "lich-su", label: "Lịch sử" },
         ]}
       />
@@ -111,6 +113,11 @@ export default function AgentPage() {
           <BrainTab a={a} onChange={reload} />
         ) : tab === "quyen" ? (
           <PermissionsTab a={a} />
+        ) : tab === "tri-nho" ? (
+          <>
+            <MemoryPreview agent={a.agent_key} />
+            <MemoryBrowser agent={a.agent_key} allowRetire />
+          </>
         ) : (
           <HistoryTab agentKey={a.agent_key} />
         )}

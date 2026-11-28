@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bot, ChevronDown, ChevronRight, ClipboardCheck, LayoutDashboard, Leaf, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { Activity, Bot, Brain, ChevronDown, ChevronRight, ClipboardCheck, LayoutDashboard, Leaf, LogOut, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -25,6 +25,7 @@ export function useShell(): Ctx {
 const NAV = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard },
   { href: "/agent", label: "Agent", icon: Bot },
+  { href: "/tri-nho", label: "Trí nhớ", icon: Brain },
   { href: "/dien-bien", label: "Diễn biến", icon: Activity },
   { href: "/phe-duyet", label: "Phê duyệt", icon: ClipboardCheck },
   { href: "/cai-dat", label: "Cài đặt", icon: Settings },
