@@ -61,6 +61,7 @@ jobs:
         with: { php-version: "8.3", extensions: "pdo_mysql, mbstring, intl, gd, zip, curl", coverage: none }
       # AT-11 sao lưu/khôi phục bằng mysqldump + mysql: dùng client MariaDB cùng bản (client MySQL 8 của runner không hợp)
       - run: sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mariadb-client
+      - run: printf '[client]\nskip-ssl\n' > ~/.my.cnf  # MariaDB trong CI không bật TLS; client mới mặc định đòi TLS
       - name: Cấu hình kiểm thử
         run: |
           cat > app/config.php <<'PHP'
