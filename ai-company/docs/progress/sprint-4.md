@@ -216,6 +216,14 @@ Sau phần này, agent viết FAQ/blog **đăng thẳng lên website**, theo đ�
 | Hạn mức ngày đếm ở bảng `publications` và ở website | Máy: hạn mức theo agent của Policy Engine (`site.publish`, đếm trong `tool_invocations`) cộng lịch đăng (mỗi khung một bài). Website đếm tổng (lớp 5) | Không cần bảng đếm riêng; website vẫn là chốt chặn cuối, máy lỗi cũng không vượt được |
 | Mã chống trùng gửi website | `co:<id hàng chờ>` (bài đăng), `co:draft:<id>` (bài bị chặn) | Theo IMPLEMENTATION_PLAN: tiền tố `co:` để không trùng dịch vụ cũ |
 
+### Phát hiện khi dựng CI cho website (ngoài phạm vi 4b, chưa sửa)
+
+Lần chạy đầu, job nghiệm thu website dùng MariaDB 11 và trượt 2 ca cũ (không liên quan xuất bản):
+- **AT-01** (hai khách mua cùng món còn 1): MariaDB từ 11.6 bật `innodb_snapshot_isolation`. Một trong hai đơn nhận lỗi CSDL 1020 thay vì báo "hết hàng" rõ ràng. Không bán vượt kho, nhưng khách thấy lỗi chung.
+- **AT-11** (sao lưu/khôi phục): client MySQL 8 có sẵn trên máy CI không khôi phục được bản sao lưu của MariaDB.
+
+CI giờ dùng MariaDB 10.11 (cùng máy dev) và client MariaDB cùng bản. Nếu hosting nâng lên MariaDB ≥ 11.6, cần sửa luồng đặt hàng của website: bắt lỗi 1020 rồi thử lại hoặc trả `OUT_OF_STOCK`. Đã ghi vào câu hỏi cho Owner (Q-W2).
+
 ### Việc còn lại của Sprint 4
 
 - 4c:

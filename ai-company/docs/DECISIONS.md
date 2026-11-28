@@ -116,4 +116,5 @@
 | Q-A2b | Giữ mã trong repo `moctam-shop` hay tạo repo riêng? | Giữ trong `moctam-shop/ai-company/` |
 | Q-PT03 | PT-03 đòi 1 triệu mục trí nhớ, p95 < 150 ms. Trên ngân sách 6 GB chỉ đạt ở 200 nghìn mục (1 triệu: 283 ms). Đổi mục tiêu thành "200 nghìn mục đang dùng, p95 < 150 ms" và giữ kho gọn bằng gộp/nghỉ hưu (Sprint 5)? | Đổi như đề xuất; xét lại khi nâng máy lên 32 GB RAM |
 | Q-W1 | Máy bật những giờ nào? Có UPS (bộ lưu điện) không? | 7:00–22:00 (bao trùm các giờ đăng bài), không có UPS |
+| Q-W2 | Hosting đang chạy MySQL/MariaDB bản nào? Nếu là MariaDB ≥ 11.6, luồng đặt hàng cần sửa để hai khách mua cùng món cuối không gặp lỗi chung (xem `progress/sprint-4.md`, phần 4b) | Giả định MariaDB 10.x như máy dev; sửa luồng đặt hàng trong một PR riêng của `web/` khi Owner xác nhận |
 | Q-B2, Q-T4, Q-I1…I6 | Như `QUESTIONS_FOR_OWNER.md` | Như mặc định đã ghi ở đó |

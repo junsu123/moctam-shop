@@ -127,3 +127,8 @@ Owner mở @BotFather, tạo bot, giữ *token* (sẽ nhập vào máy lúc cài
 Lịch chạy của các agent sẽ dồn vào giờ máy bật.
 - *Mặc định:* 8:00–22:00, không có UPS.
 
+**🟡 (Sprint 4) Q-W2. Hosting của website đang chạy MySQL hay MariaDB, bản nào?**  
+Anh/chị xem ở hPanel → Cơ sở dữ liệu, hoặc phpMyAdmin (dòng "Server version").
+Nếu là MariaDB từ 11.6 trở lên: khi hai khách cùng mua món cuối cùng, một người sẽ thấy lỗi chung thay vì "hết hàng" (không bán vượt kho). Cần sửa luồng đặt hàng của website.
+- *Mặc định:* MariaDB 10.x như máy dev. Có trả lời thì sửa trong một PR riêng của `web/`.
+

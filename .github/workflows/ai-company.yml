@@ -23,7 +23,7 @@ jobs:
         image: valkey/valkey:8-alpine
         ports: ["6379:6379"]
       mariadb:  # website THẬT cho IT-PUB-01/02 (AI xuất bản qua API của website)
-        image: mariadb:11
+        image: mariadb:10.11  # cùng bản với máy dev; MariaDB ≥ 11.6 bật innodb_snapshot_isolation, xem sprint-4.md
         env: { MARIADB_ROOT_PASSWORD: root }
         ports: ["3306:3306"]
         options: --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 30
@@ -51,7 +51,7 @@ jobs:
     defaults: { run: { working-directory: web } }
     services:
       mariadb:
-        image: mariadb:11
+        image: mariadb:10.11  # cùng bản với máy dev; MariaDB ≥ 11.6 bật innodb_snapshot_isolation, xem sprint-4.md
         env: { MARIADB_ROOT_PASSWORD: root }
         ports: ["3306:3306"]
         options: --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 30
@@ -59,6 +59,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with: { php-version: "8.3", extensions: "pdo_mysql, mbstring, intl, gd, zip, curl", coverage: none }
+      # AT-11 sao lưu/khôi phục bằng mysqldump + mysql: dùng client MariaDB cùng bản (client MySQL 8 của runner không hợp)
+      - run: sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mariadb-client
       - name: Cấu hình kiểm thử
         run: |
           cat > app/config.php <<'PHP'
