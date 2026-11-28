@@ -41,6 +41,7 @@ class PolicyCtx:
     extra_tags: tuple[str, ...] = ()  # vd Content Gate gắn "publish_risky"
     estimated_usd: float = 0.0
     task_id: str | None = None
+    max_level: int | None = None  # trần cấp tự chủ của task (hợp đồng giao việc): không vượt cấp của người giao
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,8 @@ async def _decide(conn: AsyncConnection, agent: str, tool_id: str, action: str, 
             f"Quyền ở cấp L{perm['autonomy_level']} ({tools.LEVEL_NAMES[perm['autonomy_level']]}), "
             f"hành động cần tối thiểu L{a.min_level} ({tools.LEVEL_NAMES[a.min_level]})",
         )
+    if ctx.max_level is not None and ctx.max_level < a.min_level:
+        return _deny("task_autonomy", f"Việc này chỉ được giao tới cấp L{ctx.max_level}, hành động cần L{a.min_level}")
     limits = perm["limits"] or {}
     if per_day := limits.get("per_day"):
         day0 = datetime.now(VN).replace(hour=0, minute=0, second=0, microsecond=0)

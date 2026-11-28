@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from app.core import db
 from app.domain import notify
+from app.tasks.tools import DelegateIn, DelegateOut, ShareIn, ShareOut, delegate, share
 from app.tools.spec import ActionSpec, Handler, RetryPolicy, ToolCtx, act, register, tool
 
 # ------------------------------------------------------------------ công cụ chạy thật
@@ -137,8 +138,9 @@ register(
         "Giao việc giữa các agent (Task Engine, Sprint 4)",
         "low",
         act("create", "Tạo task con", 2, "internal"),
-        act("delegate", "Giao việc cho agent khác", 2, "internal"),
+        _real("delegate", "Giao việc cho agent khác (có tiêu chí, ngân sách, hạn chót)", 2, "internal", DelegateIn, DelegateOut, delegate),
         act("review", "Review đầu ra của cấp dưới", 2, "internal"),
+        timeout_s=10,
     )
 )
 register(tool("report", "Soạn báo cáo", "low", act("compose", "Soạn báo cáo cho Owner", 2, "internal")))
@@ -226,4 +228,12 @@ register(
 register(tool("workflow", "Workflow đã duyệt", "medium", act("toggle", "Bật/tắt workflow đã duyệt", 3, "internal")))
 register(tool("alerts", "Cảnh báo hệ thống", "low", act("raise", "Tạo cảnh báo kỹ thuật", 2, "internal")))
 register(tool("email", "Email marketing", "high", act("send_bulk", "Gửi chiến dịch hàng loạt", 3, "external", "bulk_send")))
-register(tool("knowledge", "Chia sẻ kiến thức (qua thẩm định)", "low", act("share", "Gửi ứng viên kiến thức", 2, "internal")))
+register(
+    tool(
+        "knowledge",
+        "Chia sẻ kiến thức (qua thẩm định)",
+        "low",
+        _real("share", "Gửi ứng viên kiến thức vào hộp thẩm định", 2, "internal", ShareIn, ShareOut, share),
+        timeout_s=10,
+    )
+)

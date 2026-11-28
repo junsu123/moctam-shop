@@ -22,6 +22,7 @@ DEFAULT_TTL_H = 72
 Handler = Callable[[AsyncConnection, dict[str, Any], str], Awaitable[None]]
 ON_APPROVE: dict[str, Handler] = {}
 ON_REJECT: dict[str, Handler] = {}
+ON_EXPIRE: dict[str, Handler] = {}
 
 
 def digest(payload: Any) -> str:
@@ -88,10 +89,13 @@ def _json(v: Any) -> str:
 async def expire_due(conn: AsyncConnection) -> int:
     rows = await db.all_(
         conn,
-        "UPDATE approvals SET status = 'expired', decided_at = now() WHERE status = 'pending' AND expires_at <= now() RETURNING id, title",
+        "UPDATE approvals SET status = 'expired', decided_at = now() WHERE status = 'pending' AND expires_at <= now() RETURNING *",
     )
     for r in rows:
         await audit.record(conn, "system", "approval.expired", f"approval:{r['id']}", {"title": r["title"]})
+        handler = ON_EXPIRE.get(r["subject_type"])
+        if handler:
+            await handler(conn, dict(r), "system")
     return len(rows)
 
 

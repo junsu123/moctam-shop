@@ -373,7 +373,7 @@ async def embed_model(conn: AsyncConnection) -> EmbedModel | None:
 
 
 async def embed(
-    conn: AsyncConnection, texts: list[str], *, purpose: str, agent_key: str | None = None
+    conn: AsyncConnection, texts: list[str], *, purpose: str, agent_key: str | None = None, task_id: str | None = None
 ) -> tuple[EmbedModel, list[list[float]]]:
     """Nhúng văn bản qua nhà cung cấp (OpenAI, `dimensions` theo model). Che SĐT/email trước khi gửi; ghi chi phí như mọi lời gọi.
 
@@ -406,17 +406,21 @@ async def embed(
                 json={"model": em.model_name, "input": clean, "dimensions": em.dims},
             )
     except httpx.HTTPError as e:
-        await _record(m, None, agent_key, None, purpose, 0, 0, round((time.perf_counter() - t0) * 1000), False, "NETWORK", None)
+        await _record(m, None, agent_key, task_id, purpose, 0, 0, round((time.perf_counter() - t0) * 1000), False, "NETWORK", None)
         raise AppError("EMBED_FAILED", f"Không gọi được dịch vụ embedding: {type(e).__name__}", 502) from e
     ms = round((time.perf_counter() - t0) * 1000)
     if r.status_code >= 400:
-        await _record(m, None, agent_key, None, purpose, 0, 0, ms, False, f"HTTP_{r.status_code}", None)
+        await _record(m, None, agent_key, task_id, purpose, 0, 0, ms, False, f"HTTP_{r.status_code}", None)
         raise AppError("EMBED_FAILED", f"Dịch vụ embedding trả lỗi HTTP {r.status_code}.", 502)
-    d = r.json()
-    vecs = [row["embedding"] for row in sorted(d["data"], key=lambda x: x["index"])]
+    try:
+        d = r.json()
+        vecs = [row["embedding"] for row in sorted(d["data"], key=lambda x: x["index"])]
+    except (ValueError, KeyError, TypeError) as e:
+        await _record(m, None, agent_key, task_id, purpose, 0, 0, ms, False, "BAD_RESPONSE", None)
+        raise AppError("EMBED_FAILED", "Dịch vụ embedding trả dữ liệu không đúng định dạng.", 502) from e
     if len(vecs) != len(texts) or any(len(v) != em.dims for v in vecs):
         raise AppError("EMBED_FAILED", "Dịch vụ embedding trả sai số lượng hoặc số chiều.", 502)
-    await _record(m, None, agent_key, None, purpose, int(d.get("usage", {}).get("prompt_tokens", 0)), 0, ms, True, None, None)
+    await _record(m, None, agent_key, task_id, purpose, int(d.get("usage", {}).get("prompt_tokens", 0)), 0, ms, True, None, None)
     return em, vecs
 
 
