@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     brains_dir: Path = Path(__file__).resolve().parents[3] / "brains"
     # OpenTelemetry: gửi trace về collector OTLP/HTTP nếu đặt (vd http://otel:4318). Để trống: chỉ gắn trace_id vào log.
     otel_endpoint: str | None = None
+    worker_concurrency: int = Field(default=3, ge=1, le=16)  # số task chạy song song trong một worker (agent chủ yếu chờ API)
     otel_service_name: str = "aico-backend"
 
     @model_validator(mode="after")

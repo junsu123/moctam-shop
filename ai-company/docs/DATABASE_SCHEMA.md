@@ -118,7 +118,13 @@ CREATE POLICY mem_write_episodic ON agent_memories FOR INSERT
 | `task_reviews` | `task_id`, `reviewer_principal`, `verdict` (`approve/request_changes/reject`), `notes`, `rubric_scores jsonb` | |
 | `task_logs` | `task_id`, `step_no`, `event`, `data jsonb`, `at` | Phân vùng theo tháng |
 | ➕ `approvals` | `id`, `subject_type`, `subject_id`, `action`, `title`, `summary`, `payload jsonb`, `payload_digest`, `risk`, `requested_by`, `status`, `decided_by`, `decided_at`, `decision_note`, `expires_at` | Hàng chờ phê duyệt chung cho task, công cụ, kiến thức, quyền (SRS §13). Một yêu cầu đang chờ cho mỗi (subject, digest). *Sprint 2* |
-| ➕ `schedules` | `id`, `agent_id`, `cron`, `timezone`, `task_template jsonb`, `enabled`, `last_run_at`, `next_run_at` | Lịch cấu hình được (SRS §14) |
+| ➕ `schedules` | `id`, `name`, `agent_key`, `cron`, `timezone`, `task_template jsonb`, `enabled`, `catch_up_hours`, `last_run_at`, `next_run_at` | Lịch cấu hình được (SRS §14). Lỡ trong `catch_up_hours` (24 giờ) thì chạy bù **một** lần |
+
+**Đã làm ở Sprint 4a (`0005_tasks`), khác bản thiết kế ở các điểm sau:**
+- `tasks` dùng `assigned_agent` = `agent_key` và `created_by` (principal `user:…`/`agent:…`/`system:…`), giống các bảng đã có; thêm `reviewer`, `requires_review`, `wait_kind` (`approval`/`review`/`children`: đồ thị đang dừng chờ gì), `not_before` (giờ thử lại), `timeout_s`, `result_summary`, `error_code`, `version` (khóa phiên bản). Không có cột `state jsonb`: trạng thái làm việc nằm trong checkpoint LangGraph.
+- Chưa tạo `task_assignments`, `task_messages`, `task_outputs`: lịch sử giao lại nằm trong `task_logs`; message đã có `task_id`; bản nháp chờ review ghi vào `output_data`. Tạo khi Sprint 5–8 cần.
+- `task_dependencies.depends_on` có thể trỏ tới task **chưa tồn tại** (task con do Message Bus tạo sau, id định trước). Phụ thuộc chưa tồn tại = chưa xong.
+- `task_logs` phát `NOTIFY aico_events` (màn hình Diễn biến). Chưa phân vùng theo tháng.
 
 **Checkpoint LangGraph (v0.2, ADR-05):** bảng do thư viện quản lý (checkpoint, các lần ghi đang chờ) nằm trong schema riêng `langgraph` của cùng CSDL. `thread_id` = `tasks.id`. Bảng `tasks` thêm cột `graph_key` (đồ thị nào đang chạy) và `graph_node` (nút gần nhất, để hiển thị). Checkpoint của task đã đóng được dọn sau 30 ngày.
 
@@ -126,11 +132,15 @@ Các chuyển trạng thái hợp lệ được kiểm tra trong mã **và** b�
 
 ```
 CREATED→PENDING→ASSIGNED→IN_PROGRESS→{WAITING_REVIEW|WAITING_APPROVAL|COMPLETED|FAILED}
+IN_PROGRESS→PENDING (chờ task con / phụ thuộc; thêm ở Sprint 4a)
+ASSIGNED→PENDING (thêm phụ thuộc sau khi đã xếp hàng)
 WAITING_REVIEW→{IN_PROGRESS (làm lại)|WAITING_APPROVAL|COMPLETED}
 WAITING_APPROVAL→{IN_PROGRESS|COMPLETED|CANCELLED}
 *→CANCELLED (trừ COMPLETED)
 FAILED→PENDING (retry nếu còn lượt)
 ```
+
+Nghĩa của trạng thái trong mã: PENDING = đang chờ điều kiện (phụ thuộc, giờ thử lại); ASSIGNED = sẵn sàng, xếp hàng chờ worker; IN_PROGRESS có lease = worker đang chạy, IN_PROGRESS **không** lease = vừa được đánh thức sau duyệt/review hoặc worker cũ chết, worker kế tiếp nhận và chạy tiếp từ checkpoint.
 
 ## 7. Giao tiếp
 
@@ -141,6 +151,8 @@ FAILED→PENDING (retry nếu còn lượt)
 | `collaboration_sessions` | `id`, `root_task_id`, `topic`, `options jsonb`, `evidence jsonb`, `decision`, `decided_by` |
 
 `agent_messages` đồng thời là **outbox**: ghi trong cùng giao dịch với thay đổi task, rồi dispatcher phát đi (P4).
+
+**Đã làm ở Sprint 4a:** `agent_messages` (`sender`/`receiver` là principal: `agent:<key>`, `owner`, `learning_engine`; `status` `queued/delivered/failed/expired`; `last_error`, `not_before` cho thử lại giãn cách) và ➕ `knowledge_candidates` (`proposed_by`, `target_scope`, `title`, `claim`, `evidence`, `trust`, `source_message_id` duy nhất, `status` `pending/accepted/rejected/duplicate`): hộp ứng viên của `knowledge_sharing`, Sprint 5 thêm luồng thẩm định. `agent_conversations`, `collaboration_sessions` làm ở Sprint 4c.
 
 ## 8. Nghiệp vụ
 

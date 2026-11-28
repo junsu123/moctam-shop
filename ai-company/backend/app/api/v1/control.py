@@ -241,6 +241,13 @@ ACTION_TEXT = {
     "memory.added": "thêm kiến thức vào trí nhớ",
     "memory.retired": "cho mục trí nhớ nghỉ hưu",
     "telegram.ignored": "bỏ qua tin từ chat lạ",
+    "task.created": "giao việc",
+    "task.completed": "hoàn thành việc",
+    "task.cancelled": "hủy việc",
+    "task.reviewed": "review việc",
+    "schedule.created": "tạo lịch tự động",
+    "schedule.toggled": "bật/tắt lịch tự động",
+    "schedule.deleted": "xóa lịch tự động",
 }
 
 
@@ -270,6 +277,25 @@ def _note_ev(r: Any) -> dict[str, Any]:
     }
 
 
+def _task_ev(r: Any) -> dict[str, Any]:
+    return {
+        "source": "task",
+        "id": r["id"],
+        "at": r["at"],
+        "actor": f"agent:{r['agent_key']}" if r["agent_key"] else "system",
+        "agent_name": r["agent_name"],
+        "action": f"task.{r['event']}",
+        "text": r["text"],
+        "task_id": str(r["task_id"]),
+        "task_title": r["title"],
+        "node": r["node"],
+    }
+
+
+TASK_SQL = (
+    "SELECT l.id, l.at, l.agent_key, a.display_name AS agent_name, l.event, l.text, l.task_id, l.node, t.title "
+    "FROM task_logs l JOIN tasks t ON t.id = l.task_id LEFT JOIN agents a ON a.agent_key = l.agent_key "
+)
 AUDIT_COLS = "id, at, actor, action, resource, reason"
 NOTE_COLS = "id, created_at, kind, text, status, urgent"
 
@@ -277,6 +303,7 @@ NOTE_COLS = "id, created_at, kind, text, status, urgent"
 async def _events(conn: AsyncConnection, limit: int = 100) -> list[dict[str, Any]]:
     out = [_audit_ev(r) for r in await db.all_(conn, f"SELECT {AUDIT_COLS} FROM audit_logs ORDER BY id DESC LIMIT :l", {"l": limit})]  # noqa: S608
     out += [_note_ev(r) for r in await db.all_(conn, f"SELECT {NOTE_COLS} FROM notifications ORDER BY id DESC LIMIT :l", {"l": limit})]  # noqa: S608
+    out += [_task_ev(r) for r in await db.all_(conn, TASK_SQL + "ORDER BY l.id DESC LIMIT :l", {"l": limit})]
     out.sort(key=lambda e: e["at"], reverse=True)
     return out[:limit]
 
@@ -291,6 +318,9 @@ async def _event_by_id(source: str, eid: int) -> dict[str, Any] | None:
         if source == "audit":
             r = await db.one(conn, f"SELECT {AUDIT_COLS} FROM audit_logs WHERE id = :i", {"i": eid})  # noqa: S608
             return _audit_ev(r) if r else None
+        if source == "task":
+            r = await db.one(conn, TASK_SQL + "WHERE l.id = :i", {"i": eid})
+            return _task_ev(r) if r else None
         r = await db.one(conn, f"SELECT {NOTE_COLS} FROM notifications WHERE id = :i", {"i": eid})  # noqa: S608
         return _note_ev(r) if r else None
 

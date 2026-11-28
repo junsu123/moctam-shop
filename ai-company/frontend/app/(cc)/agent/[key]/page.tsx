@@ -16,8 +16,10 @@ import { actor, BRAIN_STATE, CALL_STATUS, DECISION, DEPT, LEVEL, LEVEL_TONE, MOD
 import { useApi } from "@/lib/use-api";
 import { DiffTable } from "@/components/diff-table";
 import { MemoryBrowser, MemoryPreview } from "@/components/memory";
+import { TaskTable } from "@/components/tasks";
+import type { TaskRow } from "@/lib/api";
 
-const TABS = ["ho-so", "bo-nao", "quyen", "tri-nho", "lich-su"] as const;
+const TABS = ["ho-so", "viec", "bo-nao", "quyen", "tri-nho", "lich-su"] as const;
 type Tab = (typeof TABS)[number];
 const msg = (x: unknown) => (x instanceof ApiError ? (x.code === "REAUTH_CANCELLED" ? "" : x.message) : "Có lỗi, thử lại.");
 
@@ -94,6 +96,7 @@ export default function AgentPage() {
         onChange={setTab}
         tabs={[
           { id: "ho-so", label: "Hồ sơ" },
+          { id: "viec", label: "Việc" },
           { id: "bo-nao", label: "Bộ não" },
           { id: "quyen", label: "Quyền công cụ", count: a.permissions.length },
           { id: "tri-nho", label: "Trí nhớ" },
@@ -113,6 +116,8 @@ export default function AgentPage() {
           <BrainTab a={a} onChange={reload} />
         ) : tab === "quyen" ? (
           <PermissionsTab a={a} />
+        ) : tab === "viec" ? (
+          <AgentTasks agentKey={a.agent_key} />
         ) : tab === "tri-nho" ? (
           <>
             <MemoryPreview agent={a.agent_key} />
@@ -599,5 +604,16 @@ function HistoryTab({ agentKey }: { agentKey: string }) {
         </Card>
       </div>
     </>
+  );
+}
+
+function AgentTasks({ agentKey }: { agentKey: string }) {
+  const { data, error } = useApi<{ items: TaskRow[]; total: number }>(`/tasks?agent=${agentKey}&limit=50`);
+  if (error) return <ErrorAlert>{error}</ErrorAlert>;
+  if (!data) return <Loading what="việc của agent" />;
+  return (
+    <Card title="Việc gần đây" flush>
+      <TaskTable items={data.items} empty="Agent này chưa nhận việc nào" />
+    </Card>
   );
 }

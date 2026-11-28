@@ -25,6 +25,8 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.45.2",
     "opentelemetry-instrumentation-fastapi>=0.66b2",
     "opentelemetry-instrumentation-httpx>=0.66b2",
+    "langgraph>=1.2.24",
+    "langgraph-checkpoint-postgres>=3.2.1",
 ]
 
 [dependency-groups]

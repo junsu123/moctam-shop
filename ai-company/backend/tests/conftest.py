@@ -18,6 +18,7 @@ TEST_REDIS = os.environ.get("AICO_TEST_REDIS_URL", "redis://127.0.0.1:1/0")
 MASTER = "test-master-key-" + "x" * 32
 BACKEND = Path(__file__).resolve().parents[1]
 needs_db = pytest.mark.skipif(not TEST_DB, reason="chưa đặt AICO_TEST_DATABASE_URL")
+pytest_plugins = ["tests.officekit"]  # fixture `office` (model giả + worker) cho test Task Engine
 
 
 def _seed_profiles() -> list[tuple[str, str, str | None, str]]:
@@ -33,6 +34,13 @@ PROFILES = _seed_profiles()
 
 # Bảng có dữ liệu do người dùng/hệ thống sinh ra (xóa giữa các test); bảng cấu hình (agents, registry) giữ nguyên
 RESET_TABLES = [
+    "knowledge_candidates",
+    "agent_messages",
+    "task_reviews",
+    "task_logs",
+    "task_dependencies",
+    "schedules",
+    "tasks",
     "memory_access_log",
     "memory_embeddings",
     "episodic_memories",
@@ -89,6 +97,9 @@ def reset_db() -> None:
         c.execute(text("UPDATE embedding_models SET active = false"))
         c.execute(text("DELETE FROM embedding_models WHERE id <> 'openai-te3s-512'"))
         c.execute(text("UPDATE embedding_models SET active = true WHERE id = 'openai-te3s-512'"))
+        for tbl in ("checkpoint_writes", "checkpoint_blobs", "checkpoints"):  # checkpoint LangGraph (nếu đã tạo)
+            if c.execute(text(f"SELECT to_regclass('langgraph.{tbl}')")).scalar():
+                c.execute(text(f"TRUNCATE langgraph.{tbl}"))
     eng.dispose()
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Kiểm thử E2E trang quản trị: dựng CSDL e2e sạch, chạy backend + worker Telegram + Telegram giả + frontend (bản build),
+# Kiểm thử E2E trang quản trị: dựng CSDL e2e sạch, chạy backend + worker Telegram + worker agent + Telegram giả + AI giả + frontend (bản build),
 # rồi chạy Playwright. Cần Postgres (pgvector) và Redis đang chạy; biến AICO_E2E_DATABASE_URL trỏ tới CSDL có tên chứa "e2e".
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -20,9 +20,19 @@ cd "$ROOT/backend"
 uv run alembic downgrade base >/dev/null 2>&1 || true
 uv run alembic upgrade head
 AICO_BRAINS_DIR="$ROOT/brains" uv run python -m app.cli sync-brains
+# Nhà cung cấp AI trỏ tới máy giả (chỉ CSDL e2e): agent chạy thật mà không tốn tiền, không gọi mạng ngoài
+uv run python - <<'PY'
+import os
+from sqlalchemy import create_engine, text
+with create_engine(os.environ["AICO_DATABASE_URL"]).begin() as c:
+    c.execute(text("UPDATE provider_registry SET base_url = 'http://127.0.0.1:8082' WHERE id = 'anthropic'"))
+    c.execute(text("UPDATE provider_registry SET base_url = 'http://127.0.0.1:8082/v1' WHERE id = 'openai'"))
+PY
 python3 "$HERE/fake_telegram.py" 8081 >"$LOGS/telegram-fake.log" 2>&1 & pids+=($!)
+python3 "$HERE/fake_llm.py" 8082 >"$LOGS/llm-fake.log" 2>&1 & pids+=($!)
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 >"$LOGS/backend.log" 2>&1 & pids+=($!)
 uv run python -m app.workers.telegram >"$LOGS/worker.log" 2>&1 & pids+=($!)
+uv run python -m app.workers.agents >"$LOGS/agents.log" 2>&1 & pids+=($!)
 cd "$ROOT/frontend"
 [ -d .next ] || AICO_BACKEND_URL=http://127.0.0.1:8000 npm run build
 npx next start -p 3000 -H 127.0.0.1 >"$LOGS/frontend.log" 2>&1 & pids+=($!)

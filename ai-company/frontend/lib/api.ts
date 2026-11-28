@@ -102,7 +102,11 @@ export type Overview = {
 };
 
 export type EventItem = {
-  source: "audit" | "notification";
+  source: "audit" | "notification" | "task";
+  agent_name?: string | null;
+  task_id?: string;
+  task_title?: string;
+  node?: string | null;
   id: number;
   at: string;
   actor: string;
@@ -310,4 +314,102 @@ export type RetrievalResult = {
   budget_tokens: number;
   vector_search: string;
   scopes: string[];
+};
+
+export type TaskStatus =
+  | "CREATED"
+  | "PENDING"
+  | "ASSIGNED"
+  | "IN_PROGRESS"
+  | "WAITING_REVIEW"
+  | "WAITING_APPROVAL"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
+
+export type TaskRow = {
+  id: string;
+  parent_id: string | null;
+  root_id: string;
+  depth: number;
+  title: string;
+  task_type: string;
+  status: TaskStatus;
+  priority: number;
+  assigned_agent: string;
+  agent_name: string | null;
+  department: string | null;
+  created_by: string;
+  deadline: string | null;
+  budget_usd: number;
+  spent_usd: number;
+  graph_node: string | null;
+  wait_kind: "approval" | "review" | "children" | null;
+  attempt: number;
+  max_attempts: number;
+  error_code: string | null;
+  error: string | null;
+  result_summary: string | null;
+  created_at: string;
+  updated_at: string;
+  finished_at: string | null;
+  children: number;
+};
+
+export type TaskLog = { id: number; at: string; event: string; node: string | null; step_no: number | null; text: string; agent_key: string | null; agent_name: string | null };
+
+export type TaskDetail = {
+  task: TaskRow & {
+    description: string;
+    input_data: Record<string, unknown>;
+    output_data: Record<string, unknown> | null;
+    success_criteria: (string | Record<string, unknown>)[];
+    requires_review: boolean;
+    reviewer: string | null;
+    requires_approval: boolean;
+    autonomy_max: number;
+    started_at: string | null;
+  };
+  parent: { id: string; title: string; assigned_agent: string; status: TaskStatus } | null;
+  logs: TaskLog[];
+  children: TaskRow[];
+  reviews: { round: number; reviewer: string; verdict: "approve" | "request_changes" | "reject"; notes: string | null; created_at: string }[];
+  messages: { id: string; message_type: string; sender: string; receiver: string; status: string; created_at: string; delivered_at: string | null; last_error: string | null }[];
+  tools: { id: string; tool_id: string; action: string; status: string; error_code: string | null; error: string | null; at: string; duration_ms: number | null }[];
+  approvals: { id: string; title: string; status: string; created_at: string; decided_at: string | null; decision_note: string | null }[];
+  can_review: boolean;
+  next_round: number;
+};
+
+export type TaskStats = {
+  by_status: Partial<Record<TaskStatus, number>>;
+  groups: { active: number; waiting: number; done: number; failed: number };
+  owner_reviews: number;
+  spent_today_usd: number;
+};
+
+export type LiveAgent = {
+  agent_key: string;
+  display_name: string;
+  department: string;
+  kind: string;
+  state: AgentState;
+  current: { id: string; title: string; status: TaskStatus; graph_node: string | null; updated_at: string } | null;
+  queued: number;
+  waiting: number;
+  done_24h: number;
+};
+export type LiveOffice = { agents: LiveAgent[]; need_owner: { approvals: number; reviews: number; failed: number } };
+
+export type Schedule = {
+  id: string;
+  name: string;
+  agent_key: string;
+  agent_name: string;
+  cron: string;
+  timezone: string;
+  task_template: { title: string };
+  enabled: boolean;
+  last_run_at: string | null;
+  next_run_at: string | null;
 };

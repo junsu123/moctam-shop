@@ -140,7 +140,7 @@ async def retrieve(
             vec_state = "not_configured"
         elif query_vector is None:
             try:
-                _, vs = await gw.embed(conn, [query], purpose="memory_query", agent_key=agent_key)
+                _, vs = await gw.embed(conn, [query], purpose="memory_query", agent_key=agent_key, task_id=task_id)
                 query_vector = vs[0]
             except AppError as e:
                 vec_state = "not_configured" if e.code == "NOT_CONFIGURED" else f"error: {e.code}"

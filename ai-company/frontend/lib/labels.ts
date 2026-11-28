@@ -118,3 +118,46 @@ export function scopeLabel(s: string): string {
   if (s.startsWith("agent:")) return `Riêng ${s.slice(6)}`;
   return s;
 }
+
+export const TASK_STATUS: Record<string, [string, Tone]> = {
+  CREATED: ["Mới tạo", "neutral"],
+  PENDING: ["Đang chờ", "neutral"],
+  ASSIGNED: ["Chờ làm", "info"],
+  IN_PROGRESS: ["Đang làm", "info"],
+  WAITING_REVIEW: ["Chờ review", "warn"],
+  WAITING_APPROVAL: ["Chờ duyệt", "warn"],
+  COMPLETED: ["Xong", "success"],
+  FAILED: ["Lỗi", "danger"],
+  CANCELLED: ["Đã hủy", "neutral"],
+};
+/** Bước của đồ thị nhận thức, nói bằng lời của người dùng. */
+export const NODE: Record<string, string> = {
+  load: "Đọc việc",
+  recall: "Nhớ lại",
+  plan: "Lập kế hoạch",
+  policy: "Kiểm quyền",
+  act: "Làm từng bước",
+  wait_children: "Chờ việc đã giao",
+  compose: "Soạn kết quả",
+  verify: "Tự kiểm tra",
+  review: "Gửi review",
+  route: "Chọn đường nộp",
+  reflect: "Ghi trải nghiệm",
+};
+export const WAIT: Record<string, string> = { approval: "chờ anh/chị duyệt", review: "chờ review", children: "chờ các việc đã giao" };
+export const PRIORITY: Record<number, [string, Tone]> = { 0: ["Khẩn", "danger"], 1: ["Cao", "warn"], 2: ["Thường", "neutral"], 3: ["Thấp", "neutral"] };
+export const VERDICT: Record<string, [string, Tone]> = {
+  approve: ["Duyệt", "success"],
+  request_changes: ["Yêu cầu sửa", "warn"],
+  reject: ["Từ chối", "danger"],
+};
+export const MSG_TYPE: Record<string, string> = {
+  task_request: "Giao việc",
+  task_response: "Báo kết quả",
+  knowledge_sharing: "Chia sẻ kiến thức",
+  research_result: "Kết quả nghiên cứu",
+  review_request: "Nhờ review",
+  approval_request: "Xin duyệt",
+  error_report: "Báo lỗi",
+  performance_report: "Báo cáo hiệu quả",
+};

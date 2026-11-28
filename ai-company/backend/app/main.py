@@ -5,10 +5,11 @@ from __future__ import annotations
 from fastapi import APIRouter, FastAPI
 
 from app import __version__
-from app.api.v1 import agents, auth, control, health, memory, telegram
+from app.api.v1 import agents, auth, control, health, memory, tasks, telegram
 from app.core import errors, telemetry
 from app.core.config import get_settings
 from app.core.logging import setup_logging
+from app.tasks import hooks  # noqa: F401 — duyệt/từ chối đánh thức task đang chờ
 
 
 def create_app() -> FastAPI:
@@ -29,6 +30,7 @@ def create_app() -> FastAPI:
     v1.include_router(telegram.router)
     v1.include_router(agents.router)
     v1.include_router(memory.router)
+    v1.include_router(tasks.router)
     app.include_router(v1)
     telemetry.instrument(app)
     return app
