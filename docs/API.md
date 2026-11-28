@@ -19,6 +19,9 @@ Lỗi trả về theo dạng `{"error": {"code": "...", "message": "...", "detai
 | 401/403 | UNAUTHENTICATED / FORBIDDEN | Khóa API sai hoặc thiếu quyền | — |
 | 410 | CURSOR_EXPIRED | Con trỏ đồng bộ cũ hơn mốc đã dọn | `pruned_through` |
 | 409 | SOURCE_OUTDATED | Bản nháp AI dựa trên thông tin nhãn cũ (trả trong `results[]`) | — |
+| 423 | AI_PUBLISH_DISABLED | `POST /api/sync/publish` khi website tắt AI tự xuất bản (cài đặt `ai_publish_enabled`) | — |
+| 409 | AI_PUBLISH_HOURS | Xuất bản ngoài khung giờ `ai_publish_hours` (mặc định 07:00–21:30 giờ Việt Nam) | — |
+| 429 | AI_PUBLISH_QUOTA | Hết hạn mức AI xuất bản trong ngày theo loại (`ai_publish_limit_faq` = 3, `ai_publish_limit_blog` = 1) | `used`, `limit` |
 
 Trong voucher của báo giá: `VOUCHER_INVALID`, `VOUCHER_EXPIRED`, `VOUCHER_EXHAUSTED`, `VOUCHER_NOT_APPLICABLE`, `VOUCHER_MIN_NOT_MET`.
 
@@ -128,3 +131,33 @@ Kết quả duyệt các bản nháp AI đã nhận (mặc định 120 ngày g�
 ```
 
 Phản hồi: `{"results": [{"client_ref": "...", "status": "accepted|rejected", "result": "content:42", "duplicate": true?, "error": "..."}]}`. Gửi lại cùng `client_ref` sẽ không tạo bản ghi trùng. Mọi nội dung nhận được đều vào trạng thái **chờ duyệt**.
+
+### POST /api/sync/publish  — quyền `content:publish`
+
+AI tự xuất bản **một** FAQ hoặc bài blog (ARCHITECTURE ADR-16 của `ai-company/`). Dùng khóa riêng, khác khóa `drafts:write`; thu hồi khóa này ở Quản trị → Khóa API là dừng ngay.
+
+```json
+{"client_ref": "co:01J…", "kind": "faq",
+ "data": {"title": "...", "body": "...", "body_is_text": true, "meta_description": "...", "keywords": "...", "product_id": 5, "category_id": 1,
+          "source_refs": [{"product_id": 5, "info_version": 3}], "generated_by": "co:content_agent"}}
+```
+
+Phản hồi: `{"content_id": 42, "kind": "faq", "status": "published", "published_at": "…", "url": "https://…/hoi-dap.html", "quota": {"used": 1, "limit": 3}}`.
+
+Website kiểm lần cuối, theo thứ tự:
+1. Gửi lại cùng `client_ref` (theo từng khóa) → trả bài đã đăng, kèm `"duplicate": true`, không đếm hạn mức.
+2. `AI_PUBLISH_DISABLED` → `AI_PUBLISH_HOURS` → `AI_PUBLISH_QUOTA` (đếm theo ngày giờ Việt Nam, có khóa dòng nên gửi song song cũng không vượt).
+3. `SOURCE_OUTDATED` khi `info_version` trong `source_refs` khác thông tin nhãn hiện tại.
+4. Nội dung qua bộ lọc HTML danh sách trắng như bài nhân viên.
+
+Bài có `source = 'ai'`, `published_by = 'ai'`. Audit `content.ai_publish` (người làm: `sync`). `/api/sync/feedback` báo `approved` cho `client_ref` này, `retracted` khi bị gỡ.
+
+### POST /api/sync/unpublish  — quyền `content:publish`
+
+```json
+{"content_id": 42, "reason": "Owner bấm Gỡ bài trên Telegram"}
+```
+
+Hoặc dùng `client_ref` thay cho `content_id`. `reason` bắt buộc. Phản hồi như `publish`, `status` là `unpublished`. Gọi lại không lỗi.
+
+Chỉ gỡ được bài do AI xuất bản: `content_id` của bài nhân viên → `FORBIDDEN` (403); không có → `NOT_FOUND` (404). Bản đã gỡ vẫn lưu ở Quản trị → Nội dung (trạng thái `unpublished`). Audit `content.ai_unpublish`.

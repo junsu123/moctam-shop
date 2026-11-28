@@ -41,7 +41,18 @@ class Hours(BaseModel):
         return _hhmm(v)
 
 
-DEFAULTS: dict[str, type[BaseModel]] = {"budget": Budget, "hours": Hours}
+class Website(BaseModel):
+    """Kết nối website moctam qua API đồng bộ (khóa lưu ở kho secret: website.read_key, website.drafts_key, website.publish_key)."""
+
+    base_url: str = Field(default="", max_length=200, pattern=r"^(https?://[A-Za-z0-9.\-]+(:\d+)?(/[A-Za-z0-9._~\-/]*)?)?$")
+
+
+DEFAULTS: dict[str, type[BaseModel]] = {"budget": Budget, "hours": Hours, "website": Website}
+
+
+def register(key: str, model: type[BaseModel]) -> None:
+    """Module khác khai báo thêm loại cài đặt (vd lịch đăng bài, Content Gate) mà không vòng import."""
+    DEFAULTS[key] = model
 
 
 async def get_setting(conn: AsyncConnection, key: str) -> BaseModel:

@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Bot, Brain, ChevronDown, ChevronRight, ClipboardCheck, ListChecks, LayoutDashboard, Leaf, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { Activity, Bot, Brain, ChevronDown, ChevronRight, ClipboardCheck, ListChecks, LayoutDashboard, Leaf, LogOut, Newspaper, Settings, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
@@ -26,6 +26,7 @@ const NAV = [
   { href: "/", label: "Tổng quan", icon: LayoutDashboard },
   { href: "/agent", label: "Agent", icon: Bot },
   { href: "/viec", label: "Việc", icon: ListChecks },
+  { href: "/xuat-ban", label: "Xuất bản", icon: Newspaper },
   { href: "/tri-nho", label: "Trí nhớ", icon: Brain },
   { href: "/dien-bien", label: "Diễn biến", icon: Activity },
   { href: "/phe-duyet", label: "Phê duyệt", icon: ClipboardCheck },

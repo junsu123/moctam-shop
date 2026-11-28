@@ -384,13 +384,19 @@ Mỗi quyết định nêu: lý do, ưu điểm, nhược điểm, chi phí vậ
   - Bài soạn xong sớm vào **hàng chờ xuất bản**. **Ngay trước giờ đăng**, Content Gate chạy lại để đối chiếu giá và tồn với website mới nhất.
   - **Tự lùi giai đoạn:** Owner gỡ ≥ 2 bài trong 7 ngày thì lùi một giai đoạn và báo Telegram.
   - Ngày nghỉ (Tết…) và lệnh `/tamdung xuatban` dừng hàng chờ.
-  - Owner sửa lịch trong *Cài đặt → Lịch đăng bài*. Lịch là cấu hình, không hardcode (SRS §14).
+  - Owner sửa lịch trong *Xuất bản → Lịch đăng bài* (Sprint 4b đặt cạnh hàng chờ thay vì trong Cài đặt). Lịch là cấu hình, không hardcode (SRS §14).
 - **Sau khi xuất bản:** Telegram gửi link + nút **Gỡ bài** (gọi `unpublish` ngay; bản đã gỡ vẫn lưu để xem lại). Mọi lần xuất bản và gỡ đều ghi audit ở cả hai phía.
 - **Thay đổi phía website:**
   - API `POST /api/sync/publish`, `POST /api/sync/unpublish`;
   - cột `published_by` ('staff' | 'ai');
   - cấu hình hạn mức;
   - sửa ca nghiệm thu AT-09 thành: *AI chỉ xuất bản được qua khóa `content:publish`, trong hạn mức, có audit và gỡ được*. Bản nháp gửi bằng khóa `drafts:write` vẫn luôn chờ duyệt.
+- **Cài đặt (Sprint 4b):**
+  - lớp 1 là `app/content/gate.py`, gắn thẻ `publish_risky` qua `ActionSpec.tagger` *trước* Policy Engine;
+  - lớp 2 là nút `publish` của đồ thị, chạy sau khi review đạt; `site.publish` tự kiểm lại review;
+  - lớp 3 là `interrupt()` + nút Telegram có chữ ký;
+  - lớp 4 là bảng `publish_queue` + cài đặt `publishing`, worker kiểm mỗi 30 giây;
+  - lớp 5 là `web/app/src/Domain/AiPublisher.php`.
 - **Nhược:** bài sai có thể hiển thị công khai trong khoảng thời gian đến khi Owner bấm Gỡ. Giảm thiểu bằng 5 lớp trên, hạn mức thấp lúc đầu, và nới dần theo tỉ lệ bài *không bị gỡ*.
 
 ## 8. Chi phí vận hành dự kiến

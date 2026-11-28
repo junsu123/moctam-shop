@@ -218,8 +218,16 @@ async def test_tool06_approval_flow_and_digest(granted: AsyncConnection) -> None
 
 
 async def test_unconfigured_tool_and_real_tools(conn: AsyncConnection) -> None:
-    r = await invoke(conn, agent_key="content_agent", tool_id="site", action="draft", input={"title": "x"}, idempotency_key="n-1")
+    r = await invoke(conn, agent_key="content_agent", tool_id="site", action="faq", input={}, idempotency_key="n-1")
     assert r.status == "failed" and r.error_code == "NOT_CONFIGURED" and "chưa được kết nối" in str(r.error)
+    # Có tích hợp nhưng chưa nhập địa chỉ/khóa website → NOT_CONFIGURED, không giả kết quả
+    article = {
+        "kind": "faq",
+        "title": "Trà gừng pha thế nào?",
+        "body": "Hãm một túi trà gừng với 200ml nước sôi trong 5 phút rồi thưởng thức.",
+    }
+    w = await invoke(conn, agent_key="content_agent", tool_id="site", action="draft", input=article, idempotency_key="n-2")
+    assert w.status == "failed" and w.error_code == "NOT_CONFIGURED" and "Cài đặt → Website" in str(w.error)
     s = await invoke(conn, agent_key="data_analyst", tool_id="signals", action="read", input={}, idempotency_key="s-1")
     assert s.status == "succeeded" and s.output and s.output["agents"] == {"active": 15} and s.output["approvals_pending"] == 0
     n1 = await invoke(

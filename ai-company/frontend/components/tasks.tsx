@@ -115,6 +115,8 @@ export function GiveTask({ agents, defaultAgent, onClose, onSaved }: { agents: A
           deadline: f.get("deadline") || null,
           priority: Number(f.get("priority") || 2),
           requires_review: f.get("review") === "on",
+          task_type: f.get("kind") || "generic",
+          publish: f.get("kind") === "faq" || f.get("kind") === "blog",
           requires_approval: f.get("approval") === "on",
         },
       });
@@ -136,7 +138,7 @@ export function GiveTask({ agents, defaultAgent, onClose, onSaved }: { agents: A
             </span>
             <div>
               <h2 id="give-task">Giao việc</h2>
-              <p>Agent tự nhớ lại kinh nghiệm, lập kế hoạch, dùng công cụ được phép và tự kiểm tra trước khi nộp. Việc cần ra ngoài vẫn phải qua duyệt.</p>
+              <p>Agent tự nhớ lại kinh nghiệm, lập kế hoạch, dùng công cụ được phép và tự kiểm tra trước khi nộp. Việc cần ra ngoài vẫn phải qua duyệt. Bài FAQ/blog được Giám đốc Marketing review rồi mới vào lịch đăng.</p>
             </div>
           </div>
           <div className="form-grid">
@@ -179,6 +181,14 @@ export function GiveTask({ agents, defaultAgent, onClose, onSaved }: { agents: A
           <label className="field">
             <span>Thế nào là xong (mỗi dòng một ý)</span>
             <textarea className="textarea" name="criteria" rows={3} maxLength={2000} placeholder={"có đủ 3 câu hỏi\ngiọng thân thiện, không hứa giao trong ngày"} />
+          </label>
+          <label className="field">
+            <span>Loại việc</span>
+            <select className="input" name="kind" defaultValue="generic">
+              <option value="generic">Việc thường</option>
+              <option value="faq">Viết FAQ và đăng lên website</option>
+              <option value="blog">Viết blog và đăng lên website</option>
+            </select>
           </label>
           <div className="checks">
             <label className="check">

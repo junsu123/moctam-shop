@@ -109,6 +109,8 @@ $r->get('/api/sync/snapshot', [SyncController::class, 'snapshot']);
 $r->get('/api/sync/catalog', [SyncController::class, 'catalog']);
 $r->get('/api/sync/feedback', [SyncController::class, 'feedback']);
 $r->post('/api/sync/drafts', [SyncController::class, 'drafts']);
+$r->post('/api/sync/publish', [SyncController::class, 'publish']);
+$r->post('/api/sync/unpublish', [SyncController::class, 'unpublish']);
 
 // ---------------- Quản trị
 Admin\Routes::register($r);

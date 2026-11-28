@@ -44,6 +44,7 @@ def build(checkpointer: Any) -> Any:
         ("route", runtime.node_route),
         ("request_review", runtime.node_request_review),
         ("await_review", runtime.node_await_review),
+        ("publish", runtime.node_publish),
         ("request_approval", runtime.node_request_approval),
         ("await_approval", runtime.node_await_approval),
         ("reflect", runtime.node_reflect),
@@ -58,7 +59,8 @@ def build(checkpointer: Any) -> Any:
     g.add_edge("wait_children", "compose")
     g.add_edge("compose", "verify")
     g.add_conditional_edges("verify", runtime.after_verify, ["plan", "route", "reflect"])
-    g.add_conditional_edges("route", runtime.after_route, ["request_review", "request_approval", "reflect"])
+    g.add_conditional_edges("route", runtime.after_route, ["request_review", "publish", "request_approval", "reflect"])
+    g.add_conditional_edges("publish", runtime.after_publish, ["route", "reflect"])
     g.add_edge("request_review", "await_review")
     g.add_conditional_edges("await_review", runtime.after_review, ["plan", "route", "reflect"])
     g.add_edge("request_approval", "await_approval")

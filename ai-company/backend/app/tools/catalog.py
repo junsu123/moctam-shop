@@ -15,6 +15,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.content.tools import ArticleIn, CatalogIn, CatalogOut, DraftOut, PublishOut, UnpublishIn, UnpublishOut, tag_publish
+from app.content.tools import catalog as site_catalog
+from app.content.tools import draft as site_draft
+from app.content.tools import publish as site_publish
+from app.content.tools import unpublish as site_unpublish
 from app.core import db
 from app.domain import notify
 from app.tasks.tools import DelegateIn, DelegateOut, ShareIn, ShareOut, delegate, share
@@ -109,16 +114,35 @@ register(
         "site",
         "Website moctam qua API đồng bộ có khóa phạm vi",
         "medium",
-        act("catalog", "Đọc sản phẩm, giá, tồn kho đã xác thực", 1, "none"),
+        _real(
+            "catalog",
+            "Đọc sản phẩm, giá, FAQ/blog đã đăng (dữ liệu đã xác thực của website)",
+            1,
+            "none",
+            CatalogIn,
+            CatalogOut,
+            site_catalog,
+        ),
         act("faq", "Đọc FAQ đã đăng", 1, "none"),
         act("crawl", "Quét trang của chính website", 1, "none"),
         act("page_audit", "Đo tốc độ/SEO trang (Lighthouse cục bộ)", 1, "none"),
         act("funnel_stats", "Số liệu phễu thanh toán", 1, "none"),
         act("aggregates", "Số liệu tổng hợp đơn hàng (đã ẩn danh)", 1, "none"),
         act("care_list", "Danh sách khách cần chăm sóc (chỉ customer_key)", 1, "none"),
-        act("draft", "Gửi bản nháp FAQ/blog chờ duyệt", 2, "external"),
-        act("publish", "Xuất bản FAQ/blog (ADR-16)", 3, "external"),  # bài rủi ro: Content Gate gắn publish_risky
-        act("unpublish", "Gỡ bài đã xuất bản", 3, "external"),
+        _real("draft", "Gửi bản nháp FAQ/blog vào hàng chờ duyệt của website", 2, "external", ArticleIn, DraftOut, site_draft),
+        # Đưa bài đã review vào lịch xuất bản (ADR-16). Content Gate gắn publish_risky TRƯỚC Policy Engine → bắt buộc Owner duyệt
+        ActionSpec(
+            name="publish",
+            description="Đưa FAQ/blog đã được duyệt review vào lịch xuất bản (Content Gate + lịch đăng + website kiểm lần cuối)",
+            min_level=3,
+            side_effects="external",
+            input_model=ArticleIn,
+            output_model=PublishOut,
+            handler=site_publish,
+            tagger=tag_publish,
+        ),
+        _real("unpublish", "Gỡ bài AI đã xuất bản", 3, "external", UnpublishIn, UnpublishOut, site_unpublish),
+        timeout_s=60,
     )
 )
 register(

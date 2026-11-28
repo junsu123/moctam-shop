@@ -7,6 +7,7 @@ use App\Core\ApiError;
 use App\Core\Clock;
 use App\Core\Db;
 use App\Core\Http;
+use App\Domain\AiPublisher;
 use App\Domain\DraftInbox;
 use App\Domain\SyncService;
 
@@ -14,7 +15,8 @@ use App\Domain\SyncService;
  * API đồng bộ cho dịch vụ Python. Kiểm tra khóa + phạm vi quyền trên TỪNG yêu cầu.
  *   events:read   → /events, /snapshot
  *   catalog:read  → /catalog
- *   drafts:write  → /drafts
+ *   drafts:write  → /drafts (luôn vào hàng chờ duyệt)
+ *   content:publish → /publish, /unpublish (AI tự xuất bản FAQ/blog; hạn mức + giờ đếm ở website)
  */
 final class SyncController
 {
@@ -68,5 +70,17 @@ final class SyncController
         $key = self::authenticate('drafts:write');
         $body = Http::body();
         Http::json(DraftInbox::receive($key, (array)($body['items'] ?? [])));
+    }
+
+    public function publish(): void
+    {
+        $key = self::authenticate('content:publish');
+        Http::json(AiPublisher::publish($key, Http::body()));
+    }
+
+    public function unpublish(): void
+    {
+        $key = self::authenticate('content:publish');
+        Http::json(AiPublisher::unpublish($key, Http::body()));
     }
 }

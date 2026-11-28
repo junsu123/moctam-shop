@@ -25,14 +25,14 @@ async def test_agent_detail(owner: OwnerSession) -> None:
     assert d["bundle"]["identity"]["personality"]["evidence_strictness"] == 0.9
     publish = next(p for p in d["permissions"] if p["tool_id"] == "site" and p["action"] == "publish")
     assert publish["autonomy_level"] == 3 and publish["limits"] == {"per_day": 2} and publish["action_info"]["min_level"] == 3
-    assert publish["available"] is False  # website chưa có API publish (Sprint 4)
+    assert publish["available"] is True  # Sprint 4b: website có API publish
     md = (await api.get("/api/v1/agents/marketing_director")).json()
     assert {r["agent_key"] for r in md["direct_reports"]} == {"seo_agent", "content_agent", "social_agent", "ads_agent", "creative_agent"}
 
 
 async def test_tools_catalog(owner: OwnerSession) -> None:
     tools = {t["id"]: t for t in (await owner.api.get("/api/v1/tools")).json()}
-    assert tools["signals"]["available"] and tools["notify"]["available"] and not tools["site"]["available"]
+    assert tools["signals"]["available"] and tools["notify"]["available"] and tools["site"]["available"] and not tools["ads"]["available"]
     assert tools["ads"]["actions"]["change_budget"]["tags"] == ["spend_over_threshold"]
     assert {g["agent_key"] for g in tools["notify"]["grants"]} == {"ai_ceo", "web_cro_agent", "data_analyst", "automation_agent"}
 

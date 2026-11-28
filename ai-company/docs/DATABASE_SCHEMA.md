@@ -160,7 +160,7 @@ Nguyên tắc: dữ liệu bán hàng là **bản sao chỉ đọc** từ websit
 
 | Bảng | Nguồn | Ghi chú quyền |
 |---|---|---|
-| `products` | `catalog` của website | Theo mẫu SRS §10 (`product_id`, `name`, `category`, `selling_price`, `stock_quantity`, `description`, `ingredients`, `images`, `compliance_documents`, `status`) cộng `info_version` |
+| `products` | `catalog` của website (*Sprint 4b*: chưa sao vào CSDL; `app/integrations/website.py` đọc `catalog` qua API, đệm 10 phút, Content Gate đọc bản mới ngay trước giờ đăng) | Theo mẫu SRS §10 (`product_id`, `name`, `category`, `selling_price`, `stock_quantity`, `description`, `ingredients`, `images`, `compliance_documents`, `status`) cộng `info_version` |
 | ➕ `product_costs` | Nhập tay hoặc `finance:read` | Tách riêng để **phân quyền giá vốn** (SRS §10). Chỉ `owner_only` và Data Analyst (`finance.read`) đọc được |
 | `customers` | `customer_key` (mã băm) + phân khúc + đồng ý tiếp thị | **Không có tên/SĐT/địa chỉ** theo mặc định (P6, Owner đồng ý ở Q-L1) |
 | `orders` | `events`/`snapshot` | Dạng tối thiểu như dịch vụ hiện tại |
@@ -186,13 +186,13 @@ Nguyên tắc: dữ liệu bán hàng là **bản sao chỉ đọc** từ websit
 | `system_logs` | Log ứng dụng có cấu trúc (mức ≥ WARN), đã che dữ liệu nhạy cảm |
 | `audit_logs` | `id`, `at`, `actor` (user/agent/system), `action`, `resource`, `before_digest`, `after_digest`, `reason`, `request_id`, `prev_hash`, `hash` | **Chỉ thêm**; chuỗi băm phát hiện sửa/xóa; không vai trò nào có UPDATE/DELETE (SRS §15) |
 | ➕ `users`, `roles`, `user_sessions` | Người dùng Owner/nhân viên, RBAC, phiên |
-| ➕ `publications` (v0.2) | `id`, `site_content_id`, `kind` (`faq/blog`), `url`, `task_id`, `agent_id`, `compliance_report jsonb`, `review_id`, `published_at`, `unpublished_at`, `unpublished_by`, `telegram_message_id` | Mọi bài AI tự xuất bản; hạn mức ngày đếm ở đây **và** ở website |
+| ➕ `publish_queue` (*Sprint 4b*, gộp `publications` + `publication_queue` của bản thiết kế) | `id`, `task_id`, `agent_key`, `kind` (`faq/blog`), `title`, `body`, `meta_description`, `keywords`, `product_id`, `category_id`, `source_refs jsonb`, `status` (`scheduled/publishing/published/blocked/retracted/cancelled/failed`), `slot_at`, `attempts`, `last_error`, `gate jsonb` (kết quả Content Gate), `approval_id`, `invocation_key` (UNIQUE, = khóa chống trùng của lời gọi `site.publish`), `content_id`, `url`, `published_at`, `retracted_at`, `retracted_by`, `retract_reason` | Một dòng đi suốt đời bài: chờ giờ → lên website / bị chặn khi kiểm lại trước giờ đăng → có thể bị gỡ. Hạn mức ngày đếm ở website (lớp 5) và lịch đăng ở đây (lớp 4)
 | ➕ `telegram_chats` (v0.2) | `chat_id`, `title`, `user_id`, `can_approve bool`, `receives jsonb` (bài mới/báo cáo/cảnh báo/duyệt), `quiet_hours`, `enabled`, `added_at`, `added_by` | Danh sách chat được phép; Owner quản lý trong *Cài đặt → Telegram* (ADR-15) |
 | ➕ `telegram_link_codes` (v0.2) | `code_hash`, `requested_by`, `can_approve`, `expires_at`, `used_at`, `used_chat_id` | Mã 6 số để kết nối chat, hiệu lực 10 phút, dùng một lần |
-| ➕ `publication_queue` (v0.2) | `id`, `task_id`, `kind`, `title`, `content_ref`, `slot_at`, `phase`, `status` (`queued/rechecking/published/blocked/cancelled`), `recheck_report jsonb` | Hàng chờ xuất bản theo lịch giờ vàng; Content Gate chạy lại ngay trước `slot_at` |
-| ➕ `publish_schedule` (v0.2) | `version`, `phase`, `slots jsonb` (blog/FAQ theo thứ trong tuần, giờ), `window` (7:00–21:30), `min_gap_minutes`, `blackout_dates`, `source` (`default/learned/owner`), `active_from` | Lịch có phiên bản: mặc định → giờ vàng học được → Owner sửa |
-| ➕ `notifications` (v0.2) | `id`, `channel` (`telegram/dashboard`), `chat_id`, `kind` (`publish/report/alert/approval`), `subject_type`, `subject_id`, `text_digest`, `status`, `sent_at`, `attempts` | Outbox thông báo: máy mất mạng thì gửi lại sau |
-| ➕ `telegram_actions` (v0.2) | `nonce`, `action`, `subject_type`, `subject_id`, `content_digest`, `chat_id`, `expires_at`, `used_at`, `result` | Mỗi nút bấm dùng một lần, có hạn |
+| ~~`publish_schedule`~~ | Không tạo bảng. Lịch đăng là cài đặt `publishing` trong `settings` (giai đoạn, giờ đăng từng giai đoạn, khung 7:00–21:30, cách nhau tối thiểu, ngày nghỉ, tạm dừng); chỉ Owner sửa, mọi lần sửa ghi audit | *Sprint 4b*: một bản đang dùng là đủ; lịch sử nằm trong audit. Giờ vàng học được (sau 4 tuần) ghi đè cài đặt này |
+| ➕ `notifications` (v0.2) | `id`, `channel` (`telegram/dashboard`), `chat_id`, `kind` (`publish/report/alert/approval`), `subject_type`, `subject_id`, `text_digest`, `status`, `sent_at`, `attempts` | Outbox thông báo: máy mất mạng thì gửi lại sau. *Sprint 4b*: thêm `buttons jsonb` (nút đính kèm, chỉ gửi cho chat có quyền duyệt) |
+| ➕ `telegram_buttons` (*Sprint 4b*, tên trong bản thiết kế: `telegram_actions`) | `token` (PK, ngẫu nhiên), `action` (`approve/reject/unpublish/feedback`), `subject_type`, `subject_id`, `digest` (digest nội dung), `chat_id`, `expires_at` (72 giờ), `used_at`, `used_result` | `callback_data` = token + chữ ký HMAC-SHA256 (khóa dẫn xuất từ khóa chủ). Dùng một lần, gắn chat, digest phải khớp; bấm một nút thì các nút cùng đối tượng hết hiệu lực |
+| ➕ `telegram_prompts` (*Sprint 4b*) | `chat_id` (PK), `kind`, `subject_type`, `subject_id`, `expires_at` (30 phút) | Chat đang được hỏi "góp ý cho bài…" hoặc "lý do từ chối": tin nhắn kế tiếp của chat đó là câu trả lời |
 
 ## 10. Giữ dữ liệu và kích thước
 

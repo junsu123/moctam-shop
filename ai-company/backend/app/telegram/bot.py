@@ -1,6 +1,6 @@
-"""Telegram Bot API tối giản qua httpx (getMe, sendMessage, getUpdates).
+"""Telegram Bot API tối giản qua httpx (getMe, sendMessage, getUpdates, answerCallbackQuery, editMessageReplyMarkup).
 
-Không dùng thư viện bot lớn: chỉ cần 3 phương thức, ít RAM, dễ giả lập khi kiểm thử (DECISIONS: ghi chú Sprint 1).
+Không dùng thư viện bot lớn: chỉ cần vài phương thức, ít RAM, dễ giả lập khi kiểm thử (DECISIONS: ghi chú Sprint 1).
 Token không bao giờ xuất hiện trong log: lỗi chỉ ghi mã HTTP và mô tả của Telegram đã qua `redact`.
 """
 
@@ -51,10 +51,23 @@ async def get_me(token: str) -> dict[str, Any]:
     return dict(res)
 
 
-async def send(token: str, chat_id: int, text: str) -> None:
-    await call(token, "sendMessage", {"chat_id": chat_id, "text": text[:4000], "disable_web_page_preview": False})
+async def send(token: str, chat_id: int, text: str, reply_markup: dict[str, Any] | None = None) -> None:
+    payload: dict[str, Any] = {"chat_id": chat_id, "text": text[:4000], "disable_web_page_preview": False}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    await call(token, "sendMessage", payload)
+
+
+async def answer_callback(token: str, callback_id: str, text: str) -> None:
+    await call(token, "answerCallbackQuery", {"callback_query_id": callback_id, "text": text[:190]})
+
+
+async def clear_buttons(token: str, chat_id: int, message_id: int) -> None:
+    await call(token, "editMessageReplyMarkup", {"chat_id": chat_id, "message_id": message_id, "reply_markup": {"inline_keyboard": []}})
 
 
 async def updates(token: str, offset: int, timeout_s: int = 25) -> list[dict[str, Any]]:
-    res = await call(token, "getUpdates", {"offset": offset, "timeout": timeout_s, "allowed_updates": ["message"]}, timeout_s=timeout_s)
+    res = await call(
+        token, "getUpdates", {"offset": offset, "timeout": timeout_s, "allowed_updates": ["message", "callback_query"]}, timeout_s=timeout_s
+    )
     return list(res or [])

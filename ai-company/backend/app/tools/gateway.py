@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -123,6 +123,11 @@ async def _invoke(
                 {"id": inv_id, "t": tool_id, "a": action, "ag": agent_key, "task": task_id, "k": idempotency_key, "d": in_digest},
             )
 
+    if act.tagger is not None:  # thẻ rủi ro theo nội dung (Content Gate…) cộng vào thẻ người gọi đưa
+        extra = await act.tagger(conn, inp, agent_key, task_id)
+        if extra:
+            base = ctx or PolicyCtx()
+            ctx = replace(base, extra_tags=tuple(dict.fromkeys((*base.extra_tags, *extra))))
     decision = await authorize(conn, agent_key, tool_id, action, ctx)
     if decision.kind == "deny":
         await _save(idempotency_key, status="denied", error_code="POLICY_DENIED", error=decision.reason, finished_at=datetime.now(UTC))
@@ -189,7 +194,7 @@ async def _invoke(
             code, err = e.code, e.message
         except Exception as e:  # noqa: BLE001 — lỗi của công cụ không được làm sập agent
             code, err = "ERROR", type(e).__name__
-            log.warning("Công cụ %s.%s lỗi %s", tool_id, action, type(e).__name__)
+            log.warning("Công cụ %s.%s lỗi %s", tool_id, action, type(e).__name__, exc_info=True)
         if code not in spec.retry.retry_on:
             break
         if attempts < spec.retry.max_attempts:

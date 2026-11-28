@@ -65,11 +65,13 @@ class FakeModel:
         agent = m.group(1) if m else "?"
         t = TITLE_RE.search(prompt)
         title = t.group(1) if t else ""
-        phase = "compose" if "Viết kết quả cuối" in prompt else "plan"
+        phase = "gate" if "bộ kiểm duyệt nội dung" in system else ("compose" if "Viết kết quả cuối" in prompt else "plan")
         self.calls.append({"agent": agent, "phase": phase, "title": title, "prompt": prompt, "system": system})
         out = self.script(agent, phase, title, prompt)
         if out is None:
-            out = done() if phase == "plan" else composed({"summary": "xong"})
+            out = {"plan": done(), "compose": composed({"summary": "xong"}), "gate": {"risk": "low", "reason": "nội dung bình thường"}}[
+                phase
+            ]
         text = json.dumps(out, ensure_ascii=False)
         if "api.openai.com" in req.url.host:
             return httpx.Response(

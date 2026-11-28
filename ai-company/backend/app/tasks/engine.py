@@ -233,6 +233,8 @@ async def create(
     if agent["state"] == "disabled":
         raise AppError("AGENT_DISABLED", "Agent này đang tắt.", 409)
     criteria = list(success_criteria or [])
+    if task_type in ("faq", "blog") and not any(isinstance(c, dict) and c.get("type") == "required_fields" for c in criteria):
+        criteria.append({"type": "required_fields", "fields": ["title", "body"], "description": "có tiêu đề và nội dung"})
     by_agent = created_by.startswith("agent:")
     if by_agent:  # hợp đồng giao việc giữa agent: tiêu chí đo được, ngân sách, hạn chót
         if not criteria:

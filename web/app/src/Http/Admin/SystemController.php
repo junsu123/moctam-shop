@@ -156,7 +156,7 @@ final class SystemController extends Base
     public function createKey(): void
     {
         $this->need('settings.manage');
-        $scopes = array_values(array_intersect(['events:read', 'catalog:read', 'drafts:write'], (array)($_POST['scopes'] ?? [])));
+        $scopes = array_values(array_intersect(['events:read', 'catalog:read', 'drafts:write', 'content:publish'], (array)($_POST['scopes'] ?? [])));
         $name = mb_substr($this->str('name'), 0, 100);
         if (!$scopes || $name === '') throw ApiError::validation(['name' => $name === '' ? 'Bắt buộc' : null, 'scopes' => !$scopes ? 'Chọn ít nhất một quyền' : null]);
         $key = 'xk_' . bin2hex(random_bytes(24));

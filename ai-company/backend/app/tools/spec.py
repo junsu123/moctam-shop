@@ -38,6 +38,8 @@ class ToolCtx:
 
 
 Handler = Callable[[ToolCtx, Any], Awaitable[BaseModel]]
+# Gắn thẻ rủi ro theo NỘI DUNG lời gọi, chạy trước Policy Engine (vd Content Gate gắn "publish_risky" → bắt buộc người duyệt)
+Tagger = Callable[[AsyncConnection, Any, str, "str | None"], Awaitable[tuple[str, ...]]]
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,7 @@ class ActionSpec:
     input_model: type[BaseModel] = FreeInput
     output_model: type[BaseModel] = FreeOutput
     handler: Handler | None = None  # None: chưa có tích hợp → NOT_CONFIGURED
+    tagger: Tagger | None = None
 
 
 @dataclass(frozen=True)

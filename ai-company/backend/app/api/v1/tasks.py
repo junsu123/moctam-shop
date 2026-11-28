@@ -193,6 +193,9 @@ class TaskIn(BaseModel):
     priority: int = Field(default=2, ge=0, le=3)
     requires_approval: bool = False
     requires_review: bool = False
+    task_type: Literal["generic", "faq", "blog"] = "generic"
+    publish: bool = False  # FAQ/blog: viết xong, Giám đốc Marketing review, rồi vào lịch xuất bản (ADR-16)
+    product_id: int | None = Field(default=None, ge=1)
 
 
 @router.post("/tasks", status_code=201)
@@ -201,6 +204,9 @@ async def task_create(body: TaskIn, conn: AsyncConnection = Depends(db.get_db), 
     if dl and dl < datetime.now(UTC):
         raise AppError("TASK_DEADLINE_PAST", "Hạn chót đã qua.", 422)
     crit: list[Any] = [c.strip() for c in body.success_criteria if c.strip()]
+    publish = body.publish and body.task_type in ("faq", "blog")
+    if publish and body.agent == "marketing_director":
+        raise AppError("TASK_REVIEWER_SELF", "Giám đốc Marketing là người review bài đăng; giao viết cho Nội dung hoặc SEO.", 422)
     t = await engine.create(
         conn,
         title=body.title,
@@ -212,9 +218,13 @@ async def task_create(body: TaskIn, conn: AsyncConnection = Depends(db.get_db), 
         deadline=dl,
         priority=body.priority,
         requires_approval=body.requires_approval,
-        requires_review=body.requires_review,
-        reviewer="owner" if body.requires_review else None,
+        requires_review=body.requires_review or publish,
+        reviewer="agent:marketing_director" if publish else ("owner" if body.requires_review else None),
         autonomy_max=3,
+        task_type=body.task_type,
+        input_data={"publish": True, "product_id": body.product_id}
+        if publish
+        else ({"product_id": body.product_id} if body.product_id else {}),
     )
     await engine.kick()
     return {"id": str(t["id"]), "status": t["status"]}
