@@ -84,7 +84,7 @@ final class ContentService
             if (!$v) throw ApiError::notFound('Không tìm thấy phiên bản.');
             $now = Clock::nowDb();
             Db::update('contents', [
-                'status' => 'published', 'published_version_id' => $vid,
+                'status' => 'published', 'published_version_id' => $vid, 'published_by' => 'staff',
                 'pub_title' => $v['title'], 'pub_meta_description' => $v['meta_description'] ?: Text::excerpt($v['body'], 155),
                 'pub_body' => $v['body'], 'pub_search_text' => Text::fold($v['title'] . ' ' . $v['keywords'] . ' ' . Text::excerpt($v['body'], 600)),
                 'published_at' => $c['published_at'] ?? $now, 'updated_at' => $now,
@@ -92,6 +92,28 @@ final class ContentService
             Db::update('content_versions', ['reviewed_by' => Auth::id(), 'reviewed_at' => $now, 'review_note' => $note ? mb_substr($note, 0, 500) : null], 'id = :id', ['id' => $vid]);
             Audit::log('content.publish', 'content', (string)$id, ['status' => $c['status'], 'version' => $c['published_version_id']], ['status' => 'published', 'version' => $vid], $note);
         });
+    }
+
+    /**
+     * Xuất bản bài do AI tạo, không qua tài khoản nhân viên (chỉ gọi từ AiPublisher sau khi đã kiểm khóa `content:publish`,
+     * khung giờ và hạn mức). Chỉ áp cho nội dung source='ai' đang chờ duyệt.
+     */
+    public static function publishAsAi(int $id, string $note): void
+    {
+        $c = Db::one('SELECT * FROM contents WHERE id = :id FOR UPDATE', ['id' => $id]);
+        if (!$c || $c['source'] !== 'ai' || $c['status'] !== 'pending_review') {
+            throw new ApiError('FORBIDDEN', 'Chỉ xuất bản được nội dung AI vừa tạo.', 403);
+        }
+        $v = Db::one('SELECT * FROM content_versions WHERE id = :v', ['v' => (int)$c['current_version_id']]);
+        $now = Clock::nowDb();
+        Db::update('contents', [
+            'status' => 'published', 'published_version_id' => (int)$v['id'], 'published_by' => 'ai',
+            'pub_title' => $v['title'], 'pub_meta_description' => $v['meta_description'] ?: Text::excerpt($v['body'], 155),
+            'pub_body' => $v['body'], 'pub_search_text' => Text::fold($v['title'] . ' ' . $v['keywords'] . ' ' . Text::excerpt($v['body'], 600)),
+            'published_at' => $now, 'updated_at' => $now,
+        ], 'id = :id', ['id' => $id]);
+        Db::update('content_versions', ['reviewed_at' => $now, 'review_note' => mb_substr($note, 0, 500)], 'id = :id', ['id' => (int)$v['id']]);
+        Audit::log('content.ai_publish', 'content', (string)$id, ['status' => $c['status']], ['status' => 'published', 'version' => (int)$v['id']], $note, 'sync');
     }
 
     public static function unpublish(int $id, string $reason): void

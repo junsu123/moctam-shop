@@ -443,3 +443,18 @@ select.input { padding-right: 28px; appearance: auto; }
 .need a { text-decoration: none; }
 @media (max-width: 860px) { .task-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .desk > .badge { justify-self: start; }
+
+/* Sprint 4b: xuất bản */
+.pub-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.pub-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: grid; gap: 8px; }
+.pub-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.pub-title { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.pub-title b { font-weight: 600; }
+.pub-excerpt { margin: 0; color: var(--text-2); font-size: .9286rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pub-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--text-3); font-size: .857rem; }
+.pub-meta a { display: inline-flex; gap: 4px; align-items: center; }
+.pub-gate { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: .857rem; }
+.pub-gate .note { display: inline-flex; gap: 6px; align-items: flex-start; color: var(--danger); }
+.pub-item .btn-row { margin-top: 0; }
+.gate-result { margin-top: 14px; display: grid; gap: 8px; }
+tr.current td { background: var(--primary-soft); }

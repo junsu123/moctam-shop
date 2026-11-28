@@ -2,10 +2,10 @@
 name: ai-company
 on:
   pull_request:
-    paths: ["ai-company/**", ".github/workflows/ai-company.yml"]
+    paths: ["ai-company/**", "web/**", ".github/workflows/ai-company.yml"]
   push:
     branches: [main]
-    paths: ["ai-company/**", ".github/workflows/ai-company.yml"]
+    paths: ["ai-company/**", "web/**", ".github/workflows/ai-company.yml"]
 permissions:
   contents: read
 
@@ -22,6 +22,11 @@ jobs:
       valkey:
         image: valkey/valkey:8-alpine
         ports: ["6379:6379"]
+      mariadb:  # website THẬT cho IT-PUB-01/02 (AI xuất bản qua API của website)
+        image: mariadb:11
+        env: { MARIADB_ROOT_PASSWORD: root }
+        ports: ["3306:3306"]
+        options: --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 30
     env:
       AICO_TEST_DATABASE_URL: postgresql+psycopg://aico:aico@127.0.0.1:5432/aico_test
       AICO_TEST_REDIS_URL: redis://127.0.0.1:6379/0
@@ -29,12 +34,44 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: "8.3", extensions: "pdo_mysql, mbstring, intl, gd, zip, curl", coverage: none }
       - run: pip install "uv==0.11.*"
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy app
-      - run: uv run pytest -p no:warnings
+      - name: Dựng website thật (PHP + MariaDB) cho kiểm thử xuất bản
+        run: DB_USER=root DB_PASS=root ../../web/tests/it_server.sh | sed 's/^export //' | tr ' ' '\n' >> "$GITHUB_ENV"
+      - run: uv run pytest -p no:warnings -rs
+
+  website:
+    # Ca nghiệm thu của website (web/tests/acceptance.php), gồm AT-09' (AI xuất bản qua khóa content:publish)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: web } }
+    services:
+      mariadb:
+        image: mariadb:11
+        env: { MARIADB_ROOT_PASSWORD: root }
+        ports: ["3306:3306"]
+        options: --health-cmd "healthcheck.sh --connect --innodb_initialized" --health-interval 5s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: "8.3", extensions: "pdo_mysql, mbstring, intl, gd, zip, curl", coverage: none }
+      - name: Cấu hình kiểm thử
+        run: |
+          cat > app/config.php <<'PHP'
+          <?php
+          $c = require __DIR__ . '/config.sample.php';
+          $c['debug'] = true;
+          $c['base_url'] = 'http://127.0.0.1:8080';
+          $c['db'] = ['host' => '127.0.0.1', 'port' => 3306, 'name' => 'xuong_test', 'user' => 'root', 'password' => 'root'];
+          $c['app_key'] = str_repeat('c', 64);
+          $c['session']['secure'] = false;
+          return $c;
+          PHP
+      - run: php tests/acceptance.php
 
   frontend:
     runs-on: ubuntu-latest

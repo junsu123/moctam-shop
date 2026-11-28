@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Cpu, KeyRound, Link2, MessageCircle, Plug, Send, ShieldCheck, Trash2, Wallet, Wrench } from "lucide-react";
+import { Clock, Cpu, Globe, KeyRound, Link2, MessageCircle, Plug, Send, ShieldCheck, Trash2, Wallet, Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useShell } from "@/components/shell";
@@ -8,12 +8,12 @@ import { useConfirm } from "@/components/ui/dialog";
 import { Badge, Bar, Card, Empty, ErrorAlert, Loading, PageHeader } from "@/components/ui/primitives";
 import { Tabs, TabPanel, useTabParam } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
-import { api, ApiError, type Budget, type Hours, type Overview, type Provider, type TgStatus, type ToolInfo } from "@/lib/api";
+import { api, ApiError, type Budget, type Hours, type Overview, type Provider, type TgStatus, type ToolInfo, type WebsiteInfo } from "@/lib/api";
 import { LEVEL, RISK } from "@/lib/labels";
 import { usd, when } from "@/lib/format";
 import { useApi } from "@/lib/use-api";
 
-const TABS = ["telegram", "ngan-sach", "gio", "nha-cung-cap", "cong-cu"] as const;
+const TABS = ["telegram", "ngan-sach", "gio", "nha-cung-cap", "website", "cong-cu"] as const;
 type Tab = (typeof TABS)[number];
 const msg = (x: unknown) => (x instanceof ApiError ? (x.code === "REAUTH_CANCELLED" ? "" : x.message) : "Có lỗi, thử lại.");
 
@@ -31,6 +31,7 @@ export default function SettingsPage() {
           { id: "ngan-sach", label: "Ngân sách AI", icon: <Wallet size={16} aria-hidden="true" /> },
           { id: "gio", label: "Giờ làm việc", icon: <Clock size={16} aria-hidden="true" /> },
           { id: "nha-cung-cap", label: "Nhà cung cấp AI", icon: <Cpu size={16} aria-hidden="true" /> },
+          { id: "website", label: "Website", icon: <Globe size={16} aria-hidden="true" /> },
           { id: "cong-cu", label: "Công cụ", icon: <Wrench size={16} aria-hidden="true" /> },
         ]}
       />
@@ -39,6 +40,7 @@ export default function SettingsPage() {
         {tab === "ngan-sach" && <BudgetTab />}
         {tab === "gio" && <HoursTab />}
         {tab === "nha-cung-cap" && <ProvidersTab />}
+        {tab === "website" && <WebsiteTab />}
         {tab === "cong-cu" && <ToolsTab />}
       </TabPanel>
     </>
@@ -535,6 +537,103 @@ function ProvidersTab() {
           </div>
         </Card>
       ))}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------- Website
+const SITE_KEYS: { kind: "read" | "drafts" | "publish"; label: string; scope: string; help: string }[] = [
+  { kind: "read", label: "Khóa đọc", scope: "catalog:read", help: "Đọc sản phẩm, giá, FAQ đã đăng. Content Gate dùng để đối chiếu giá." },
+  { kind: "drafts", label: "Khóa gửi bản nháp", scope: "drafts:write", help: "Bài bị Content Gate chặn được gửi thành bản nháp chờ nhân viên duyệt." },
+  { kind: "publish", label: "Khóa xuất bản", scope: "content:publish", help: "AI tự đăng/gỡ FAQ, blog. Website tự đếm hạn mức ngày; thu hồi khóa này là dừng ngay." },
+];
+
+function WebsiteTab() {
+  const { withReauth } = useShell();
+  const toast = useToast();
+  const { data, error, reload } = useApi<WebsiteInfo>("/website");
+  const [testing, setTesting] = useState(false);
+
+  async function saveUrl(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const base_url = String(new FormData(e.currentTarget).get("base_url")).trim();
+    try {
+      await withReauth(() => api("/website", { method: "PUT", body: { base_url } }));
+      toast("Đã lưu địa chỉ website.");
+      await reload();
+    } catch (x) {
+      toast(msg(x), "error");
+    }
+  }
+
+  async function saveKey(e: React.FormEvent<HTMLFormElement>, kind: string) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const api_key = String(new FormData(form).get("api_key")).trim();
+    try {
+      await withReauth(() => api(`/website/keys/${kind}`, { method: "PUT", body: { api_key } }));
+      form.reset();
+      toast("Đã lưu khóa.");
+      await reload();
+    } catch (x) {
+      toast(msg(x), "error");
+    }
+  }
+
+  async function test() {
+    setTesting(true);
+    try {
+      const r = await api<{ ok: boolean; products?: number; faqs?: number; detail?: string }>("/website/test", { method: "POST" });
+      toast(r.ok ? `Kết nối tốt: ${r.products} sản phẩm, ${r.faqs} FAQ đã đăng.` : `Chưa kết nối được: ${r.detail}`, r.ok ? "success" : "error");
+    } catch (x) {
+      toast(msg(x), "error");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  if (!data) return error ? <ErrorAlert>{error}</ErrorAlert> : <Loading what="kết nối website" />;
+  return (
+    <>
+      <p className="alert info">
+        <Globe size={16} aria-hidden="true" /> Agent chỉ làm việc với website qua API có khóa riêng cho từng việc, không bao giờ vào thẳng CSDL. Tạo khóa ở trang quản trị
+        website: Quản trị → Khóa API Python.
+      </p>
+      <Card title="Địa chỉ website" description="Ví dụ https://xuongtramoc.vn">
+        <form className="form-inline" onSubmit={saveUrl}>
+          <label className="field">
+            <span>Địa chỉ</span>
+            <input className="input" name="base_url" type="url" defaultValue={data.base_url} placeholder="https://" required />
+          </label>
+          <button type="submit" className="btn btn-primary">
+            Lưu
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={test} disabled={testing || !data.base_url || !data.keys.read}>
+            <Plug size={14} aria-hidden="true" /> {testing ? "Đang kiểm tra…" : "Kiểm tra kết nối"}
+          </button>
+        </form>
+      </Card>
+      {SITE_KEYS.map((k) => {
+        const cur = data.keys[k.kind];
+        return (
+          <Card
+            key={k.kind}
+            title={`${k.label} (${k.scope})`}
+            description={cur ? `${k.help} Khóa kết thúc bằng …${cur.last4}, lưu lúc ${when(cur.updated_at)}.` : k.help}
+            actions={cur ? <Badge tone="success">Đã có khóa</Badge> : <Badge>Chưa có khóa</Badge>}
+          >
+            <form className="form-inline" onSubmit={(e) => saveKey(e, k.kind)} aria-label={k.label}>
+              <label className="field">
+                <span>{cur ? "Khóa mới" : "Khóa API"}</span>
+                <input className="input" name="api_key" type="password" autoComplete="off" minLength={20} required placeholder="xk_…" />
+              </label>
+              <button type="submit" className="btn btn-primary">
+                Lưu khóa
+              </button>
+            </form>
+          </Card>
+        );
+      })}
     </>
   );
 }

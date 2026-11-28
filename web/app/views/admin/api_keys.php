@@ -4,7 +4,7 @@
     <p class="mt-2 break-all rounded bg-jade-50 p-3 font-mono text-sm"><?= e($newKey['key']) ?></p>
   </div>
 <?php endif; ?>
-<p class="max-w-3xl text-sm text-ink-soft">Dùng hai khóa riêng: một khóa <strong>đọc</strong> (events:read, catalog:read) và một khóa <strong>gửi bản nháp</strong> (drafts:write). Website chỉ lưu bản băm SHA-256 của khóa. Thu hồi ngay nếu máy cá nhân bị mất.</p>
+<p class="max-w-3xl text-sm text-ink-soft">Dùng các khóa riêng: một khóa <strong>đọc</strong> (events:read, catalog:read), một khóa <strong>gửi bản nháp</strong> (drafts:write) và, nếu cho AI tự đăng bài, một khóa <strong>xuất bản</strong> (content:publish) dùng riêng. Website chỉ lưu bản băm SHA-256 của khóa. Thu hồi ngay nếu máy cá nhân bị mất.</p>
 <div class="mt-4 grid gap-6 xl:grid-cols-[1fr_360px]">
   <div class="a-card overflow-x-auto p-0">
     <table class="a-table">
@@ -28,7 +28,7 @@
     <h2 class="text-lg">Tạo khóa</h2>
     <?= a_field('name', 'Tên gợi nhớ', $old['name'] ?? '', $errors, ['attrs' => 'placeholder="python-may-van-phong-doc"']) ?>
     <fieldset><legend class="label">Quyền</legend>
-      <?php foreach (['events:read' => 'Đọc sự kiện đơn & bản chụp', 'catalog:read' => 'Đọc thông tin sản phẩm, FAQ', 'drafts:write' => 'Gửi bản nháp, gợi ý, danh sách chăm sóc'] as $s => $l): ?>
+      <?php foreach (['events:read' => 'Đọc sự kiện đơn & bản chụp', 'catalog:read' => 'Đọc thông tin sản phẩm, FAQ', 'drafts:write' => 'Gửi bản nháp, gợi ý, danh sách chăm sóc', 'content:publish' => 'AI tự xuất bản FAQ/blog (trong hạn mức, gỡ được)'] as $s => $l): ?>
         <label class="block text-sm"><input type="checkbox" name="scopes[]" value="<?= $s ?>" class="accent-tea"> <span class="font-mono text-xs"><?= $s ?></span> — <?= $l ?></label>
       <?php endforeach; ?>
       <?php if (!empty($errors['scopes'])): ?><p class="err-msg"><?= e($errors['scopes']) ?></p><?php endif; ?>

@@ -18,7 +18,7 @@ TEST_REDIS = os.environ.get("AICO_TEST_REDIS_URL", "redis://127.0.0.1:1/0")
 MASTER = "test-master-key-" + "x" * 32
 BACKEND = Path(__file__).resolve().parents[1]
 needs_db = pytest.mark.skipif(not TEST_DB, reason="chưa đặt AICO_TEST_DATABASE_URL")
-pytest_plugins = ["tests.officekit"]  # fixture `office` (model giả + worker) cho test Task Engine
+pytest_plugins = ["tests.officekit", "tests.sitekit"]  # fixture `office` (model giả + worker) cho test Task Engine
 
 
 def _seed_profiles() -> list[tuple[str, str, str | None, str]]:
@@ -34,6 +34,9 @@ PROFILES = _seed_profiles()
 
 # Bảng có dữ liệu do người dùng/hệ thống sinh ra (xóa giữa các test); bảng cấu hình (agents, registry) giữ nguyên
 RESET_TABLES = [
+    "telegram_buttons",
+    "telegram_prompts",
+    "publish_queue",
     "knowledge_candidates",
     "agent_messages",
     "task_reviews",

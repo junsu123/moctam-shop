@@ -304,6 +304,63 @@ check('AT-09', 'AI gửi bản nháp trong lúc giá sản phẩm thay đổi', 
     return 'bản nháp chờ duyệt; chat trả 72.000 ₫ (giá hiện hành) thay vì 65.000 ₫ trong bản nháp';
 });
 
+// ---------------------------------------------------------------- AT-09' (thay AT-09 từ khi AI được tự xuất bản, ADR-16)
+check("AT-09'", 'AI xuất bản FAQ/blog: chỉ khóa content:publish, chỉ nội dung AI, trong giờ và hạn mức đếm ở website, có audit, gỡ được', function () {
+    $mk = function (string $scopes) {
+        $raw = 'xk_' . bin2hex(random_bytes(16));
+        $id = Db::insert('api_keys', ['name' => "t-$scopes", 'key_prefix' => substr($raw, 0, 8), 'key_hash' => hash('sha256', $raw), 'scopes' => $scopes, 'created_at' => Clock::nowDb()]);
+        return [$raw, Db::one('SELECT * FROM api_keys WHERE id = :i', ['i' => $id])];
+    };
+    [$draftRaw] = $mk('drafts:write');
+    [$pubRaw, $pubKey] = $mk('content:publish');
+    $_SERVER['HTTP_AUTHORIZATION'] = "Bearer $draftRaw";
+    expect_error('FORBIDDEN', fn() => \App\Http\SyncController::authenticate('content:publish'));  // khóa nháp không xuất bản được
+    $_SERVER['HTTP_AUTHORIZATION'] = "Bearer $pubRaw";
+    ok(\App\Http\SyncController::authenticate('content:publish')['id'] === $pubKey['id'], 'khóa content:publish được nhận');
+    expect_error('FORBIDDEN', fn() => \App\Http\SyncController::authenticate('drafts:write'));   // và chỉ có đúng quyền đó
+    unset($_SERVER['HTTP_AUTHORIZATION']);
+
+    Clock::set(new DateTimeImmutable('2026-12-01 11:30:00', new DateTimeZone('Asia/Ho_Chi_Minh')));
+    \App\Core\Settings::set('ai_publish_limit_faq', '2');
+    $p = Db::one("SELECT id, info_version FROM products WHERE slug = 'tra-gung-mat-ong'");
+    $faq = fn(string $ref, string $title) => ['client_ref' => $ref, 'kind' => 'faq', 'data' => ['title' => $title,
+        'body' => '<p>Xưởng chưa giao trong ngày. <script>alert(1)</script>Đơn trước 15 giờ gửi sáng hôm sau.</p>', 'product_id' => (int)$p['id'],
+        'source_refs' => [['product_id' => (int)$p['id'], 'info_version' => (int)$p['info_version']]], 'generated_by' => 'claude-sonnet-5-5']];
+    $r = \App\Domain\AiPublisher::publish($pubKey, $faq('pub:faq:1', 'Xưởng có giao trong ngày không?'));
+    $c = Db::one('SELECT * FROM contents WHERE id = :id', ['id' => $r['content_id']]);
+    ok($c['status'] === 'published' && $c['source'] === 'ai' && $c['published_by'] === 'ai', 'bài AI xuất bản, đánh dấu published_by=ai');
+    ok(!str_contains((string)$c['pub_body'], '<script'), 'HTML vẫn qua bộ lọc danh sách trắng');
+    ok(str_ends_with((string)$r['url'], '/hoi-dap.html'), 'trả link công khai: ' . $r['url']);
+    ok((int)Db::val("SELECT COUNT(*) FROM audit_logs WHERE action = 'content.ai_publish' AND entity_id = :i", ['i' => (string)$r['content_id']]) === 1, 'có audit');
+    ok(!empty(\App\Domain\AiPublisher::publish($pubKey, $faq('pub:faq:1', 'gửi lại'))['duplicate']), 'gửi lại cùng client_ref không tạo bài thứ hai');
+    \App\Domain\AiPublisher::publish($pubKey, $faq('pub:faq:2', 'Có ship COD không?'));
+    $e = expect_error('AI_PUBLISH_QUOTA', fn() => \App\Domain\AiPublisher::publish($pubKey, $faq('pub:faq:3', 'Câu thứ ba trong ngày')));
+    ok($e->status === 429 && $e->data['used'] === 2, 'hạn mức đếm ở website chặn bài thứ ba');
+    ok((int)Db::val("SELECT COUNT(*) FROM contents WHERE source = 'ai' AND status = 'published'") === 2, 'không có bài nào lọt qua hạn mức');
+    Clock::set(new DateTimeImmutable('2026-12-02 22:10:00', new DateTimeZone('Asia/Ho_Chi_Minh')));
+    expect_error('AI_PUBLISH_HOURS', fn() => \App\Domain\AiPublisher::publish($pubKey, $faq('pub:faq:4', 'Đăng lúc khuya')));
+    Clock::set(new DateTimeImmutable('2026-12-02 08:00:00', new DateTimeZone('Asia/Ho_Chi_Minh')));  // sang ngày mới: hạn mức đếm lại
+    $stale = $faq('pub:faq:5', 'Bài dựa trên nhãn cũ');
+    $stale['data']['source_refs'][0]['info_version'] = (int)$p['info_version'] - 1;
+    expect_error('SOURCE_OUTDATED', fn() => \App\Domain\AiPublisher::publish($pubKey, $stale));
+    \App\Core\Settings::set('ai_publish_enabled', '0');
+    expect_error('AI_PUBLISH_DISABLED', fn() => \App\Domain\AiPublisher::publish($pubKey, $faq('pub:faq:6', 'Khi đã tắt')));
+    \App\Core\Settings::set('ai_publish_enabled', '1');
+    // Gỡ bài: biến khỏi website, báo 'retracted' cho bộ não; không gỡ được bài của nhân viên
+    $u = \App\Domain\AiPublisher::unpublish($pubKey, ['content_id' => $r['content_id'], 'reason' => 'Owner bấm Gỡ bài trên Telegram']);
+    ok($u['status'] === 'unpublished', 'bài đã gỡ');
+    ok(ContentService::bySlug('faq', $c['slug']) === null, 'không còn trên trang công khai');
+    ok(Db::val('SELECT unpublish_reason FROM ai_publications WHERE content_id = :c', ['c' => $r['content_id']]) === 'Owner bấm Gỡ bài trên Telegram', 'lưu lý do gỡ');
+    $fb = array_values(array_filter(SyncService::feedback()['items'], fn($i) => $i['client_ref'] === 'pub:faq:1'));
+    ok($fb && $fb[0]['status'] === 'retracted', 'phản hồi cho bộ não: retracted');
+    \App\Domain\AiPublisher::unpublish($pubKey, ['content_id' => $r['content_id'], 'reason' => 'gỡ lần nữa']);  // gỡ lại không lỗi
+    $staff = (int)Db::val("SELECT id FROM contents WHERE source = 'staff' AND status = 'published' LIMIT 1");
+    expect_error('FORBIDDEN', fn() => \App\Domain\AiPublisher::unpublish($pubKey, ['content_id' => $staff, 'reason' => 'thử gỡ bài nhân viên']));
+    $d = DraftInbox::receive($pubKey, [['client_ref' => 'nhap-1', 'kind' => 'faq', 'data' => ['title' => 'Bản nháp', 'body' => 'x', 'body_is_text' => true]]]);
+    ok(Db::val("SELECT status FROM contents WHERE id = :i", ['i' => (int)substr($d['results'][0]['result'], 8)]) === 'pending_review', 'bản nháp vẫn luôn chờ duyệt');
+    return 'khóa nháp bị chặn; 2/2 bài trong hạn mức, bài thứ 3 bị website từ chối; ngoài giờ, nhãn cũ, đang tắt đều bị chặn; gỡ được, báo retracted';
+});
+
 // ---------------------------------------------------------------- AT-10
 check('AT-10', 'Máy cá nhân tắt / API LLM lỗi: website vẫn bán, chat dùng FAQ hoặc kênh hỗ trợ', function () {
     // Website không có bất kỳ lời gọi nào tới Python/LLM: đặt đơn & chat chỉ dùng MySQL.

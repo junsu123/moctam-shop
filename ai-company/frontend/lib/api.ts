@@ -413,3 +413,53 @@ export type Schedule = {
   last_run_at: string | null;
   next_run_at: string | null;
 };
+
+export type WebsiteInfo = {
+  base_url: string;
+  keys: Record<"read" | "drafts" | "publish", { last4: string; updated_at: string } | null>;
+};
+
+export type PublishItem = {
+  id: string;
+  task_id: string | null;
+  agent_key: string;
+  agent_name: string | null;
+  kind: "faq" | "blog";
+  title: string;
+  status: "scheduled" | "publishing" | "published" | "blocked" | "retracted" | "cancelled" | "failed";
+  slot_at: string | null;
+  published_at: string | null;
+  url: string | null;
+  gate: { blocked?: string[]; topics?: string[]; risk?: string; risk_reason?: string };
+  last_error: string | null;
+  retracted_at: string | null;
+  retracted_by: string | null;
+  retract_reason: string | null;
+  created_at: string;
+  approval_id: string | null;
+  excerpt: string;
+};
+export type PublishList = { items: PublishItem[]; counts: { queue: number; live: number; blocked: number }; phase: number; paused: boolean; paused_reason: string };
+
+export type KindPlan = { times: string[]; weekdays: number[]; per_day: number; per_week: number | null };
+export type PublishSettings = {
+  phase: number;
+  phase_since: string | null;
+  auto_progress: boolean;
+  paused: boolean;
+  paused_reason: string;
+  holidays: string[];
+  window_start: string;
+  window_end: string;
+  min_gap_hours: number;
+  phases: Record<string, { blog: KindPlan; faq: KindPlan }>;
+  upcoming: string[];
+};
+export type GateConfig = {
+  risk_phrases: string[];
+  compare_phrases: string[];
+  owner_topics: Record<string, string[]>;
+  min_body_chars: Record<string, number>;
+  max_title_chars: number;
+  use_classifier: boolean;
+};

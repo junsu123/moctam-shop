@@ -137,9 +137,9 @@ Phòng thủ nhiều lớp. Không có lớp nào đủ một mình:
 
 ### 6.3. Cửa kiểm tra nội dung (Content Gate)
 Đây là bước bắt buộc trước khi nội dung rời hệ thống, nhất là khi **AI tự xuất bản** (ADR-16). Mục đích: không đăng thông tin sai về sản phẩm. Ngoài ra, nền tảng quảng cáo (Meta, Google, TikTok) cũng hay từ chối nội dung nói công dụng chữa bệnh.
-1. **Từ điển cụm rủi ro** tiếng Việt (vd "chữa", "trị", "đặc trị", "thay thuốc", "giảm cân cấp tốc", "cam kết 100%"…), kiểm tra tất định. Từ điển là `shared_knowledge` loại `policy`, chỉ Owner sửa.
-2. **Đối chiếu với dữ liệu website**: giá, thành phần, quy cách, khuyến mãi nêu trong bài phải khớp `catalog`; không khớp thì chặn.
-3. **Bộ phân loại rủi ro** (model rẻ) đánh giá phần còn lại. Rủi ro trung bình hoặc cao thì `RequireApproval` qua Telegram, kèm giải thích.
+1. **Từ điển cụm rủi ro** tiếng Việt (vd "chữa", "trị", "đặc trị", "thay thuốc", "giảm cân cấp tốc", "cam kết 100%"…), kiểm tra tất định. Từ điển là cài đặt `content_gate` (*Sprint 4b*; thiết kế ban đầu là `shared_knowledge` loại `policy`), chỉ Owner sửa trong *Xuất bản → Content Gate*, mỗi lần sửa ghi audit. So nguyên cụm có dấu; cụm từ hai chữ trở lên thì viết không dấu cũng bị bắt.
+2. **Đối chiếu với dữ liệu website**: giá, thành phần, quy cách, khuyến mãi nêu trong bài phải khớp `catalog`; không khớp thì chặn. *Sprint 4b*: đã đối chiếu giá (`list_price`); khuyến mãi luôn cần Owner duyệt; thành phần và quy cách chờ website có dữ liệu có cấu trúc.
+3. **Bộ phân loại rủi ro** (model rẻ) đánh giá phần còn lại. Rủi ro trung bình hoặc cao thì `RequireApproval` qua Telegram, kèm giải thích. Bộ phân loại lỗi thì coi là "chưa rõ" và cũng cần duyệt.
 
 Tài nguyên ảnh/video do AI tạo được gắn cờ nội bộ `ai_generated`. Mặc định không ghi chú công khai.
 

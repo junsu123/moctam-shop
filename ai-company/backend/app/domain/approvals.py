@@ -76,7 +76,14 @@ async def create(
     assert row is not None
     await audit.record(conn, requested_by, "approval.requested", f"approval:{aid}", {"title": title[:200], "risk": risk, "action": action})
     where = "trên trang quản trị (cần xác thực lại)" if risk == "high" else "trên trang quản trị"
-    await notify.enqueue(conn, "approval", f"🔔 Cần anh/chị duyệt: {title}. Mở Phê duyệt {where}.", dedupe_key=f"approval:{aid}")
+    buttons = None
+    if risk != "high":  # rủi ro cao: chỉ duyệt trên dashboard + 2FA, Telegram chỉ báo (SECURITY_PLAN §3.2)
+        buttons = [
+            {"action": "approve", "text": "Duyệt", "subject_type": "approval", "subject_id": str(aid), "digest": dg},
+            {"action": "reject", "text": "Từ chối", "subject_type": "approval", "subject_id": str(aid), "digest": dg},
+        ]
+    text = f"🔔 Cần anh/chị duyệt: {title}." + (f"\n{summary[:600]}" if summary and buttons else "") + f"\nHoặc mở Phê duyệt {where}."
+    await notify.enqueue(conn, "approval", text, dedupe_key=f"approval:{aid}", buttons=buttons)
     return dict(row)
 
 

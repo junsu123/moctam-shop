@@ -1,4 +1,4 @@
-"""Worker agent: `python -m app.workers.agents`. Chạy task của các agent, phát Message Bus, lịch tự động, đối soát.
+"""Worker agent: `python -m app.workers.agents`. Chạy task của các agent, phát Message Bus, lịch tự động, đối soát, đăng bài đến giờ.
 
 - Nhận việc bằng lease (`engine.claim`), chạy đồ thị LangGraph (`graph.execute`), tối đa `AICO_WORKER_CONCURRENCY` việc song song.
 - Đánh thức bằng Redis (`aico:tasks:wake`); mất Redis vẫn chạy nhờ quét bảng mỗi 3 giây.
@@ -16,6 +16,7 @@ import signal
 import socket
 import time
 
+from app.content import publishing
 from app.core import db
 from app.core.config import get_settings
 from app.core.logging import setup_logging
@@ -29,11 +30,27 @@ def worker_id() -> str:
     return f"{socket.gethostname()}:{os.getpid()}"
 
 
-async def housekeeping() -> None:
+_last_publish = 0.0
+_last_phase = 0.0
+
+
+async def housekeeping(force: bool = False) -> None:
+    global _last_publish, _last_phase  # noqa: PLW0603
     await bus.dispatch()
     async with db.engine().begin() as c:
         await scheduler.tick(c)
         await engine.promote(c)
+    now = time.monotonic()
+    if force or now - _last_publish > 30:  # bài đến giờ đăng (lịch đăng theo phút)
+        _last_publish = now
+        try:
+            await publishing.release_due()
+        except Exception as e:  # noqa: BLE001 — lỗi xuất bản không được làm dừng việc của agent
+            log.warning("Xuất bản lỗi %s", type(e).__name__)
+    if force or now - _last_phase > 3600:
+        _last_phase = now
+        async with db.engine().begin() as c:
+            await publishing.evaluate_phase(c)
 
 
 async def claim(wid: str, n: int) -> list[dict[str, object]]:

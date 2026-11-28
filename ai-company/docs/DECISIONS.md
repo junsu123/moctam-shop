@@ -93,6 +93,22 @@
 | Chưa có khóa AI | Lỗi `LLM_NOT_CONFIGURED`, không thử lại, báo rõ phải nhập khóa ở đâu | Thử lại 3 lần là vô ích và gây hiểu lầm |
 | Q-B2 (ngưỡng ngân sách quảng cáo) | Sprint 4 chưa có công cụ quảng cáo; dùng mặc định: mọi thay đổi ngân sách đều cần duyệt | Câu hỏi vẫn mở cho Sprint 7 |
 
+### Ghi chú kỹ thuật Sprint 4b (không cần Owner quyết)
+
+| Điểm | Quyết định | Lý do |
+|---|---|---|
+| Thời điểm xuất bản | Nút `publish` riêng của đồ thị chạy **sau** khi review của Giám đốc Marketing đạt; `site.publish` tự kiểm lại "review gần nhất là duyệt và nội dung trùng `output_data`" (`REVIEW_REQUIRED`, `REVIEW_MISMATCH`) | Công cụ ở nút `act` chạy trước review; đặt xuất bản ở đó là bỏ qua lớp 2 của ADR-16 |
+| Content Gate trước Policy Engine | `ActionSpec.tagger`: hàm gắn thẻ chạy trước `authorize`; Content Gate gắn `publish_risky` → Policy Engine bắt buộc duyệt | Policy Engine vẫn là nơi quyết định duy nhất; Content Gate chỉ cung cấp thẻ |
+| Từ điển Content Gate | Cài đặt `content_gate` (chỉ Owner sửa, có audit), không phải `shared_knowledge` | Luật cứng, đọc nhanh, không cần truy hồi ngữ nghĩa. SECURITY_PLAN §6.3 đã ghi chú |
+| So khớp tiếng Việt | Nguyên cụm có dấu; cụm ≥ 2 chữ thì so thêm bản bỏ dấu | Bỏ dấu cả từ đơn gây bắt nhầm (gần/gan, thân/thận, gia đình/giá) |
+| Bộ phân loại lỗi | Coi là rủi ro "chưa rõ" → Owner duyệt | Không bao giờ tự cho qua khi không chắc |
+| Lỡ giờ đăng | Trễ > 30 phút so với khung giờ (máy tắt, mất mạng) → xếp sang khung kế tiếp, không đăng muộn | Giữ đúng "không đăng ngoài 7:00–21:30", Owner kịp xem link |
+| Kiểm giờ đăng ở website | Website có thêm cài đặt `ai_publish_hours` (mặc định 07:00–21:30) | Lớp 5 không phụ thuộc đồng hồ của máy cá nhân |
+| Nút Telegram | Mã ngẫu nhiên lưu bảng `telegram_buttons` + chữ ký HMAC-SHA256 (khóa dẫn xuất từ khóa chủ) trong `callback_data`; dùng một lần, gắn chat, khớp digest, hạn 72 giờ | `callback_data` tối đa 64 byte; lưu bảng cho phép thu hồi, chống bấm lại và kiểm toán |
+| Việc rủi ro cao | Không gửi nút, chỉ gửi tóm tắt | SECURITY_PLAN §3.2: chỉ duyệt trên dashboard + 2FA |
+| Bài bị gỡ | Thành "Bài học: bài bị gỡ" trong trí nhớ riêng của agent viết, kèm lý do; nhiều lần gỡ của Owner thì lùi giai đoạn | Kênh học từ phản hồi thật (BRAIN_SPEC §7); Learning Engine (Sprint 5) gom thành bài học chung |
+| Lịch đăng và từ điển | Chỉ vai trò `owner` sửa được; `manager` được tạm dừng và gỡ bài | Tạm dừng và gỡ là thao tác an toàn; nới lịch hay từ điển là nới kiểm soát |
+
 ## 2. Còn mở
 
 | Mã | Câu hỏi | Mặc định nếu Owner không trả lời |

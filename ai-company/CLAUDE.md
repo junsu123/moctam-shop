@@ -4,7 +4,7 @@ Hướng dẫn cho Claude Code khi làm việc trong thư mục này. Đọc h�
 
 ## Trạng thái dự án
 
-**ĐÃ DUYỆT KIẾN TRÚC (26/11/2026 22:43) · ĐÃ XONG: SPRINT 3 (Memory System) · ĐANG LÀM: SPRINT 4 (Orchestration + lát cắt dọc), chia 4a/4b/4c; 4a (Task Engine + runtime) xong.**
+**ĐÃ DUYỆT KIẾN TRÚC (26/11/2026 22:43) · ĐÃ XONG: SPRINT 3 (Memory System) · ĐANG LÀM: SPRINT 4 (Orchestration + lát cắt dọc), chia 4a/4b/4c; 4a (Task Engine + runtime) và 4b (tự xuất bản FAQ/blog) xong.**
 
 Owner ưu tiên **trang quản trị trọn gói** (Control Center) có sớm. Thứ tự Sprint ghi trong `docs/IMPLEMENTATION_PLAN.md` §3.
 - Chỉ làm việc của Sprint hiện tại. Việc của Sprint sau thì ghi vào `docs/progress/` thay vì làm luôn.
@@ -67,3 +67,4 @@ Lệnh kiểm tra:
 - Đọc/ghi trí nhớ thay agent chỉ qua `app.memory` (`store`, `retrieval`), luôn **trong giao dịch** (`store.acting_as` đặt `SET LOCAL ROLE` + phạm vi; ngoài giao dịch thì dừng với `RLS_NOT_ACTIVE`). Không viết truy vấn trí nhớ trực tiếp bỏ qua `acting_as`.
 - Đổi trạng thái task chỉ qua `app.tasks.engine.transition` (CSDL có trigger chặn chuyển sai). LangGraph chỉ được dùng trong `app/tasks/graph.py`; nút đồ thị nằm ở `app/tasks/runtime.py`, mọi tác động trong nút phải chống trùng (chạy lại từ checkpoint là chuyện bình thường).
 - Agent chỉ tác động ra ngoài qua `app.tools.gateway.invoke` (Policy Engine + khóa chống trùng). Thêm công cụ: khai báo trong `app/tools/catalog.py`; công cụ chưa có tích hợp để `handler=None` (trả `NOT_CONFIGURED`).
+- Gọi website chỉ qua `app.integrations.website` (khóa theo phạm vi, mã lỗi của website giữ nguyên). Mọi bài ra website phải qua `app.content.gate` và hàng chờ `app.content.publishing`; không gọi `/api/sync/publish` ở chỗ khác.

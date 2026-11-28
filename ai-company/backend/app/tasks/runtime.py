@@ -60,6 +60,7 @@ class State(TypedDict, total=False):
     review: dict[str, Any]
     denied: bool
     approval_id: str
+    publish: dict[str, Any]
     outcome: Literal["completed", "cancelled", "failed"]
     outcome_code: str
     note: str
@@ -455,15 +456,72 @@ async def _route_target(s: State) -> str:
     rv = s.get("review") or {}
     if (t["requires_review"] or (esc and t["reviewer"])) and rv.get("round") != s.get("round", 1):
         return "request_review"
+    if wants_publish(t) and not s.get("publish"):
+        return "publish"
     if t["requires_approval"] or (esc and not t["reviewer"] and not t["requires_review"]):
         return "request_approval"
     return "reflect"
+
+
+def wants_publish(t: dict[str, Any]) -> bool:
+    """Việc viết FAQ/blog có yêu cầu đăng (`input.publish = true`): sau khi review duyệt thì đưa vào lịch xuất bản."""
+    return t["task_type"] in ("faq", "blog") and bool((t["input_data"] or {}).get("publish"))
+
+
+async def node_publish(s: State) -> State:
+    """Đưa bài đã review vào lịch xuất bản qua `site.publish` (Tool Gateway). Chủ đề chỉ-người-duyệt → dừng chờ Owner."""
+    tid = s["task_id"]
+    out = s.get("output") or {}
+    async with db.engine().connect() as c:
+        t = await _task(c, tid)
+        inp = {
+            "kind": t["task_type"],
+            "title": str(out.get("title", "")),
+            "body": str(out.get("body", "")),
+            "meta_description": out.get("meta_description"),
+            "keywords": out.get("keywords"),
+            "product_id": out.get("product_id") or (t["input_data"] or {}).get("product_id"),
+            "category_id": out.get("category_id") or (t["input_data"] or {}).get("category_id"),
+        }
+        key = f"task:{tid}:publish:r{s.get('round', 1)}"
+        pctx = PolicyCtx(task_id=tid, max_level=int(t["autonomy_max"]))
+        r = await tools.invoke(
+            c, agent_key=t["assigned_agent"], tool_id="site", action="publish", input=inp, idempotency_key=key, task_id=tid, ctx=pctx,
+            approval_id=await _approved_for(key),
+        )  # fmt: skip
+        if r.status == "waiting_approval":
+            await engine.log_event(
+                c, tid, "waiting", "Bài thuộc chủ đề cần anh/chị duyệt trước khi đăng", agent=t["assigned_agent"], node="publish"
+            )
+            v = interrupt({"kind": "approval", "approval_id": r.approval_id})
+            if not v.get("approved"):
+                why = v.get("note") or ("yêu cầu duyệt hết hạn" if v.get("status") == "expired" else "không được duyệt đăng")
+                return {"publish": {"status": "rejected"}, "outcome": "cancelled", "outcome_code": "APPROVAL_REJECTED", "note": why}
+            r = await tools.invoke(
+                c, agent_key=t["assigned_agent"], tool_id="site", action="publish", input=inp, idempotency_key=key, task_id=tid, ctx=pctx,
+                approval_id=v["approval_id"],
+            )  # fmt: skip
+    if r.status != "succeeded" or not r.output:
+        await _log(tid, t["assigned_agent"], "publish", "publish_failed", f"Chưa đưa được vào lịch đăng: {r.error_code}: {r.error}")
+        code = r.error_code or "PUBLISH_FAILED"
+        return {"publish": {"status": "failed", "code": code}, "outcome": "failed", "outcome_code": code, "note": r.error or ""}
+    o = r.output
+    if o["status"] == "blocked":
+        txt = "Content Gate chặn, bài thành bản nháp chờ duyệt trên website: " + "; ".join(o.get("reasons") or [])[:300]
+    else:
+        txt = f"Đã xếp lịch đăng lúc {o.get('slot_at')}"
+    await _log(tid, t["assigned_agent"], "publish", "publish_" + o["status"], txt, {"queue_id": o["queue_id"]})
+    return {"publish": dict(o)}
 
 
 async def after_route(s: State) -> str:
     if s.get("outcome"):
         return "reflect"
     return await _route_target(s)
+
+
+def after_publish(s: State) -> str:
+    return "reflect" if s.get("outcome") else "route"
 
 
 async def node_request_review(s: State) -> State:

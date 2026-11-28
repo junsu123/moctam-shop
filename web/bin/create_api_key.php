@@ -12,7 +12,7 @@ use App\Core\Clock;
 use App\Core\Db;
 
 [$_, $name, $scopes] = $argv + [null, null, null];
-$allowed = ['events:read', 'catalog:read', 'drafts:write'];
+$allowed = ['events:read', 'catalog:read', 'drafts:write', 'content:publish'];
 $list = array_filter(array_map('trim', explode(',', (string)$scopes)));
 if (!$name || !$list || array_diff($list, $allowed)) {
     fwrite(STDERR, "Cách dùng: php bin/create_api_key.php <tên> <" . implode('|', $allowed) . ",...>\n");

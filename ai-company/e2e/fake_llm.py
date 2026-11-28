@@ -17,6 +17,28 @@ calls: list[dict] = []
 
 def answer(system: str, prompt: str) -> dict:
     title = (re.search(r"^Tiêu đề: (.*)$", prompt, re.M) or [None, ""])[1]
+    if "bộ kiểm duyệt nội dung" in system:  # bộ phân loại rủi ro của Content Gate
+        return {"risk": "low", "reason": "nội dung thông tin thông thường"}
+    if title.startswith("Review:"):  # Giám đốc Marketing review bài của cấp dưới
+        return {
+            "summary": "Đối chiếu tiêu chí",
+            "steps": [],
+            "output": {"verdict": "approve", "notes": "Rõ ràng, đúng chính sách."},
+            "confidence": 0.9,
+            "claims": [],
+        }
+    if "Loại việc: faq" in prompt:
+        out = {
+            "title": "Xưởng có giao hàng trong ngày không?",
+            "body": "Xưởng chưa giao trong ngày. Đơn đặt trước 15 giờ được đóng gói và gửi ngay sáng hôm sau, thường tới nơi sau 2–4 ngày.",
+        }
+        return {
+            "summary": "Viết FAQ ngắn",
+            "steps": [],
+            "output": out,
+            "confidence": 0.9,
+            "claims": [],
+        }
     if "Góp ý của Owner" in prompt:
         text = "Xưởng chưa giao trong ngày. Đơn đặt trước 15 giờ được gửi sáng hôm sau."
     else:
@@ -24,7 +46,13 @@ def answer(system: str, prompt: str) -> dict:
     out = {"title": title, "answer": text}
     if "Viết kết quả cuối" in prompt:
         return {"output": out, "confidence": 0.9, "claims": []}
-    return {"summary": "Viết câu trả lời ngắn, thân thiện", "steps": [], "output": out, "confidence": 0.9, "claims": []}
+    return {
+        "summary": "Viết câu trả lời ngắn, thân thiện",
+        "steps": [],
+        "output": out,
+        "confidence": 0.9,
+        "claims": [],
+    }
 
 
 class H(BaseHTTPRequestHandler):
@@ -53,9 +81,21 @@ class H(BaseHTTPRequestHandler):
         calls.append({"path": self.path, "model": body.get("model")})
         text = json.dumps(answer(system, prompt), ensure_ascii=False)
         if self.path.endswith("/v1/messages"):
-            return self._json(200, {"content": [{"type": "text", "text": text}], "usage": {"input_tokens": 900, "output_tokens": 150}})
+            return self._json(
+                200,
+                {
+                    "content": [{"type": "text", "text": text}],
+                    "usage": {"input_tokens": 900, "output_tokens": 150},
+                },
+            )
         if self.path.endswith("/chat/completions"):
-            return self._json(200, {"choices": [{"message": {"content": text}}], "usage": {"prompt_tokens": 900, "completion_tokens": 150}})
+            return self._json(
+                200,
+                {
+                    "choices": [{"message": {"content": text}}],
+                    "usage": {"prompt_tokens": 900, "completion_tokens": 150},
+                },
+            )
         self._json(404, {"error": "không hỗ trợ"})
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Kiểm thử E2E trang quản trị: dựng CSDL e2e sạch, chạy backend + worker Telegram + worker agent + Telegram giả + AI giả + frontend (bản build),
+# Kiểm thử E2E trang quản trị: dựng CSDL e2e sạch, chạy backend + worker Telegram + worker agent + Telegram giả + AI giả + website giả + frontend (bản build),
 # rồi chạy Playwright. Cần Postgres (pgvector) và Redis đang chạy; biến AICO_E2E_DATABASE_URL trỏ tới CSDL có tên chứa "e2e".
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -30,6 +30,7 @@ with create_engine(os.environ["AICO_DATABASE_URL"]).begin() as c:
 PY
 python3 "$HERE/fake_telegram.py" 8081 >"$LOGS/telegram-fake.log" 2>&1 & pids+=($!)
 python3 "$HERE/fake_llm.py" 8082 >"$LOGS/llm-fake.log" 2>&1 & pids+=($!)
+python3 "$HERE/fake_site.py" 8083 >"$LOGS/site-fake.log" 2>&1 & pids+=($!)
 uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 >"$LOGS/backend.log" 2>&1 & pids+=($!)
 uv run python -m app.workers.telegram >"$LOGS/worker.log" 2>&1 & pids+=($!)
 uv run python -m app.workers.agents >"$LOGS/agents.log" 2>&1 & pids+=($!)
